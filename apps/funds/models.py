@@ -1,0 +1,103 @@
+"""
+App: funds — FundTransaction (Sổ quỹ thu/chi) & FundPeriodLock (Khóa sổ định kỳ).
+Bất biến số dư được bảo vệ bởi FundInvariantsEngine + select_for_update.
+"""
+from django.conf import settings
+from django.db import models
+
+from apps.common.models import TimeStampedModel
+
+
+class FundTransaction(TimeStampedModel):
+    """Một giao dịch thu/chi của quỹ CLB — số dư lũ kế được kiểm soát qua Transaction."""
+
+    class LoaiGiaoDich(models.TextChoices):
+        THU = "THU", "Khoản thu"
+        CHI = "CHI", "Khoản chi"
+
+    class HinhThuc(models.TextChoices):
+        TIEN_MAT = "TIEN_MAT", "Tiền mặt"
+        CHUYEN_KHOAN = "CHUYEN_KHOAN", "Chuyển khoản"
+
+    ma_phieu: models.CharField = models.CharField(
+        "Mã phiếu (PT/PC...)", max_length=20, unique=True, db_index=True
+    )
+    loai_gd: models.CharField = models.CharField(
+        "Loại giao dịch", max_length=5, choices=LoaiGiaoDich.choices, db_index=True
+    )
+    so_tien: models.BigIntegerField = models.BigIntegerField("Số tiền (VNĐ)")
+    so_du_sau: models.BigIntegerField = models.BigIntegerField(
+        "Số dư sau giao dịch", default=0
+    )
+    nguoi_thuc_hien: models.CharField = models.CharField(
+        "Người thực hiện", max_length=150
+    )
+    hinh_thuc: models.CharField = models.CharField(
+        "Hình thức", max_length=15, choices=HinhThuc.choices, default=HinhThuc.TIEN_MAT
+    )
+    ngay_gd: models.DateTimeField = models.DateTimeField(
+        "Thời gian giao dịch", db_index=True
+    )
+    ghi_chu: models.TextField = models.TextField("Ghi chú", blank=True, default="")
+    is_locked: models.BooleanField = models.BooleanField(
+        "Thuộc kỳ đã khóa sổ", default=False
+    )
+
+    # Liên kết tùy chọn
+    created_by: models.ForeignKey = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="fund_transactions",
+        verbose_name="Người tạo phiếu",
+    )
+    event: models.ForeignKey = models.ForeignKey(
+        "events.ActivityEvent",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="fund_transactions",
+        verbose_name="Sự kiện liên quan",
+    )
+    hoa_don: models.FileField = models.FileField(
+        "Hóa đơn đính kèm",
+        upload_to="funds/invoices/%Y/%m/",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        db_table = "fund_transactions"
+        verbose_name = "Giao dịch quỹ"
+        verbose_name_plural = "Sổ quỹ"
+        ordering = ["ngay_gd", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.ma_phieu} — {self.get_loai_gd_display()} {self.so_tien:,}₫"
+
+
+class FundPeriodLock(TimeStampedModel):
+    """Khóa sổ định kỳ — đóng băng mọi giao dịch trong khoảng thời gian."""
+
+    ten_ky: models.CharField = models.CharField("Tên kỳ khóa sổ", max_length=50, unique=True)
+    tu_ngay: models.DateField = models.DateField("Từ ngày")
+    den_ngay: models.DateField = models.DateField("Đến ngày")
+    locked_by: models.ForeignKey = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="fund_period_locks",
+        verbose_name="Người khóa sổ",
+    )
+    locked_at: models.DateTimeField = models.DateTimeField("Thời điểm khóa", auto_now_add=True)
+    ghi_chu: models.TextField = models.TextField("Ghi chú", blank=True, default="")
+
+    class Meta:
+        db_table = "fund_period_locks"
+        verbose_name = "Khóa sổ quỹ"
+        verbose_name_plural = "Khóa sổ quỹ"
+        ordering = ["-tu_ngay"]
+
+    def __str__(self) -> str:
+        return f"Kỳ {self.ten_ky} ({self.tu_ngay} → {self.den_ngay})"
