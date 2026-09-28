@@ -16,4 +16,4 @@ class StandardPagination(PageNumberPagination):
 
     def get_paginated_response(self, data) -> Response:
         """Trả về envelope chuẩn có data.items + data.pagination."""
-        return Response(paginated_payload(self.page))
+        return Response(paginated_payload(self.page, items=data))

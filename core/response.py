@@ -55,21 +55,39 @@ def fail(
     return Response(_envelope(False, None, message, errors), status=status_code)
 
 
-def paginated_payload(page_result, message: str = "Thành công") -> dict:
+def paginated_payload(
+    page_result,
+    message: str = "Thành công",
+    items: Optional[list] = None,
+) -> dict:
     """
     Chuyển kết quả paginate của DRF thành envelope có data gồm:
         data = { "items": [...], "pagination": {page, page_size, total_pages, total_items} }
+
+    Args:
+        page_result: Django `Page` object (self.page sau khi paginate_queryset).
+        message: thông báo thân thiện.
+        items: dữ liệu ĐÃ SERIALIZE (serializer.data). Nếu None sẽ lấy từ page_result.
     """
+    if hasattr(page_result, "number") and hasattr(page_result, "paginator"):
+        pagination = {
+            "page": page_result.number,
+            "page_size": page_result.paginator.per_page,
+            "total_pages": page_result.paginator.num_pages,
+            "total_items": page_result.paginator.count,
+        }
+    else:
+        pagination = None
+
+    if items is None:
+        items = (
+            list(page_result.object_list)
+            if hasattr(page_result, "object_list")
+            else list(page_result)
+        )
+
     return _envelope(
         True,
-        data={
-            "items": list(page_result),
-            "pagination": {
-                "page": page_result.page.number,
-                "page_size": page_result.paginator.page_size,
-                "total_pages": page_result.paginator.num_pages,
-                "total_items": page_result.paginator.count,
-            },
-        },
+        data={"items": items, "pagination": pagination},
         message=message,
     )
