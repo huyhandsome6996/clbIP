@@ -9,6 +9,8 @@ django-cors-headers==4.7.0
 drf-spectacular==0.28.0
 dj-database-url==2.2.0
 psycopg2-binary==2.9.10
+pymysql==1.1.1
+cryptography>=42.0.0
 gunicorn==23.0.0
 whitenoise==6.9.0
 django-axes==7.0.1

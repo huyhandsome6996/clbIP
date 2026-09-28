@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="admin">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sự kiện — Quản trị CLB IP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ===== Style riêng trang Sự kiện ===== */
+    .page-toolbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+      margin-bottom: var(--s-5);
+    }
+    .page-toolbar h2 { font-size: var(--text-xl); letter-spacing: -0.02em; }
+    .page-toolbar .sub { color: var(--tx-muted); font-size: var(--text-sm); margin-top: 2px; }
+    .toolbar-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+
+    .event-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--s-4);
+    }
+    .ev-card { cursor: pointer; transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+    .ev-card:hover, .ev-card:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--c-accent);
+      box-shadow: var(--shadow-md);
+      outline: none;
+    }
+    .ev-title {
+      font-size: var(--text-md);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-top: var(--s-2);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .ev-meta { display: flex; flex-direction: column; gap: 4px; margin-top: var(--s-2); }
+    .ev-meta > div { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--tx-secondary); }
+    .ev-meta svg { width: 14px; height: 14px; color: var(--tx-muted); flex: none; }
+    .ev-slots { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px dashed var(--border-color); }
+    .ev-slots .xs { display: flex; align-items: center; gap: 4px; }
+    .ev-slots .xs svg { width: 13px; height: 13px; }
+
+    /* Chi tiết sự kiện */
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2) var(--s-4); }
+    .meta-item { display: flex; flex-direction: column; gap: 1px; }
+    .meta-item .k { font-size: var(--text-xs); color: var(--tx-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .meta-item .v { font-size: var(--text-sm); color: var(--tx-primary); font-weight: 500; }
+
+    /* DAG task list */
+    .dag-banner {
+      display: flex; align-items: flex-start; gap: var(--s-2);
+      padding: 10px 14px; border-radius: var(--r-control);
+      font-size: var(--text-sm); font-weight: 500;
+    }
+    .dag-banner svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
+    .dag-banner.info { background: var(--c-info-soft); color: var(--c-info); }
+    .dag-banner.danger { background: var(--c-danger-soft); color: var(--c-danger); }
+    .dag-list { display: flex; flex-direction: column; margin-top: var(--s-3); border: 1px solid var(--border-color); border-radius: var(--r-card); overflow: hidden; }
+    .dag-row { display: flex; align-items: flex-start; gap: var(--s-3); padding: 12px 14px; border-bottom: 1px solid var(--border-color); background: var(--bg-surface); }
+    .dag-row:last-child { border-bottom: 0; }
+    .dag-row.locked { background: var(--bg-subtle); }
+    .dag-row input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--c-accent); cursor: pointer; }
+    .dag-row input[type="checkbox"]:disabled { cursor: not-allowed; }
+    .dag-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .task-title { font-size: var(--text-sm); font-weight: 600; color: var(--tx-primary); }
+    .task-title.done { text-decoration: line-through; color: var(--tx-muted); }
+    .task-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-xs); color: var(--tx-muted); }
+    .task-sub svg { width: 12px; height: 12px; }
+    .task-deadline { display: inline-flex; align-items: center; gap: 4px; }
+    .task-deadline.overdue { color: var(--c-danger); font-weight: 600; }
+    .dep-chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      border: 1px solid var(--border-color); border-radius: var(--r-pill);
+      padding: 1px 8px; font-size: var(--text-xs); color: var(--tx-secondary);
+      background: var(--bg-subtle);
+    }
+    .dep-chip svg { width: 11px; height: 11px; }
+
+    /* Bảng trong tab */
+    .tab-table-note { color: var(--tx-muted); font-size: var(--text-xs); margin-top: var(--s-2); }
+    .total-row td { font-weight: 800; border-top: 2px solid var(--border-strong); }
+
+    /* Truyền thông */
+    .comm-row { display: flex; align-items: flex-start; gap: var(--s-3); padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+    .comm-row:last-child { border-bottom: 0; }
+
+    .checkbox-list { display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--border-color); border-radius: var(--r-control); padding: 6px; max-height: 200px; overflow-y: auto; }
+    .checkbox-list label { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; font-size: var(--text-sm); cursor: pointer; }
+    .checkbox-list label:hover { background: var(--bg-subtle); }
+    .checkbox-list input { accent-color: var(--c-accent); width: 15px; height: 15px; }
+    .checkbox-list .empty-mini { padding: 10px; font-size: var(--text-sm); color: var(--tx-muted); text-align: center; }
+
+    @media (max-width: 768px) {
+      .event-grid { grid-template-columns: 1fr; }
+      .meta-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="admin-shell" id="shell">
+  <aside class="admin-sidebar">
+    <div class="side-brand">
+      <span class="logo" id="brand-logo"></span>
+      <div><div class="t1">CLB IP ĐHSP Huế</div><div class="t2">Quản trị 2.0</div></div>
+    </div>
+    <nav class="side-nav" id="side-nav"><!-- JS render nav --></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost w-100" id="btn-logout" style="color:var(--tx-sidebar)">Đăng xuất</button>
+    </div>
+  </aside>
+  <div class="scrim hidden" id="scrim"></div>
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="flex items-center gap-3">
+        <button class="btn btn-ghost burger" id="btn-burger" aria-label="Mở menu"><span id="burger-icon"></span></button>
+        <h1 style="font-size:var(--text-lg)">Sự kiện &amp; Hoạt động</h1>
+      </div>
+      <div class="flex items-center gap-3" id="topbar-user"><!-- avatar + tên --></div>
+    </header>
+    <main class="admin-content">
+      <div class="page-toolbar">
+        <div>
+          <h2>Danh sách sự kiện</h2>
+          <p class="sub">Quản lý hoạt động, DAG công việc, kinh phí, đăng ký và truyền thông.</p>
+        </div>
+        <div class="toolbar-actions">
+          <select class="form-select" id="filter-status" style="width:auto" aria-label="Lọc theo trạng thái">
+            <option value="">Tất cả trạng thái</option>
+            <option value="PLANNING">Lên kế hoạch</option>
+            <option value="OPEN_REGISTRATION">Đang mở đăng ký</option>
+            <option value="IN_PROGRESS">Đang diễn ra</option>
+            <option value="COMPLETED">Đã kết thúc</option>
+            <option value="CANCELLED">Đã hủy</option>
+          </select>
+          <button class="btn btn-primary" id="btn-create"><span id="btn-create-icon"></span>Tạo sự kiện</button>
+        </div>
+      </div>
+
+      <section id="events-grid" class="event-grid" aria-live="polite"></section>
+      <div id="events-pagination" class="pagination"></div>
+    </main>
+  </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/icons.js"></script>
+<script src="/frontend/js/toast.js"></script>
+<script src="/frontend/js/utils.js"></script>
+<script src="/frontend/js/auth.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ================= Maps trạng thái (theo model backend) ================= */
+  const LOAI = {
+    WORKSHOP: "Workshop",
+    HACKATHON: "Hackathon",
+    SINH_HOAT_DINH_KY: "Sinh hoạt định kỳ",
+    TEAMBUILDING: "Teambuilding",
+  };
+  const TRANG_THAI = {
+    PLANNING: ["warning", "Lên kế hoạch"],
+    OPEN_REGISTRATION: ["success", "Đang mở đăng ký"],
+    IN_PROGRESS: ["info", "Đang diễn ra"],
+    COMPLETED: ["neutral", "Đã kết thúc"],
+    CANCELLED: ["danger", "Đã hủy"],
+  };
+  const REG_STATUS = {
+    REGISTERED: ["success", "Đã đăng ký"],
+    APPROVED: ["info", "Đã duyệt"],
+    CHECKED_IN: ["accent", "Đã check-in"],
+    CANCELLED: ["danger", "Đã hủy"],
+  };
+  const COMM_STATUS = {
+    PENDING: ["warning", "Chưa đăng"],
+    PUBLISHED: ["success", "Đã đăng"],
+  };
+  const KENH = {
+    FACEBOOK: "Facebook",
+    TIKTOK: "TikTok",
+    EMAIL: "Email",
+    WEBSITE: "Website",
+    OTHER: "Khác",
+  };
+
+  const state = {
+    items: [],
+    pagination: null,
+    page: 1,
+    trangThai: "",
+    current: null,        // chi tiết sự kiện đang mở modal
+    plan: null,           // DAG plan của sự kiện hiện tại
+    tab: "tasks",
+  };
+
+  /* ================= Helper chung ================= */
+  function openModal({ title, bodyHTML, onMount, footerHTML = "", wide = false }) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${Utils.escapeHtml(title)}">
+        <div class="modal-head"><h3>${Utils.escapeHtml(title)}</h3>
+          <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
+        <div class="modal-body">${bodyHTML}</div>
+        ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+      </div>`;
+    if (wide) backdrop.querySelector(".modal").style.maxWidth = "760px";
+    const close = () => backdrop.remove();
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+    backdrop.querySelector(".modal-close").addEventListener("click", close);
+    document.body.appendChild(backdrop);
+    if (onMount) onMount(backdrop, close);
+    return { el: backdrop, close };
+  }
+
+  /** ISO backend → value cho input datetime-local (giờ địa phương) */
+  function isoToLocalInput(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  /** value datetime-local → ISO gửi backend (null nếu rỗng) */
+  function localToISO(v) {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d) ? null : d.toISOString();
+  }
+  function statusBadge(code) {
+    const [tone, label] = TRANG_THAI[code] || ["neutral", code || "—"];
+    return Utils.badge(label, tone);
+  }
+  function numOrNull(v) {
+    if (v === "" || v === null || v === undefined) return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  function renderPagination(el, pg, onPage) {
+    if (!el) return;
+    if (!pg || !pg.total_pages || pg.total_pages <= 1) { el.innerHTML = ""; return; }
+    el.innerHTML = `
+      <span class="page-info">Trang ${pg.page}/${pg.total_pages} · ${Utils.fmtNum(pg.total_items)} kết quả</span>
+      <div class="page-btns">
+        <button class="btn btn-outline btn-sm" id="pg-prev" ${pg.page <= 1 ? "disabled" : ""}>${Icons.render("chevron-left", 15)} Trước</button>
+        <button class="btn btn-outline btn-sm" id="pg-next" ${pg.page >= pg.total_pages ? "disabled" : ""}>Sau ${Icons.render("chevron-right", 15)}</button>
+      </div>`;
+    const prev = el.querySelector("#pg-prev");
+    const next = el.querySelector("#pg-next");
+    if (prev) prev.addEventListener("click", () => onPage(pg.page - 1));
+    if (next) next.addEventListener("click", () => onPage(pg.page + 1));
+  }
+
+  /* ================= Danh sách sự kiện ================= */
+  function gridSkeleton(grid) {
+    let html = "";
+    for (let i = 0; i < 3; i++) {
+      html += `<div class="card card-pad">
+        <div class="skeleton" style="width:40%"></div>
+        <div class="skeleton" style="width:80%; height:18px; margin-top:10px"></div>
+        <div class="skeleton-lines" style="margin-top:12px">
+          <div class="skeleton" style="width:65%"></div>
+          <div class="skeleton" style="width:55%"></div>
+        </div>
+        <div class="skeleton" style="width:100%; height:8px; margin-top:14px"></div>
+      </div>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  function eventCardHTML(ev) {
+    const max = Number(ev.so_luong_toi_da) || 0;
+    const reg = Number(ev.registered_count) || 0;
+    const pctv = max > 0 ? Math.min(100, Math.round((reg / max) * 100)) : reg > 0 ? 100 : 0;
+    return `
+      <article class="card card-pad ev-card" data-id="${ev.id}" role="button" tabindex="0"
+               aria-label="Xem chi tiết ${Utils.escapeHtml(ev.ten_hoat_dong)}">
+        <div class="flex items-center justify-between gap-2">
+          ${statusBadge(ev.trang_thai)}
+          <span class="mono xs muted">${Utils.escapeHtml(ev.ma_hd || "")}</span>
+        </div>
+        <h3 class="ev-title">${Utils.escapeHtml(ev.ten_hoat_dong)}</h3>
+        <div class="ev-meta">
+          <div>${Icons.render("calendar", 14)} <span>${Utils.fmtDateTime(ev.thoi_gian_bat_dau)}</span></div>
+          <div>${Icons.render("map-pin", 14)} <span>${Utils.escapeHtml(ev.dia_diem || "—")}</span></div>
+        </div>
+        <div class="ev-slots">
+          <div class="flex items-center justify-between xs">
+            <span class="flex items-center gap-2">${Icons.render("users", 13)} ${reg}/${max || "∞"} đăng ký</span>
+            <span class="flex items-center gap-2 bold">${Icons.render("dollar", 13)} ${Utils.fmtVND(ev.tong_kinh_phi_du_tru)}</span>
+          </div>
+          <div class="progress mt-2"><span style="width:${pctv}%"></span></div>
+        </div>
+        <div class="mt-2"><span class="badge badge-neutral">${Utils.escapeHtml(LOAI[ev.loai_hd] || ev.loai_hd || "—")}</span></div>
+      </article>`;
+  }
+
+  async function loadEvents() {
+    const grid = document.getElementById("events-grid");
+    const pager = document.getElementById("events-pagination");
+    gridSkeleton(grid);
+    try {
+      const params = { page: state.page };
+      if (state.trangThai) params.trang_thai = state.trangThai;
+      const { items, pagination } = await ApiClient.getList("/events/", params);
+      state.items = items;
+      state.pagination = pagination;
+      if (!items.length) {
+        Utils.empty(grid, {
+          icon: "calendar",
+          title: "Chưa có sự kiện nào",
+          desc: state.trangThai
+            ? "Không có sự kiện nào ở trạng thái này. Thử chọn trạng thái khác."
+            : "Tạo sự kiện đầu tiên để bắt đầu lên kế hoạch công việc dạng DAG.",
+          actionLabel: state.trangThai ? "" : "Tạo sự kiện",
+          onAction: state.trangThai ? null : openCreateModal,
+        });
+        pager.innerHTML = "";
+        return;
+      }
+      grid.innerHTML = items.map(eventCardHTML).join("");
+      Utils.qsa(".ev-card", grid).forEach((card) => {
+        card.addEventListener("click", () => openDetail(Number(card.dataset.id)));
+        card.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(Number(card.dataset.id)); }
+        });
+      });
+      renderPagination(pager, pagination, (p) => { state.page = p; loadEvents(); });
+    } catch (err) {
+      console.error(err);
+      Utils.empty(grid, {
+        icon: "alert-triangle",
+        title: "Không tải được danh sách sự kiện",
+        desc: err.message || "Vui lòng thử lại.",
+        actionLabel: "Thử lại",
+        onAction: loadEvents,
+      });
+      Toast.error(err.message || "Không tải được danh sách sự kiện");
+    }
+  }
+
+  /* ================= Modal tạo sự kiện ================= */
+  function openCreateModal() {
+    const bodyHTML = `
+      <form id="event-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="ev-ten">Tên hoạt động <span class="req">*</span></label>
+          <input class="form-input" id="ev-ten" type="text" required placeholder="VD: TechTalk: AI & Cloud Computing">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ev-mota">Mô tả</label>
+          <textarea class="form-textarea" id="ev-mota" rows="3" placeholder="Nội dung, đối tượng tham gia..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="ev-loai">Loại hoạt động <span class="req">*</span></label>
+            <select class="form-select" id="ev-loai">
+              <option value="WORKSHOP">Workshop</option>
+              <option value="HACKATHON">Hackathon</option>
+              <option value="SINH_HOAT_DINH_KY">Sinh hoạt định kỳ</option>
+              <option value="TEAMBUILDING">Teambuilding</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev-dia-diem">Địa điểm <span class="req">*</span></label>
+            <input class="form-input" id="ev-dia-diem" type="text" required placeholder="VD: Hội trường A - ĐHSP Huế">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="ev-bat-dau">Thời gian bắt đầu <span class="req">*</span></label>
+            <input class="form-input" id="ev-bat-dau" type="datetime-local" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev-ket-thuc">Thời gian kết thúc <span class="req">*</span></label>
+            <input class="form-input" id="ev-ket-thuc" type="datetime-local" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="ev-slots">Số lượng tối đa</label>
+            <input class="form-input" id="ev-slots" type="number" min="1" placeholder="VD: 60">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ev-kinh-phi">Kinh phí dự trù (₫)</label>
+            <input class="form-input" id="ev-kinh-phi" type="number" min="0" step="1000" placeholder="VD: 1200000">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="flex items-center justify-between">
+            <label class="form-label" style="margin-bottom:0">Tọa độ GPS (tùy chọn — tâm bán kính điểm danh)</label>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-gps">${Icons.render("navigation", 14)} Lấy vị trí hiện tại</button>
+          </div>
+          <div class="form-row mt-2">
+            <input class="form-input" id="ev-vi-do" type="number" step="any" placeholder="Vĩ độ (VD: 16.4637)" aria-label="Vĩ độ">
+            <input class="form-input" id="ev-kinh-do" type="number" step="any" placeholder="Kinh độ (VD: 107.5909)" aria-label="Kinh độ">
+          </div>
+          <input class="form-input mt-2" id="ev-ban-kinh" type="number" min="1" placeholder="Bán kính (m) — để trống dùng mặc định" aria-label="Bán kính mét">
+        </div>
+        <p class="form-error hidden" id="event-form-error"></p>
+      </form>`;
+
+    openModal({
+      title: "Tạo sự kiện mới",
+      bodyHTML,
+      footerHTML: `
+        <button class="btn btn-ghost" data-close>Hủy</button>
+        <button class="btn btn-primary" id="btn-save-event">${Icons.render("plus", 16)} Tạo sự kiện</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+        // Enter trong form → chạy nút Tạo (chặn submit mặc định gây reload)
+        backdrop.querySelector("#event-form").addEventListener("submit", (ev) => {
+          ev.preventDefault();
+          backdrop.querySelector("#btn-save-event").click();
+        });
+        const gpsBtn = backdrop.querySelector("#btn-gps");
+        gpsBtn.addEventListener("click", () => {
+          if (!navigator.geolocation) { Toast.error("Trình duyệt không hỗ trợ định vị."); return; }
+          const undo = Utils.btnLoading(gpsBtn, "Đang định vị...");
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              backdrop.querySelector("#ev-vi-do").value = pos.coords.latitude.toFixed(6);
+              backdrop.querySelector("#ev-kinh-do").value = pos.coords.longitude.toFixed(6);
+              undo();
+              Toast.success("Đã điền tọa độ GPS hiện tại.");
+            },
+            (err) => { undo(); Toast.error("Không lấy được vị trí: " + err.message); },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        });
+        backdrop.querySelector("#btn-save-event").addEventListener("click", async (e) => {
+          e.preventDefault();
+          const form = backdrop.querySelector("#event-form");
+          const errEl = backdrop.querySelector("#event-form-error");
+          errEl.classList.add("hidden");
+          const ten = form.querySelector("#ev-ten").value.trim();
+          const batDau = form.querySelector("#ev-bat-dau").value;
+          const ketThuc = form.querySelector("#ev-ket-thuc").value;
+          const diaDiem = form.querySelector("#ev-dia-diem").value.trim();
+          if (!ten || !batDau || !ketThuc || !diaDiem) {
+            errEl.textContent = "Vui lòng điền đủ các trường bắt buộc (*).";
+            errEl.classList.remove("hidden");
+            return;
+          }
+          if (new Date(batDau) >= new Date(ketThuc)) {
+            errEl.textContent = "Thời gian kết thúc phải sau thời gian bắt đầu.";
+            errEl.classList.remove("hidden");
+            return;
+          }
+          const undo = Utils.btnLoading(e.currentTarget, "Đang tạo...");
+          try {
+            const payload = {
+              ten_hoat_dong: ten,
+              mo_ta: form.querySelector("#ev-mota").value.trim(),
+              loai_hd: form.querySelector("#ev-loai").value,
+              thoi_gian_bat_dau: localToISO(batDau),
+              thoi_gian_ket_thuc: localToISO(ketThuc),
+              dia_diem: diaDiem,
+            };
+            const viDo = form.querySelector("#ev-vi-do").value;
+            const kinhDo = form.querySelector("#ev-kinh-do").value;
+            const banKinh = numOrNull(form.querySelector("#ev-ban-kinh").value);
+            if (viDo !== "") payload.vi_do = numOrNull(viDo);
+            if (kinhDo !== "") payload.kinh_do = numOrNull(kinhDo);
+            if (banKinh !== null) payload.ban_kinh_m = banKinh;
+            const slots = numOrNull(form.querySelector("#ev-slots").value);
+            const phi = numOrNull(form.querySelector("#ev-kinh-phi").value);
+            if (slots !== null) payload.so_luong_toi_da = slots;
+            if (phi !== null) payload.tong_kinh_phi_du_tru = phi;
+            await ApiClient.post("/events/", payload);
+            close();
+            Toast.success(`Đã tạo sự kiện "${ten}".`, "Thành công");
+            state.page = 1;
+            loadEvents();
+          } catch (err) {
+            Toast.error(err.message || "Không tạo được sự kiện.");
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= Modal chi tiết + tabs ================= */
+  async function openDetail(id) {
+    let detail;
+    openModal({
+      title: "Chi tiết sự kiện",
+      wide: true,
+      bodyHTML: `<div class="flex items-center justify-between" style="min-height:120px">
+        <div class="skeleton" style="width:60%;height:20px"></div></div>`,
+      footerHTML: `
+        <button class="btn btn-outline" id="btn-edit-event" disabled>${Icons.render("edit", 15)} Sửa thông tin</button>
+        <button class="btn btn-ghost" data-close>Đóng</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+      },
+    });
+    // Nạp dữ liệu thật vào modal vừa mở
+    const backdrop = Utils.qsa(".modal-backdrop").pop();
+    try {
+      detail = await ApiClient.get(`/events/${id}/`);
+      state.current = detail;
+      state.tab = "tasks";
+      state.plan = null;
+      const body = backdrop.querySelector(".modal-body");
+      body.innerHTML = `
+        <div class="flex items-center justify-between gap-2 wrap">
+          <div class="flex items-center gap-2 wrap">
+            ${statusBadge(detail.trang_thai)}
+            <span class="badge badge-neutral">${Utils.escapeHtml(LOAI[detail.loai_hd] || detail.loai_hd || "")}</span>
+            <span class="mono xs muted">${Utils.escapeHtml(detail.ma_hd || "")}</span>
+          </div>
+        </div>
+        <h2 class="mt-2" style="font-size:var(--text-xl);letter-spacing:-0.02em">${Utils.escapeHtml(detail.ten_hoat_dong)}</h2>
+        ${detail.mo_ta ? `<p class="small mt-2" style="color:var(--tx-secondary)">${Utils.escapeHtml(detail.mo_ta)}</p>` : ""}
+        <div class="card card-pad mt-4" style="background:var(--bg-subtle);border-style:dashed">
+          <div class="meta-grid">
+            <div class="meta-item"><span class="k">Bắt đầu</span><span class="v">${Utils.fmtDateTime(detail.thoi_gian_bat_dau)}</span></div>
+            <div class="meta-item"><span class="k">Kết thúc</span><span class="v">${Utils.fmtDateTime(detail.thoi_gian_ket_thuc)}</span></div>
+            <div class="meta-item"><span class="k">Địa điểm</span><span class="v">${Utils.escapeHtml(detail.dia_diem || "—")}</span></div>
+            <div class="meta-item"><span class="k">Kinh phí dự trù</span><span class="v bold">${Utils.fmtVND(detail.tong_kinh_phi_du_tru)}</span></div>
+            <div class="meta-item"><span class="k">Đăng ký</span><span class="v">${Utils.fmtNum(detail.registered_count || 0)}/${detail.so_luong_toi_da || "∞"} người</span></div>
+            <div class="meta-item"><span class="k">Tọa độ / bán kính</span><span class="v">${detail.vi_do != null ? Number(detail.vi_do).toFixed(5) + ", " + Number(detail.kinh_do).toFixed(5) : "—"} ${detail.ban_kinh_m != null ? "· " + detail.ban_kinh_m + "m" : ""}</span></div>
+            <div class="meta-item"><span class="k">Người tạo</span><span class="v">${Utils.escapeHtml(detail.created_by_email || "—")}</span></div>
+          </div>
+        </div>
+        <div class="tabs mt-4" id="detail-tabs">
+          <button class="tab active" data-tab="tasks">Công việc (DAG)</button>
+          <button class="tab" data-tab="budget">Dự trù kinh phí</button>
+          <button class="tab" data-tab="regs">Đăng ký</button>
+          <button class="tab" data-tab="comms">Truyền thông</button>
+        </div>
+        <div id="tab-content" class="mt-4"></div>`;
+      const editBtn = backdrop.querySelector("#btn-edit-event");
+      editBtn.disabled = false;
+      editBtn.addEventListener("click", () => openEditModal(detail));
+      Utils.qsa("#detail-tabs .tab", backdrop).forEach((btn) => {
+        btn.addEventListener("click", () => {
+          Utils.qsa("#detail-tabs .tab", backdrop).forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          state.tab = btn.dataset.tab;
+          renderTabContent();
+        });
+      });
+      renderTabContent();
+    } catch (err) {
+      Toast.error(err.message || "Không tải được chi tiết sự kiện.");
+      backdrop.remove();
+    }
+  }
+
+  function renderTabContent() {
+    const box = document.getElementById("tab-content");
+    if (!box || !state.current) return;
+    if (state.tab === "tasks") renderTasksTab(box);
+    else if (state.tab === "budget") renderBudgetTab(box);
+    else if (state.tab === "regs") renderRegsTab(box);
+    else renderCommsTab(box);
+  }
+
+  /* ---------- Tab 1: Công việc DAG ---------- */
+  async function renderTasksTab(box) {
+    Utils.skeleton(box, 4);
+    try {
+      const plan = await ApiClient.get(`/events/${state.current.id}/tasks/`);
+      state.plan = plan;
+      const tasks = sortTasks(plan.tasks || [], plan);
+      const exe = plan.executable_now || [];
+      const total = tasks.length;
+      const doneCount = tasks.filter((t) => t.is_completed).length;
+
+      const cycleBanner = plan.is_valid_dag
+        ? ""
+        : `<div class="dag-banner danger mb-4">
+             ${Icons.render("alert-triangle", 16)}
+             <div><strong>Phụ thuộc vòng tròn (deadlock):</strong> [${(plan.cycle || []).join(", ")}] —
+             toàn bộ ô tích bị khóa. Hãy sửa lại quan hệ phụ thuộc của các công việc.</div>
+           </div>`;
+
+      box.innerHTML = `
+        <div class="dag-banner info mb-4">
+          ${Icons.render("check-square", 16)}
+          <div><strong>${exe.length}/${total} công việc đủ điều kiện thực hiện ngay</strong>
+          (tiền nhiệm đã hoàn thành). Chỉ các công việc đủ điều kiện mới được tích —
+          đây là cơ chế DAG đảm bảo đúng thứ tự chuẩn bị sự kiện. Hiện đã xong ${doneCount}/${total}.</div>
+        </div>
+        ${cycleBanner}
+        <div class="dag-list">
+          ${total ? tasks.map((t) => taskRowHTML(t, plan)).join("") : `<div class="empty" style="padding:32px"><div class="empty-icon">${Icons.render("inbox")}</div><h3>Chưa có công việc nào</h3><p>Thêm công việc đầu tiên cho sự kiện này.</p></div>`}
+        </div>
+        <div class="flex justify-between items-center mt-4 wrap gap-2">
+          <span class="xs muted">${Icons.render("info", 13)} Tích một ô sẽ tự cộng XP cho người phụ trách.</span>
+          ${plan.is_valid_dag ? `<button class="btn btn-primary btn-sm" id="btn-add-task">${Icons.render("plus", 15)} Thêm công việc</button>` : ""}
+        </div>`;
+
+      const addBtn = box.querySelector("#btn-add-task");
+      if (addBtn) addBtn.addEventListener("click", openAddTaskModal);
+
+      Utils.qsa(".dag-row input[type='checkbox']", box).forEach((input) => {
+        input.addEventListener("change", () => onToggleTask(Number(input.dataset.taskId), input));
+      });
+    } catch (err) {
+      console.error(err);
+      Utils.empty(box, { icon: "alert-triangle", title: "Không tải được kế hoạch công việc", desc: err.message || "" });
+      Toast.error(err.message || "Không tải được kế hoạch công việc");
+    }
+  }
+
+  /** Sắp theo topological_order nếu DAG hợp lệ; task ngoài thứ tự append cuối */
+  function sortTasks(tasks, plan) {
+    if (plan.is_valid_dag && Array.isArray(plan.topological_order)) {
+      const idx = new Map(plan.topological_order.map((id, i) => [id, i]));
+      return [...tasks].sort((a, b) => (idx.has(a.id) ? idx.get(a.id) : 1e9) - (idx.has(b.id) ? idx.get(b.id) : 1e9) || a.id - b.id);
+    }
+    return [...tasks].sort((a, b) => a.id - b.id);
+  }
+
+  function taskRowHTML(task, plan) {
+    const exe = plan.executable_now || [];
+    const canTick = plan.is_valid_dag && (task.is_completed || exe.includes(task.id));
+    const deps = task.depends_on_detail || [];
+    const overdue = task.deadline && !task.is_completed && new Date(task.deadline) < new Date();
+    return `
+      <div class="dag-row ${canTick ? "" : "locked"}">
+        <input type="checkbox" data-task-id="${task.id}" ${task.is_completed ? "checked" : ""} ${canTick ? "" : "disabled"}
+               aria-label="Hoàn thành: ${Utils.escapeHtml(task.ten_task)}"
+               ${canTick ? "" : `title="Còn tiền nhiệm chưa hoàn thành"`}>
+        <div class="dag-main">
+          <span class="task-title ${task.is_completed ? "done" : ""}">${Utils.escapeHtml(task.ten_task)}</span>
+          <span class="task-sub">
+            <span>${Icons.render("user", 12)} ${Utils.escapeHtml(task.nguoi_phu_trach_ten || "Chưa phân công")}</span>
+            ${task.deadline ? `<span class="task-deadline ${overdue ? "overdue" : ""}" ${overdue ? 'title="Đã quá hạn"' : ""}>${Icons.render("clock", 12)} ${Utils.fmtDate(task.deadline)}${overdue ? " · quá hạn" : ""}</span>` : ""}
+            ${deps.map((d) => `<span class="dep-chip">${Icons.render("arrow-right", 11)} ${Utils.escapeHtml(d.ten_task)}</span>`).join("")}
+            ${!canTick && !task.is_completed ? `<span class="dep-chip" title="Còn tiền nhiệm chưa hoàn thành">${Icons.render("lock", 11)} chờ tiền nhiệm</span>` : ""}
+          </span>
+        </div>
+      </div>`;
+  }
+
+  async function onToggleTask(taskId, input) {
+    input.disabled = true;
+    try {
+      await ApiClient.patch(`/events/${state.current.id}/tasks/${taskId}/`, { is_completed: input.checked });
+      const task = (state.plan?.tasks || []).find((t) => t.id === taskId);
+      if (input.checked) Toast.success(`Đã hoàn thành "${task?.ten_task || "công việc"}". Tiền nhiệm tiếp theo được mở khóa.`, "DAG cập nhật");
+      else Toast.info(`Đã đánh dấu "${task?.ten_task || "công việc"}" là chưa hoàn thành.`);
+      await renderTasksTab(document.getElementById("tab-content"));
+    } catch (err) {
+      input.checked = !input.checked;
+      input.disabled = false;
+      Toast.error(err.message || "Không cập nhật được công việc.");
+    }
+  }
+
+  async function openAddTaskModal() {
+    if (!state.current) return;
+    let members = [];
+    try {
+      const { items } = await ApiClient.getList("/members/", { page: 1, page_size: 100 });
+      members = items;
+    } catch (err) {
+      Toast.error("Không tải được danh sách thành viên: " + (err.message || ""));
+      return;
+    }
+    const plan = state.plan;
+    const tasks = plan ? sortTasks(plan.tasks || [], plan) : [];
+    const memberOptions = members
+      .map((m) => `<option value="${m.id}">${Utils.escapeHtml(m.ho_ten)}${m.lop ? " · " + Utils.escapeHtml(m.lop) : ""}</option>`)
+      .join("");
+    const taskOptions = tasks.length
+      ? tasks
+          .map(
+            (t) => `<label><input type="checkbox" value="${t.id}" class="dep-check">
+              <span>${Utils.escapeHtml(t.ten_task)} <span class="xs muted">(${t.is_completed ? "đã xong" : "chưa xong"})</span></span></label>`
+          )
+          .join("")
+      : `<div class="empty-mini">Sự kiện chưa có công việc nào để phụ thuộc.</div>`;
+
+    openModal({
+      title: "Thêm công việc (DAG)",
+      bodyHTML: `
+        <form id="task-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="task-ten">Tên công việc <span class="req">*</span></label>
+            <input class="form-input" id="task-ten" type="text" required placeholder="VD: Setup âm thanh máy chiếu">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="task-phu-trach">Người phụ trách</label>
+              <select class="form-select" id="task-phu-trach">
+                <option value="">— Chưa phân công —</option>
+                ${memberOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="task-deadline">Deadline</label>
+              <input class="form-input" id="task-deadline" type="datetime-local">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phụ thuộc vào (tiền nhiệm — phải xong trước)</label>
+            <div class="checkbox-list" id="task-deps">${taskOptions}</div>
+            <p class="form-hint">Chọn các công việc phải hoàn thành TRƯỚC công việc này. Tạo phụ thuộc vòng tròn sẽ bị hệ thống chặn (DAG).</p>
+          </div>
+        </form>`,
+      footerHTML: `
+        <button class="btn btn-ghost" data-close>Hủy</button>
+        <button class="btn btn-primary" id="btn-save-task">${Icons.render("plus", 16)} Thêm công việc</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+        backdrop.querySelector("#task-form").addEventListener("submit", (ev) => {
+          ev.preventDefault();
+          backdrop.querySelector("#btn-save-task").click();
+        });
+        backdrop.querySelector("#btn-save-task").addEventListener("click", async (e) => {
+          e.preventDefault();
+          const ten = backdrop.querySelector("#task-ten").value.trim();
+          if (!ten) { Toast.warning("Vui lòng nhập tên công việc."); return; }
+          const pt = backdrop.querySelector("#task-phu-trach").value;
+          const deadline = backdrop.querySelector("#task-deadline").value;
+          const deps = Utils.qsa(".dep-check:checked", backdrop).map((c) => Number(c.value));
+          const undo = Utils.btnLoading(e.currentTarget, "Đang thêm...");
+          try {
+            const payload = { ten_task: ten, depends_on: deps };
+            if (pt) payload.nguoi_phu_trach = Number(pt);
+            if (deadline) payload.deadline = localToISO(deadline);
+            await ApiClient.post(`/events/${state.current.id}/tasks/`, payload);
+            close();
+            Toast.success(`Đã thêm công việc "${ten}".`, "Thành công");
+            await renderTasksTab(document.getElementById("tab-content"));
+          } catch (err) {
+            if (err.status === 400) Toast.error(err.message || "Phát hiện phụ thuộc vòng tròn (deadlock) giữa các task!");
+            else Toast.error(err.message || "Không thêm được công việc.");
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ---------- Tab 2: Dự trù kinh phí ---------- */
+  async function renderBudgetTab(box) {
+    Utils.skeleton(box, 3);
+    try {
+      const data = await ApiClient.get(`/events/${state.current.id}/budget/`);
+      const items = Array.isArray(data) ? data : data.items || [];
+      const total = !Array.isArray(data) && data.tong_kinh_phi_du_tru != null
+        ? data.tong_kinh_phi_du_tru
+        : items.reduce((s, it) => s + (Number(it.so_tien) || 0), 0);
+      if (!items.length) {
+        Utils.empty(box, { icon: "wallet", title: "Chưa có hạng mục kinh phí", desc: "Sự kiện này chưa được dự trù hạng mục nào." });
+        return;
+      }
+      box.innerHTML = `
+        <div class="table-wrap"><table class="table">
+          <thead><tr><th>Hạng mục</th><th class="num">Số tiền</th><th>Ghi chú</th></tr></thead>
+          <tbody>
+            ${items
+              .map(
+                (it) => `<tr>
+                  <td>${Utils.escapeHtml(it.ten_hang_muc || "—")}</td>
+                  <td class="num bold">${Utils.fmtVND(it.so_tien)}</td>
+                  <td class="small muted">${Utils.escapeHtml(it.ghi_chu || "—")}</td>
+                </tr>`
+              )
+              .join("")}
+            <tr class="total-row"><td>Tổng cộng</td><td class="num">${Utils.fmtVND(total)}</td><td></td></tr>
+          </tbody>
+        </table></div>`;
+    } catch (err) {
+      console.error(err);
+      Utils.empty(box, { icon: "alert-triangle", title: "Không tải được dự trù kinh phí", desc: err.message || "" });
+      Toast.error(err.message || "Không tải được dự trù kinh phí");
+    }
+  }
+
+  /* ---------- Tab 3: Đăng ký ---------- */
+  async function renderRegsTab(box) {
+    Utils.skeleton(box, 3);
+    try {
+      const { items } = await ApiClient.getList(`/events/${state.current.id}/registrations/`);
+      if (!items.length) {
+        Utils.empty(box, { icon: "qr", title: "Chưa có ai đăng ký", desc: "Danh sách vé sẽ xuất hiện khi thành viên đăng ký tham gia." });
+        return;
+      }
+      box.innerHTML = `
+        <div class="table-wrap"><table class="table">
+          <thead><tr><th>Thành viên</th><th>Mã vé</th><th>Trạng thái</th><th>Đăng ký lúc</th></tr></thead>
+          <tbody>
+            ${items
+              .map((r) => {
+                const [tone, label] = REG_STATUS[r.trang_thai] || ["neutral", r.trang_thai || "—"];
+                return `<tr>
+                  <td>${Utils.escapeHtml(r.member_ten || "—")}</td>
+                  <td><span class="mono small">${Utils.escapeHtml(r.ma_ve || "—")}</span></td>
+                  <td>${Utils.badge(label, tone)}</td>
+                  <td class="small muted">${Utils.fmtDateTime(r.created_at)}</td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table></div>
+        <p class="tab-table-note">${items.length} vé · mã vé dùng để render QR check-in phía thành viên.</p>`;
+    } catch (err) {
+      console.error(err);
+      Utils.empty(box, { icon: "alert-triangle", title: "Không tải được danh sách đăng ký", desc: err.message || "" });
+      Toast.error(err.message || "Không tải được danh sách đăng ký");
+    }
+  }
+
+  /* ---------- Tab 4: Truyền thông ---------- */
+  async function renderCommsTab(box) {
+    Utils.skeleton(box, 3);
+    let items = [];
+    try {
+      const { items: list } = await ApiClient.getList(`/events/${state.current.id}/communications/`);
+      items = list;
+    } catch (err) {
+      console.error(err);
+      Utils.empty(box, { icon: "alert-triangle", title: "Không tải được kế hoạch truyền thông", desc: err.message || "" });
+      Toast.error(err.message || "Không tải được kế hoạch truyền thông");
+      return;
+    }
+    const listHTML = items.length
+      ? items
+          .map((c) => {
+            const [tone, label] = COMM_STATUS[c.trang_thai] || ["neutral", c.trang_thai || "—"];
+            const link = typeof c.link_bai_viet === "string" && /^https?:\/\//i.test(c.link_bai_viet)
+              ? `<a href="${Utils.escapeHtml(c.link_bai_viet)}" target="_blank" rel="noopener noreferrer" class="small flex items-center gap-2">${Icons.render("external-link", 13)} Xem bài đăng</a>`
+              : "";
+            return `<div class="comm-row">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 wrap">
+                  <span class="badge badge-neutral">${Utils.escapeHtml(KENH[c.kenh] || c.kenh || "—")}</span>
+                  ${Utils.badge(label, tone)}
+                </div>
+                <div class="bold small mt-2">${Utils.escapeHtml(c.tieu_de || "—")}</div>
+                <div class="xs muted mt-2">
+                  ${c.deadline ? `Deadline: ${Utils.fmtDate(c.deadline)} · ` : ""}Tạo lúc ${Utils.fmtDateTime(c.created_at)}
+                  ${c.nguoi_phu_trach_ten ? ` · Phụ trách: ${Utils.escapeHtml(c.nguoi_phu_trach_ten)}` : ""}
+                </div>
+                ${link ? `<div class="mt-2">${link}</div>` : ""}
+              </div>
+            </div>`;
+          })
+          .join("")
+      : `<div class="empty"><div class="empty-icon">${Icons.render("message")}</div><h3>Chưa có kế hoạch truyền thông</h3><p>Thêm bài đăng dự kiến cho Facebook, TikTok, Email...</p></div>`;
+
+    box.innerHTML = `
+      <div>${listHTML}</div>
+      <div class="card card-pad mt-4" style="background:var(--bg-subtle)">
+        <div class="bold small mb-2">${Icons.render("plus", 14)} Thêm kế hoạch truyền thông</div>
+        <form id="comm-form" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="comm-kenh">Kênh <span class="req">*</span></label>
+              <select class="form-select" id="comm-kenh">
+                <option value="FACEBOOK">Facebook</option>
+                <option value="TIKTOK">TikTok</option>
+                <option value="EMAIL">Email</option>
+                <option value="WEBSITE">Website</option>
+                <option value="OTHER">Khác</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="comm-deadline">Deadline đăng</label>
+              <input class="form-input" id="comm-deadline" type="datetime-local">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="comm-tieu-de">Nội dung / tiêu đề bài đăng <span class="req">*</span></label>
+            <input class="form-input" id="comm-tieu-de" type="text" required placeholder="VD: TechTalk AI & Cloud — Mời tham gia!">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-save-comm">${Icons.render("send", 14)} Đăng ký kế hoạch</button>
+        </form>
+      </div>`;
+
+    box.querySelector("#comm-form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      box.querySelector("#btn-save-comm").click();
+    });
+    box.querySelector("#btn-save-comm").addEventListener("click", async (e) => {
+      const kenh = box.querySelector("#comm-kenh").value;
+      const tieuDe = box.querySelector("#comm-tieu-de").value.trim();
+      const deadline = box.querySelector("#comm-deadline").value;
+      if (!tieuDe) { Toast.warning("Vui lòng nhập nội dung bài đăng."); return; }
+      const undo = Utils.btnLoading(e.currentTarget, "Đang lưu...");
+      try {
+        const payload = { kenh, tieu_de: tieuDe };
+        if (deadline) payload.deadline = localToISO(deadline);
+        await ApiClient.post(`/events/${state.current.id}/communications/`, payload);
+        Toast.success("Đã thêm kế hoạch truyền thông.", "Thành công");
+        await renderCommsTab(box);
+      } catch (err) {
+        Toast.error(err.message || "Không lưu được kế hoạch truyền thông.");
+      } finally {
+        undo();
+      }
+    });
+  }
+
+  /* ================= Modal sửa sự kiện ================= */
+  function openEditModal(detail) {
+    const bodyHTML = `
+      <form id="edit-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="ed-ten">Tên hoạt động <span class="req">*</span></label>
+          <input class="form-input" id="ed-ten" type="text" required value="${Utils.escapeHtml(detail.ten_hoat_dong || "")}">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="ed-loai">Loại hoạt động</label>
+            <select class="form-select" id="ed-loai">
+              ${Object.entries(LOAI).map(([k, v]) => `<option value="${k}" ${detail.loai_hd === k ? "selected" : ""}>${v}</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ed-trang-thai">Trạng thái</label>
+            <select class="form-select" id="ed-trang-thai">
+              ${Object.entries(TRANG_THAI).map(([k, [, v]]) => `<option value="${k}" ${detail.trang_thai === k ? "selected" : ""}>${v}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="ed-bat-dau">Bắt đầu <span class="req">*</span></label>
+            <input class="form-input" id="ed-bat-dau" type="datetime-local" value="${isoToLocalInput(detail.thoi_gian_bat_dau)}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ed-ket-thuc">Kết thúc <span class="req">*</span></label>
+            <input class="form-input" id="ed-ket-thuc" type="datetime-local" value="${isoToLocalInput(detail.thoi_gian_ket_thuc)}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ed-dia-diem">Địa điểm <span class="req">*</span></label>
+          <input class="form-input" id="ed-dia-diem" type="text" required value="${Utils.escapeHtml(detail.dia_diem || "")}">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="ed-slots">Số lượng tối đa</label>
+            <input class="form-input" id="ed-slots" type="number" min="1" value="${detail.so_luong_toi_da ?? ""}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ed-kinh-phi">Kinh phí dự trù (₫)</label>
+            <input class="form-input" id="ed-kinh-phi" type="number" min="0" step="1000" value="${detail.tong_kinh_phi_du_tru ?? ""}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ed-mota">Mô tả</label>
+          <textarea class="form-textarea" id="ed-mota" rows="3">${Utils.escapeHtml(detail.mo_ta || "")}</textarea>
+        </div>
+      </form>`;
+    openModal({
+      title: "Sửa sự kiện",
+      bodyHTML,
+      footerHTML: `
+        <button class="btn btn-ghost" data-close>Hủy</button>
+        <button class="btn btn-primary" id="btn-update-event">${Icons.render("check", 16)} Lưu thay đổi</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+        backdrop.querySelector("#edit-form").addEventListener("submit", (ev) => {
+          ev.preventDefault();
+          backdrop.querySelector("#btn-update-event").click();
+        });
+        backdrop.querySelector("#btn-update-event").addEventListener("click", async (e) => {
+          e.preventDefault();
+          const form = backdrop.querySelector("#edit-form");
+          const ten = form.querySelector("#ed-ten").value.trim();
+          const batDau = form.querySelector("#ed-bat-dau").value;
+          const ketThuc = form.querySelector("#ed-ket-thuc").value;
+          const diaDiem = form.querySelector("#ed-dia-diem").value.trim();
+          if (!ten || !batDau || !ketThuc || !diaDiem) { Toast.warning("Vui lòng điền đủ các trường bắt buộc (*)."); return; }
+          if (new Date(batDau) >= new Date(ketThuc)) { Toast.warning("Thời gian kết thúc phải sau thời gian bắt đầu."); return; }
+          const undo = Utils.btnLoading(e.currentTarget, "Đang lưu...");
+          try {
+            const payload = {
+              ten_hoat_dong: ten,
+              loai_hd: form.querySelector("#ed-loai").value,
+              trang_thai: form.querySelector("#ed-trang-thai").value,
+              thoi_gian_bat_dau: localToISO(batDau),
+              thoi_gian_ket_thuc: localToISO(ketThuc),
+              dia_diem: diaDiem,
+              mo_ta: form.querySelector("#ed-mota").value.trim(),
+            };
+            const slots = numOrNull(form.querySelector("#ed-slots").value);
+            const phi = numOrNull(form.querySelector("#ed-kinh-phi").value);
+            if (slots !== null) payload.so_luong_toi_da = slots;
+            if (phi !== null) payload.tong_kinh_phi_du_tru = phi;
+            const updated = await ApiClient.patch(`/events/${state.current.id}/`, payload);
+            state.current = { ...state.current, ...updated };
+            close();
+            Toast.success("Đã lưu thay đổi sự kiện.", "Thành công");
+            loadEvents();
+            // Làm mới modal chi tiết (đóng mọi modal cũ rồi mở lại cho dữ liệu tươi)
+            Utils.qsa(".modal-backdrop").forEach((b) => b.remove());
+            openDetail(state.current.id);
+          } catch (err) {
+            Toast.error(err.message || "Không lưu được sự kiện.");
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= Nav + khởi tạo ================= */
+  function renderAdminNav(active) {
+    document.getElementById("brand-logo").innerHTML = Icons.render("zap", 20);
+    const items = [
+      ["dashboard", "layout", "Dashboard", "/frontend/admin/dashboard.html"],
+      ["members", "users", "Thành viên", "/frontend/admin/members.html"],
+      ["funds", "wallet", "Quỹ CLB", "/frontend/admin/funds.html"],
+      ["events", "calendar", "Sự kiện", "/frontend/admin/events.html"],
+      ["attendance", "compass", "Điểm danh", "/frontend/admin/attendance.html"],
+      ["documents", "book-open", "Tài liệu", "/frontend/admin/documents.html"],
+    ];
+    document.getElementById("side-nav").innerHTML =
+      '<div class="nav-label">Quản lý</div>' +
+      items
+        .map(([k, ic, label, href]) =>
+          `<a class="nav-item${k === active ? " active" : ""}" href="${href}">${Icons.render(ic, 18)}<span>${label}</span></a>`
+        )
+        .join("");
+    const user = Auth.cachedUser();
+    document.getElementById("topbar-user").innerHTML =
+      `<span class="small bold">${Utils.escapeHtml(user?.ho_ten || user?.email || "")}</span>
+       <span class="avatar avatar-sm" title="${Utils.escapeHtml(user?.role || "")}">${Utils.initials(user?.ho_ten || user?.email)}</span>`;
+    document.getElementById("burger-icon").innerHTML = Icons.render("menu", 20);
+    document.getElementById("btn-burger").addEventListener("click", () => {
+      document.getElementById("shell").classList.add("nav-open");
+      document.getElementById("scrim").classList.remove("hidden");
+    });
+    document.getElementById("scrim").addEventListener("click", () => {
+      document.getElementById("shell").classList.remove("nav-open");
+      document.getElementById("scrim").classList.add("hidden");
+    });
+    document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+  }
+
+  async function init() {
+    renderAdminNav("events");
+    document.getElementById("btn-create-icon").innerHTML = Icons.render("plus", 17);
+    document.getElementById("btn-create").addEventListener("click", openCreateModal);
+    document.getElementById("filter-status").addEventListener("change", (e) => {
+      state.trangThai = e.target.value;
+      state.page = 1;
+      loadEvents();
+    });
+    await loadEvents();
+  }
+
+  Auth.requireRole(["ADMIN", "BCN"])
+    .then(() => init())
+    .catch(() => { /* requireRole đã tự redirect */ });
+})();
+</script>
+</body>
+</html>

@@ -123,3 +123,63 @@ python manage.py runserver          # http://localhost:8000/api/docs/
 - **Free plan Render**: disk ephemeral — file tài liệu/ảnh upload sẽ mất khi restart. Production thực tế nên gắn S3/Cloudinary (`django-storages`).
 - Postgres free tier tự suspend sau 90 ngày không hoạt động — dùng `render shell` hoặc curl health check định kỳ.
 - Đổi mật khẩu các tài khoản demo ngay sau khi nhận bàn giao.
+
+## 🐬 Cấu hình MySQL làm CSDL chính (local dev)
+
+Dự án dùng **MySQL** làm CSDL chính khi chạy local (theo `CLBIP_Frontend_Integration_Prompt.md`).
+Driver `pymysql` thuần Python (đã cài cùng `cryptography`) — không cần biên dịch mysqlclient.
+
+1. Tạo CSDL:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS clb_ip_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+2. Tạo file `.env` ở thư mục gốc (Django tự nạp — xem `core/settings.py` §0.5):
+   ```ini
+   DB_ENGINE=mysql
+   MYSQL_DATABASE=clb_ip_db
+   MYSQL_USER=root
+   MYSQL_PASSWORD=your_mysql_password
+   MYSQL_HOST=127.0.0.1
+   MYSQL_PORT=3306
+   ```
+3. Chạy migration + seed:
+   ```bash
+   python manage.py migrate
+   python manage.py seed_demo
+   ```
+4. Không muốn dùng MySQL? Xóa/bỏ-comment `DB_ENGINE` → hệ thống tự rơi về SQLite
+   (hoặc đặt `DATABASE_URL=postgres://...` khi deploy Render).
+
+> ⚠️ Toàn bộ lọc theo ngày trong hệ thống đã dùng **khoảng datetime aware**
+> (`apps/common/timeutils.py`) thay vì lookup `__date` — không cần nạp bảng
+> timezone vào MySQL (máy Windows thường thiếu `CONVERT_TZ`).
+
+## 🎨 Frontend (HTML5 + CSS + Vanilla JS)
+
+Giao diện tĩnh nằm tại `frontend/` — Django tự phục vụ tại **`http://127.0.0.1:8000/`**:
+
+```
+http://127.0.0.1:8000/                          → điều hướng thông minh theo đăng nhập
+http://127.0.0.1:8000/frontend/login.html       → đăng nhập (chips demo điền nhanh)
+http://127.0.0.1:8000/frontend/admin/*.html     → phân hệ Ban chủ nhiệm (Navy)
+http://127.0.0.1:8000/frontend/member/*.html    → phân hệ Thành viên (Cyber-Glass)
+```
+
+**Tài khoản demo** (mật khẩu chung `CLBIP@2026`):
+| Vai trò | Email |
+|---|---|
+| Quản trị | admin@clbip.vn |
+| Ban chủ nhiệm | bcn@clbip.vn |
+| Thành viên | 22a401101@student.hueuni.edu.vn |
+
+Điểm nhấn DSA trên giao diện: radar GPS Haversine + confetti (member/checkin),
+bục vinh danh Top 1-2-3 (member/leaderboard), vé điện tử QR Apple-Wallet
+(member/events), autocomplete cây Trie (admin/members, member/documents,
+admin/documents), checklist DAG khóa theo phụ thuộc (admin/events), mã nonce
+xoay 60s (admin/attendance).
+
+`ApiClient` (`frontend/js/api.js`) tự gắn Bearer Token + tự refresh khi 401
+(single-flight) — mọi trang chỉ gọi qua client này.
+
+Tài liệu hợp đồng API frontend: `frontend/FRONTEND_CONTRACT.md`.
+Swagger UI (OpenAPI 3.0): `http://127.0.0.1:8000/api/docs/`.

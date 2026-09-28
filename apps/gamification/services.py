@@ -33,6 +33,7 @@ from django.utils import timezone
 
 from apps.attendance.models import AttendanceRecord
 from apps.common.exceptions import ValidationException
+from apps.common.timeutils import local_day_range, local_day_start
 from apps.gamification.models import Badge, MemberBadge, XpLedger
 from apps.members.models import MemberProfile
 from core.algorithms.leaderboard_heap import LeaderboardEngine
@@ -358,12 +359,17 @@ class GamificationService:
 
     @staticmethod
     def _xp_used_today(member: MemberProfile) -> int:
-        """Tổng XP dương đã nhận hôm nay (múi giờ địa phương) từ XpLedger."""
-        today = timezone.localdate()
+        """Tổng XP dương đã nhận hôm nay (múi giờ địa phương) từ XpLedger.
+
+        Dùng range datetime thay vì `__date` — di động đa CSDL (xem
+        apps/common/timeutils.py: MySQL không cần bảng timezone).
+        """
+        day_start, day_end = local_day_range(timezone.localdate())
         result = XpLedger.objects.filter(
             member=member,
             amount__gt=0,
-            created_at__date=today,
+            created_at__gte=day_start,
+            created_at__lt=day_end,
         ).aggregate(total=Coalesce(Sum("amount"), Value(0)))
         return int(result["total"] or 0)
 
@@ -381,7 +387,7 @@ class GamificationService:
 
         ledger_this_week = XpLedger.objects.filter(
             member=member,
-            created_at__date__gte=monday,
+            created_at__gte=local_day_start(monday),
         )
         xp_this_week: int = int(
             ledger_this_week.aggregate(total=Coalesce(Sum("amount"), Value(0)))["total"] or 0
@@ -392,7 +398,7 @@ class GamificationService:
                 AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
                 AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
             ],
-            created_at__date__gte=monday,
+            created_at__gte=local_day_start(monday),
         ).count()
         document_shared: int = ledger_this_week.filter(
             source=XpLedger.Source.DOCUMENT_SHARE

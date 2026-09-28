@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="admin">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Quản trị CLB IP</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ---- Layout riêng trang dashboard ---- */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      gap: var(--s-5);
+      align-items: start;
+    }
+    @media (max-width: 1023.98px) { .dash-grid { grid-template-columns: 1fr; } }
+
+    /* ---- KPI ---- */
+    .kpi .kpi-meta { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+
+    /* ---- Bảng tin ---- */
+    .post-item { padding: var(--s-4) 0; border-bottom: 1px solid var(--border-color); }
+    .post-item:first-child { padding-top: 0; }
+    .post-item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .post-title { font-size: var(--text-md); font-weight: 700; margin: 0; }
+    .post-content { color: var(--tx-secondary); font-size: var(--text-sm); line-height: 1.6; margin-top: var(--s-2); }
+    .post-content p { margin: 0 0 var(--s-2); }
+    .post-content p:last-child { margin-bottom: 0; }
+    .post-content a { color: var(--c-accent); font-weight: 600; }
+    .post-meta { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-3); }
+    .post-actions { display: flex; gap: var(--s-2); margin-left: auto; }
+
+    /* ---- Bình chọn ---- */
+    .poll-block { padding: var(--s-4) 0; border-bottom: 1px solid var(--border-color); }
+    .poll-block:first-child { padding-top: 0; }
+    .poll-block:last-child { border-bottom: 0; padding-bottom: 0; }
+    .poll-question { font-weight: 700; font-size: var(--text-base); margin-bottom: var(--s-3); }
+    .poll-option {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: 8px 10px; margin-bottom: var(--s-2);
+      border: 1px solid var(--border-color);
+      border-radius: var(--r-control);
+      transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+    }
+    .poll-option.chosen { border-color: var(--c-accent); background: var(--c-accent-soft); }
+    .poll-option .po-info { flex: 1; min-width: 0; }
+    .poll-option .po-label { font-size: var(--text-sm); font-weight: 600; overflow-wrap: anywhere; }
+    .poll-option .po-count { font-size: var(--text-xs); color: var(--tx-muted); margin-top: 2px; }
+    .poll-option .progress { margin-top: 6px; height: 6px; }
+    .poll-option .po-vote { flex: none; }
+
+    /* ---- Góp ý ẩn danh ---- */
+    .fb-item { padding: var(--s-3) 0; border-bottom: 1px solid var(--border-color); }
+    .fb-item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .fb-text { font-size: var(--text-sm); color: var(--tx-secondary); line-height: 1.55; overflow-wrap: anywhere; }
+    .fb-time { margin-top: var(--s-1); }
+
+    /* ---- Card phải xếp chồng ---- */
+    .side-col { display: flex; flex-direction: column; gap: var(--s-5); }
+  </style>
+</head>
+<body>
+<div class="admin-shell" id="shell">
+  <aside class="admin-sidebar">
+    <div class="side-brand">
+      <span class="logo" id="brand-logo"></span>
+      <div><div class="t1">CLB IP ĐHSP Huế</div><div class="t2">Quản trị 2.0</div></div>
+    </div>
+    <nav class="side-nav" id="side-nav"><!-- JS render nav --></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost w-100" id="btn-logout" style="color:var(--tx-sidebar)">Đăng xuất</button>
+    </div>
+  </aside>
+  <div class="scrim hidden" id="scrim"></div>
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="flex items-center gap-3">
+        <button class="btn btn-ghost burger" id="btn-burger" aria-label="Mở menu"><span id="burger-icon"></span></button>
+        <h1 style="font-size:var(--text-lg)">Dashboard</h1>
+      </div>
+      <div class="flex items-center gap-3" id="topbar-user"><!-- avatar + tên --></div>
+    </header>
+    <main class="admin-content">
+
+      <!-- ===== Hàng KPI ===== -->
+      <section class="kpi-grid" aria-label="Chỉ số tổng quan">
+        <div class="card kpi">
+          <span class="kpi-icon" id="kpi-ic-members"></span>
+          <div>
+            <div class="kpi-value" id="kpi-members">—</div>
+            <div class="kpi-label">Thành viên hoạt động</div>
+          </div>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-icon" id="kpi-ic-funds"></span>
+          <div>
+            <div class="kpi-value" id="kpi-funds">—</div>
+            <div class="kpi-label kpi-meta">Số dư quỹ <span id="kpi-fund-badge" class="hidden"></span></div>
+          </div>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-icon" id="kpi-ic-events"></span>
+          <div>
+            <div class="kpi-value" id="kpi-events">—</div>
+            <div class="kpi-label">Sự kiện mở đăng ký</div>
+          </div>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-icon" id="kpi-ic-att"></span>
+          <div>
+            <div class="kpi-value" id="kpi-att">—</div>
+            <div class="kpi-label">Phiên điểm danh đang mở</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Lưới 2 cột: bảng tin + (bình chọn / góp ý) ===== -->
+      <section class="dash-grid">
+        <!-- Bảng tin -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="flex items-center gap-2"><span id="ic-news"></span>Bảng tin</h2>
+            <button class="btn btn-primary btn-sm" id="btn-new-post"><span id="ic-new-post"></span>Đăng bài</button>
+          </div>
+          <div class="card-body" id="posts-list"></div>
+        </div>
+
+        <div class="side-col">
+          <!-- Bình chọn cộng đồng -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="flex items-center gap-2"><span id="ic-poll"></span>Bình chọn cộng đồng</h3>
+              <button class="btn btn-outline btn-sm" id="btn-new-poll"><span id="ic-new-poll"></span>Tạo bình chọn</button>
+            </div>
+            <div class="card-body" id="polls-list"></div>
+          </div>
+
+          <!-- Hòm góp ý ẩn danh -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="flex items-center gap-2"><span id="ic-fb"></span>Hòm góp ý ẩn danh</h3>
+            </div>
+            <div class="card-body" id="feedback-list"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/icons.js"></script>
+<script src="/frontend/js/toast.js"></script>
+<script src="/frontend/js/utils.js"></script>
+<script src="/frontend/js/auth.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ================= NAV DÙNG CHUNG (CONTRACT §6) ================= */
+  function renderAdminNav(active) {
+    document.getElementById("brand-logo").innerHTML = Icons.render("zap", 20);
+    const items = [
+      ["dashboard", "layout", "Dashboard", "/frontend/admin/dashboard.html"],
+      ["members", "users", "Thành viên", "/frontend/admin/members.html"],
+      ["funds", "wallet", "Quỹ CLB", "/frontend/admin/funds.html"],
+      ["events", "calendar", "Sự kiện", "/frontend/admin/events.html"],
+      ["attendance", "compass", "Điểm danh", "/frontend/admin/attendance.html"],
+      ["documents", "book-open", "Tài liệu", "/frontend/admin/documents.html"],
+    ];
+    document.getElementById("side-nav").innerHTML =
+      '<div class="nav-label">Quản lý</div>' +
+      items.map(([k, ic, label, href]) =>
+        `<a class="nav-item${k === active ? " active" : ""}" href="${href}">${Icons.render(ic, 18)}<span>${label}</span></a>`
+      ).join("");
+    // topbar user + logout + burger
+    const user = Auth.cachedUser();
+    document.getElementById("topbar-user").innerHTML =
+      `<span class="small bold">${Utils.escapeHtml(user?.ho_ten || user?.email || "")}</span>
+       <span class="avatar avatar-sm" title="${Utils.escapeHtml(user?.role || "")}">${Utils.initials(user?.ho_ten || user?.email)}</span>`;
+    document.getElementById("burger-icon").innerHTML = Icons.render("menu", 20);
+    document.getElementById("btn-burger").addEventListener("click", () => {
+      document.getElementById("shell").classList.add("nav-open");
+      document.getElementById("scrim").classList.remove("hidden");
+    });
+    document.getElementById("scrim").addEventListener("click", () => {
+      document.getElementById("shell").classList.remove("nav-open");
+      document.getElementById("scrim").classList.add("hidden");
+    });
+    document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+  }
+
+  /* ================= MODAL HELPER (CONTRACT §7) ================= */
+  function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${Utils.escapeHtml(title)}">
+        <div class="modal-head"><h3>${Utils.escapeHtml(title)}</h3>
+          <button class="modal-close">${Icons.render("x", 20)}</button></div>
+        <div class="modal-body">${bodyHTML}</div>
+        ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+      </div>`;
+    const close = () => backdrop.remove();
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+    backdrop.querySelector(".modal-close").addEventListener("click", close);
+    document.body.appendChild(backdrop);
+    if (onMount) onMount(backdrop, close);
+    return { el: backdrop, close };
+  }
+
+  /* Hiện lỗi field của DRF (err.errors) xuống .form-error[data-field] */
+  function showFieldErrors(root, errors) {
+    if (!errors || typeof errors !== "object") return;
+    Object.entries(errors).forEach(([field, msgs]) => {
+      const el = root.querySelector(`.form-error[data-field="${field}"]`);
+      if (el) { el.textContent = Array.isArray(msgs) ? msgs.join(" ") : String(msgs); el.classList.remove("hidden"); }
+    });
+  }
+  function clearFieldErrors(root) {
+    Utils.qsa(".form-error", root).forEach((el) => { el.textContent = ""; el.classList.add("hidden"); });
+  }
+
+  /* ================= KHỞI TẠO ================= */
+  const ic = (n, s) => Icons.render(n, s || 18);
+
+  function renderStaticIcons() {
+    document.getElementById("kpi-ic-members").innerHTML = ic("users", 21);
+    document.getElementById("kpi-ic-funds").innerHTML = ic("wallet", 21);
+    document.getElementById("kpi-ic-events").innerHTML = ic("calendar", 21);
+    document.getElementById("kpi-ic-att").innerHTML = ic("compass", 21);
+    document.getElementById("ic-news").innerHTML = ic("bell", 18);
+    document.getElementById("ic-new-post").innerHTML = ic("plus", 15);
+    document.getElementById("ic-poll").innerHTML = ic("bar-chart", 18);
+    document.getElementById("ic-new-poll").innerHTML = ic("plus", 15);
+    document.getElementById("ic-fb").innerHTML = ic("message", 18);
+  }
+
+  function init() {
+    renderAdminNav("dashboard");
+    renderStaticIcons();
+    loadKpis();
+    loadPosts();
+    loadPolls();
+    loadFeedback();
+    bindActions();
+  }
+
+  /* ================= 1. KPI ================= */
+  async function loadKpis() {
+    const [mem, fund, ev, att] = await Promise.allSettled([
+      ApiClient.get("/members/"),
+      ApiClient.get("/funds/stats/"),
+      ApiClient.get("/events/", { trang_thai: "OPEN_REGISTRATION" }),
+      ApiClient.get("/attendance/sessions/", { trang_thai: "OPEN" }),
+    ]);
+    if (mem.status === "fulfilled") {
+      document.getElementById("kpi-members").textContent = Utils.fmtNum(mem.value?.pagination?.total_items ?? mem.value?.items?.length ?? 0);
+    }
+    if (fund.status === "fulfilled") {
+      const s = fund.value || {};
+      document.getElementById("kpi-funds").textContent = Utils.fmtVND(s.balance);
+      if (s.low_balance) {
+        const b = document.getElementById("kpi-fund-badge");
+        b.className = "badge badge-danger";
+        b.textContent = "Quỹ thấp";
+        b.classList.remove("hidden");
+      }
+    }
+    if (ev.status === "fulfilled") {
+      document.getElementById("kpi-events").textContent = Utils.fmtNum(ev.value?.pagination?.total_items ?? ev.value?.items?.length ?? 0);
+    }
+    if (att.status === "fulfilled") {
+      document.getElementById("kpi-att").textContent = Utils.fmtNum(att.value?.pagination?.total_items ?? att.value?.items?.length ?? 0);
+    }
+    const failed = [mem, fund, ev, att].find((r) => r.status === "rejected");
+    if (failed) Toast.error(failed.reason?.message || "Không tải được chỉ số tổng quan");
+  }
+
+  /* ================= 2. BẢNG TIN ================= */
+  async function loadPosts() {
+    const box = document.getElementById("posts-list");
+    Utils.skeleton(box, 3, { avatar: true });
+    try {
+      const { items } = await ApiClient.getList("/posts/");
+      if (!items.length) {
+        Utils.empty(box, { icon: "bell", title: "Chưa có bài viết nào", desc: "Đăng bài đầu tiên để thông báo cho toàn thể thành viên." });
+        return;
+      }
+      box.innerHTML = items.map((p) => {
+        const meta = `<span class="xs muted">${Utils.escapeHtml(p.created_by || "Hệ thống")} · ${Utils.timeAgo(p.created_at)}</span>`;
+        const pinBtn = `<button class="btn btn-ghost btn-sm act-pin" data-id="${p.id}" data-pinned="${p.is_pinned ? 1 : 0}">
+            ${ic("bookmark", 14)}${p.is_pinned ? "Bỏ ghim" : "Ghim"}</button>`;
+        const delBtn = `<button class="btn btn-ghost btn-sm act-del" data-id="${p.id}" style="color:var(--c-danger)">
+            ${ic("trash", 14)}Xóa</button>`;
+        return `
+        <article class="post-item">
+          <div class="flex items-center gap-2 wrap">
+            <h3 class="post-title">${Utils.escapeHtml(p.tieu_de)}</h3>
+            ${p.is_pinned ? '<span class="badge badge-warning">📌 Ghim</span>' : ""}
+          </div>
+          <div class="post-content">${p.noi_dung || ""}</div>
+          <div class="post-meta">${meta}<span class="post-actions">${pinBtn}${delBtn}</span></div>
+        </article>`;
+      }).join("");
+      // Gắn sự kiện ghim / xóa
+      Utils.qsa(".act-pin", box).forEach((btn) => btn.addEventListener("click", () => togglePin(btn)));
+      Utils.qsa(".act-del", box).forEach((btn) => btn.addEventListener("click", () => deletePost(btn)));
+    } catch (err) {
+      Utils.empty(box, { icon: "alert-triangle", title: "Không tải được bảng tin", desc: err.message });
+    }
+  }
+
+  async function togglePin(btn) {
+    const id = btn.dataset.id;
+    const pinned = btn.dataset.pinned === "1";
+    const undo = Utils.btnLoading(btn, "Đang xử lý...");
+    try {
+      await ApiClient.post(`/posts/${id}/pin/`);
+      Toast.success(pinned ? "Đã bỏ ghim bài viết." : "Đã ghim bài viết lên đầu bảng tin.");
+      loadPosts();
+    } catch (err) {
+      Toast.error(err.message);
+      undo();
+    }
+  }
+
+  async function deletePost(btn) {
+    const id = btn.dataset.id;
+    if (!confirm("Xóa bài viết này? Bài viết sẽ bị ẩn khỏi bảng tin.")) return;
+    const undo = Utils.btnLoading(btn, "Đang xóa...");
+    try {
+      await ApiClient.delete(`/posts/${id}/`);
+      Toast.success("Đã xóa bài viết.");
+      loadPosts();
+    } catch (err) {
+      Toast.error(err.message);
+      undo();
+    }
+  }
+
+  function openPostModal() {
+    openModal({
+      title: "Đăng bài mới",
+      bodyHTML: `
+        <div class="form-group">
+          <label class="form-label" for="post-title">Tiêu đề <span class="req">*</span></label>
+          <input class="form-input" id="post-title" maxlength="200" placeholder="VD: Thông báo sinh hoạt tháng 10">
+          <p class="form-error hidden" data-field="tieu_de"></p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="post-body">Nội dung <span class="req">*</span></label>
+          <textarea class="form-textarea" id="post-body" rows="6" placeholder="Viết nội dung thông báo..."></textarea>
+          <p class="form-hint">Hỗ trợ thẻ cơ bản: &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;a&gt;.</p>
+          <p class="form-error hidden" data-field="noi_dung"></p>
+        </div>`,
+      footerHTML: `<button class="btn btn-ghost" data-close>Đóng</button>
+                   <button class="btn btn-primary" id="btn-submit-post"><span>${ic("send", 16)}</span>Đăng bài</button>`,
+      onMount(modal, close) {
+        modal.querySelector("[data-close]").addEventListener("click", close);
+        modal.querySelector("#btn-submit-post").addEventListener("click", async () => {
+          clearFieldErrors(modal);
+          const tieu_de = modal.querySelector("#post-title").value.trim();
+          const noi_dung = modal.querySelector("#post-body").value.trim();
+          if (!tieu_de || !noi_dung) {
+            Toast.warning("Vui lòng nhập đủ tiêu đề và nội dung.");
+            return;
+          }
+          const btn = modal.querySelector("#btn-submit-post");
+          const undo = Utils.btnLoading(btn, "Đang đăng...");
+          try {
+            await ApiClient.post("/posts/", { tieu_de, noi_dung });
+            Toast.success("Đã đăng bài lên bảng tin.");
+            close();
+            loadPosts();
+          } catch (err) {
+            showFieldErrors(modal, err.errors);
+            Toast.error(err.message);
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= 3. BÌNH CHỌN CỘNG ĐỒNG ================= */
+  async function loadPolls() {
+    const box = document.getElementById("polls-list");
+    Utils.skeleton(box, 3);
+    try {
+      const { items } = await ApiClient.getList("/polls/");
+      if (!items.length) {
+        Utils.empty(box, { icon: "bar-chart", title: "Chưa có bình chọn nào", desc: "Tạo bình chọn để lắng nghe ý kiến thành viên." });
+        return;
+      }
+      box.innerHTML = items.map((p) => {
+        const total = p.total_votes || 0;
+        const votedKey = "clbip_poll_voted_" + p.id;
+        const myVote = localStorage.getItem(votedKey);
+        const disabled = myVote !== null || p.is_closed;
+        const opts = (p.options || []).map((opt, i) => {
+          const cnt = Number(p.votes?.[String(i)] || 0);
+          const pct = total ? Math.round((cnt / total) * 100) : 0;
+          const chosen = myVote !== null && Number(myVote) === i;
+          return `
+          <div class="poll-option${chosen ? " chosen" : ""}">
+            <div class="po-info">
+              <div class="po-label">${Utils.escapeHtml(opt)}</div>
+              <div class="po-count">${Utils.fmtNum(cnt)} phiếu · ${pct}%</div>
+              <div class="progress"><span style="width:${pct}%"></span></div>
+            </div>
+            ${p.is_closed
+              ? ""
+              : `<button class="btn btn-outline btn-sm po-vote" data-poll="${p.id}" data-index="${i}" ${disabled ? "disabled" : ""}>${chosen ? "Đã chọn" : "Bình chọn"}</button>`}
+          </div>`;
+        }).join("");
+        return `
+        <div class="poll-block">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="poll-question" style="margin:0">${Utils.escapeHtml(p.question)}</div>
+            ${p.is_closed ? '<span class="badge badge-neutral">Đã kết thúc</span>' : `<span class="badge badge-info">${Utils.fmtNum(total)} phiếu</span>`}
+          </div>
+          ${myVote !== null && !p.is_closed ? '<p class="xs muted mb-2">Bạn đã bình chọn cho kỳ này rồi.</p>' : ""}
+          ${opts}
+        </div>`;
+      }).join("");
+      Utils.qsa(".po-vote", box).forEach((btn) => btn.addEventListener("click", () => votePoll(btn)));
+    } catch (err) {
+      Utils.empty(box, { icon: "alert-triangle", title: "Không tải được bình chọn", desc: err.message });
+    }
+  }
+
+  async function votePoll(btn) {
+    const id = btn.dataset.poll;
+    const index = Number(btn.dataset.index);
+    const undo = Utils.btnLoading(btn, "Đang gửi...");
+    try {
+      await ApiClient.post(`/polls/${id}/vote/`, { option_index: index });
+      localStorage.setItem("clbip_poll_voted_" + id, String(index));
+      Toast.success("Cảm ơn bạn đã bình chọn!");
+      loadPolls();
+    } catch (err) {
+      Toast.error(err.message);
+      undo();
+    }
+  }
+
+  function openPollModal() {
+    openModal({
+      title: "Tạo bình chọn mới",
+      bodyHTML: `
+        <div class="form-group">
+          <label class="form-label" for="poll-q">Câu hỏi <span class="req">*</span></label>
+          <input class="form-input" id="poll-q" maxlength="300" placeholder="VD: Bạn muốn chuyên đề nào cho tháng tới?">
+          <p class="form-error hidden" data-field="question"></p>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Các lựa chọn <span class="req">*</span> (2–4)</label>
+          <div id="poll-opts">
+            <input class="form-input mb-2 poll-opt" placeholder="Lựa chọn 1" style="margin-bottom:8px">
+            <input class="form-input poll-opt" placeholder="Lựa chọn 2" style="margin-bottom:8px">
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-add-opt"><span>${ic("plus", 14)}</span>Thêm lựa chọn</button>
+          <p class="form-error hidden" data-field="options"></p>
+        </div>`,
+      footerHTML: `<button class="btn btn-ghost" data-close>Đóng</button>
+                   <button class="btn btn-primary" id="btn-submit-poll">Tạo bình chọn</button>`,
+      onMount(modal, close) {
+        const wrap = modal.querySelector("#poll-opts");
+        modal.querySelector("#btn-add-opt").addEventListener("click", () => {
+          const n = wrap.querySelectorAll(".poll-opt").length;
+          if (n >= 4) { Toast.warning("Tối đa 4 lựa chọn."); return; }
+          const inp = document.createElement("input");
+          inp.className = "form-input poll-opt";
+          inp.placeholder = `Lựa chọn ${n + 1}`;
+          inp.style.marginBottom = "8px";
+          wrap.appendChild(inp);
+          inp.focus();
+        });
+        modal.querySelector("[data-close]").addEventListener("click", close);
+        modal.querySelector("#btn-submit-poll").addEventListener("click", async () => {
+          clearFieldErrors(modal);
+          const question = modal.querySelector("#poll-q").value.trim();
+          const options = Utils.qsa(".poll-opt", wrap).map((i) => i.value.trim()).filter(Boolean);
+          if (!question || options.length < 2) {
+            Toast.warning("Cần câu hỏi và tối thiểu 2 lựa chọn hợp lệ.");
+            return;
+          }
+          const btn = modal.querySelector("#btn-submit-poll");
+          const undo = Utils.btnLoading(btn, "Đang tạo...");
+          try {
+            await ApiClient.post("/polls/", { question, options });
+            Toast.success("Đã tạo bình chọn mới.");
+            close();
+            loadPolls();
+          } catch (err) {
+            showFieldErrors(modal, err.errors);
+            Toast.error(err.message);
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= 4. HÒM GÓP Ý ẨN DANH ================= */
+  async function loadFeedback() {
+    const box = document.getElementById("feedback-list");
+    Utils.skeleton(box, 3);
+    try {
+      const { items } = await ApiClient.getList("/feedback/");
+      if (!items.length) {
+        Utils.empty(box, { icon: "message", title: "Chưa có góp ý nào", desc: "Góp ý từ thành viên sẽ xuất hiện tại đây (hoàn toàn ẩn danh)." });
+        return;
+      }
+      box.innerHTML = items.map((f) => `
+        <div class="fb-item">
+          <div class="fb-text">${Utils.escapeHtml(f.noi_dung)}</div>
+          <div class="fb-time xs muted">${Utils.timeAgo(f.created_at)}</div>
+        </div>`).join("");
+    } catch (err) {
+      Utils.empty(box, { icon: "alert-triangle", title: "Không tải được góp ý", desc: err.message });
+    }
+  }
+
+  /* ================= SỰ KIỆN NÚT ================= */
+  function bindActions() {
+    document.getElementById("btn-new-post").addEventListener("click", openPostModal);
+    document.getElementById("btn-new-poll").addEventListener("click", openPollModal);
+  }
+
+  /* Guard chạy xong mới khởi tạo state (CONTRACT §1) */
+  Auth.requireRole(["ADMIN", "BCN"]).then(init).catch(() => {});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="admin">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Điểm danh — Quản trị CLB IP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ===== Style riêng trang Điểm danh ===== */
+    .page-toolbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+      margin-bottom: var(--s-5);
+    }
+    .page-toolbar h2 { font-size: var(--text-xl); letter-spacing: -0.02em; }
+    .page-toolbar .sub { color: var(--tx-muted); font-size: var(--text-sm); margin-top: 2px; }
+    .toolbar-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+
+    /* Chấm xanh nhấp nháy cho phiên OPEN */
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 6px; animation: dotPulse 1.4s ease-in-out infinite; }
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+      50% { opacity: 0.55; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.14); }
+    }
+
+    /* Khối phiên đang mở */
+    .open-card {
+      border: 1px solid color-mix(in srgb, var(--c-success) 45%, transparent);
+      background:
+        radial-gradient(30rem 14rem at 100% 0%, color-mix(in srgb, var(--c-success) 10%, transparent), transparent 60%),
+        var(--bg-surface);
+      margin-bottom: var(--s-5);
+    }
+    .open-grid { display: grid; grid-template-columns: 1.2fr auto 1fr; gap: var(--s-5); align-items: center; }
+    .open-info h3 { font-size: var(--text-lg); letter-spacing: -0.01em; }
+    .open-info .rows { display: flex; flex-direction: column; gap: 4px; margin-top: var(--s-2); font-size: var(--text-sm); color: var(--tx-secondary); }
+    .open-info .rows svg { width: 14px; height: 14px; color: var(--tx-muted); }
+    .open-info .rows > div { display: flex; align-items: center; gap: 6px; }
+
+    .nonce-box { text-align: center; padding: 0 var(--s-5); border-left: 1px dashed var(--border-color); border-right: 1px dashed var(--border-color); }
+    .nonce-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx-muted); }
+    .nonce-value {
+      font-family: var(--font-mono);
+      font-size: var(--text-4xl);
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      color: var(--c-accent);
+      line-height: 1.15;
+      margin: 6px 0 2px;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 18px color-mix(in srgb, var(--c-accent) 30%, transparent);
+    }
+    .nonce-count { font-size: var(--text-xs); color: var(--tx-muted); }
+    .nonce-count b { color: var(--c-warning); }
+    .nonce-timer { height: 4px; width: 160px; margin: 8px auto 0; }
+    .nonce-timer > span { background: linear-gradient(90deg, var(--c-warning), var(--c-accent)); }
+
+    .open-actions { display: flex; flex-direction: column; gap: var(--s-2); align-items: stretch; }
+
+    .session-counts { display: flex; flex-direction: column; gap: 2px; margin-top: var(--s-2); }
+    .session-counts .n { font-size: var(--text-2xl); font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .session-counts .l { font-size: var(--text-xs); color: var(--tx-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Modal điều chỉnh thủ công */
+    .ov-member-list { display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--border-color); border-radius: var(--r-control); padding: 6px; max-height: 300px; overflow-y: auto; }
+    .ov-member-list label { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: var(--text-sm); cursor: pointer; }
+    .ov-member-list label:hover { background: var(--bg-subtle); }
+    .ov-member-list input { accent-color: var(--c-accent); width: 16px; height: 16px; flex: none; }
+    .ov-member-list .who { flex: 1; min-width: 0; }
+    .ov-member-list .who .lop { color: var(--tx-muted); font-size: var(--text-xs); }
+
+    @media (max-width: 900px) {
+      .open-grid { grid-template-columns: 1fr; }
+      .nonce-box { border: 0; border-top: 1px dashed var(--border-color); padding: var(--s-4) 0 0; }
+      .open-actions { flex-direction: row; }
+      .open-actions .btn { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="admin-shell" id="shell">
+  <aside class="admin-sidebar">
+    <div class="side-brand">
+      <span class="logo" id="brand-logo"></span>
+      <div><div class="t1">CLB IP ĐHSP Huế</div><div class="t2">Quản trị 2.0</div></div>
+    </div>
+    <nav class="side-nav" id="side-nav"><!-- JS render nav --></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost w-100" id="btn-logout" style="color:var(--tx-sidebar)">Đăng xuất</button>
+    </div>
+  </aside>
+  <div class="scrim hidden" id="scrim"></div>
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="flex items-center gap-3">
+        <button class="btn btn-ghost burger" id="btn-burger" aria-label="Mở menu"><span id="burger-icon"></span></button>
+        <h1 style="font-size:var(--text-lg)">Điểm danh GPS</h1>
+      </div>
+      <div class="flex items-center gap-3" id="topbar-user"><!-- avatar + tên --></div>
+    </header>
+    <main class="admin-content">
+      <div class="page-toolbar">
+        <div>
+          <h2>Phiên điểm danh</h2>
+          <p class="sub">Mở phiên, chiếu mã nonce lên máy chiếu và giám sát check-in GPS của thành viên.</p>
+        </div>
+        <div class="toolbar-actions">
+          <select class="form-select" id="filter-status" style="width:auto" aria-label="Lọc theo trạng thái phiên">
+            <option value="">Tất cả phiên</option>
+            <option value="OPEN">Đang mở</option>
+            <option value="CLOSED">Đã đóng</option>
+          </select>
+          <button class="btn btn-primary" id="btn-new-session"><span id="btn-new-session-icon"></span>Mở phiên mới</button>
+        </div>
+      </div>
+
+      <section id="open-session-wrap" aria-live="polite"></section>
+
+      <div class="kpi-grid mb-6" id="kpi-row"></div>
+
+      <h2 style="font-size:var(--text-md)">Tất cả phiên</h2>
+      <p class="sub" style="color:var(--tx-muted);font-size:var(--text-sm);margin-bottom:var(--s-3)">Lịch sử các phiên điểm danh GPS của CLB.</p>
+      <div id="sessions-table-wrap"></div>
+      <div id="sessions-pagination" class="pagination"></div>
+    </main>
+  </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/icons.js"></script>
+<script src="/frontend/js/toast.js"></script>
+<script src="/frontend/js/utils.js"></script>
+<script src="/frontend/js/auth.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const state = {
+    sessions: [],
+    pagination: null,
+    page: 1,
+    trangThai: "",
+    openSession: null,
+    openCount: 0,
+    nonce: null,
+    nonceRemain: 0,
+    nonceFetching: false,
+  };
+  let nonceTimer = null;
+
+  /* ================= Helper chung ================= */
+  function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${Utils.escapeHtml(title)}">
+        <div class="modal-head"><h3>${Utils.escapeHtml(title)}</h3>
+          <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
+        <div class="modal-body">${bodyHTML}</div>
+        ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+      </div>`;
+    const close = () => backdrop.remove();
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+    backdrop.querySelector(".modal-close").addEventListener("click", close);
+    document.body.appendChild(backdrop);
+    if (onMount) onMount(backdrop, close);
+    return { el: backdrop, close };
+  }
+
+  function isoToLocalInput(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  function localToISO(v) {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d) ? null : d.toISOString();
+  }
+  function numOrNull(v) {
+    if (v === "" || v === null || v === undefined) return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  function renderPagination(el, pg, onPage) {
+    if (!el) return;
+    if (!pg || !pg.total_pages || pg.total_pages <= 1) { el.innerHTML = ""; return; }
+    el.innerHTML = `
+      <span class="page-info">Trang ${pg.page}/${pg.total_pages} · ${Utils.fmtNum(pg.total_items)} kết quả</span>
+      <div class="page-btns">
+        <button class="btn btn-outline btn-sm" id="pg-prev" ${pg.page <= 1 ? "disabled" : ""}>${Icons.render("chevron-left", 15)} Trước</button>
+        <button class="btn btn-outline btn-sm" id="pg-next" ${pg.page >= pg.total_pages ? "disabled" : ""}>Sau ${Icons.render("chevron-right", 15)}</button>
+      </div>`;
+    const prev = el.querySelector("#pg-prev");
+    const next = el.querySelector("#pg-next");
+    if (prev) prev.addEventListener("click", () => onPage(pg.page - 1));
+    if (next) next.addEventListener("click", () => onPage(pg.page + 1));
+  }
+
+  function sessionBadge(trangThai) {
+    return trangThai === "OPEN"
+      ? `<span class="badge badge-success"><span class="dot"></span>Đang mở</span>`
+      : Utils.badge("Đã đóng", "neutral");
+  }
+
+  /* ================= KPI hàng trạng thái ================= */
+  function renderKpis() {
+    const row = document.getElementById("kpi-row");
+    row.innerHTML = `
+      <div class="card kpi">
+        <span class="kpi-icon" style="background:var(--c-success-soft);color:var(--c-success)">${Icons.render("compass", 20)}</span>
+        <div>
+          <div class="kpi-value">${state.openCount}</div>
+          <div class="kpi-label">Phiên đang mở</div>
+        </div>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-icon">${Icons.render("activity", 20)}</span>
+        <div>
+          <div class="kpi-value">${Utils.fmtNum(state.pagination?.total_items ?? state.sessions.length)}</div>
+          <div class="kpi-label">Số phiên (theo bộ lọc)</div>
+        </div>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-icon" style="background:var(--c-violet-soft);color:var(--c-violet)">${Icons.render("target", 20)}</span>
+        <div>
+          <div class="kpi-value">${state.openSession?.ban_kinh_m != null ? state.openSession.ban_kinh_m + " m" : "—"}</div>
+          <div class="kpi-label">Bán kính phiên hiện tại</div>
+        </div>
+      </div>`;
+  }
+
+  /* ================= Khối phiên đang mở + nonce ================= */
+  async function loadOpenSession() {
+    const wrap = document.getElementById("open-session-wrap");
+    stopNonceTimer();
+    wrap.innerHTML = `<div class="card card-pad open-card"><div class="skeleton" style="width:30%;height:18px"></div><div class="skeleton mt-2" style="width:70%"></div></div>`;
+    try {
+      const { items, pagination } = await ApiClient.getList("/attendance/sessions/", { trang_thai: "OPEN", page: 1 });
+      state.openSession = items.length ? items[0] : null;
+      state.openCount = pagination?.total_items ?? items.length;
+      renderOpenCard();
+      renderKpis();
+    } catch (err) {
+      console.error(err);
+      state.openSession = null;
+      state.openCount = 0;
+      wrap.innerHTML = "";
+      Toast.error(err.message || "Không tải được phiên đang mở");
+      renderKpis();
+    }
+  }
+
+  function renderOpenCard() {
+    const wrap = document.getElementById("open-session-wrap");
+    const s = state.openSession;
+    if (!s) {
+      wrap.innerHTML = `
+        <div class="card card-pad open-card" style="border-style:dashed">
+          <div class="flex items-center gap-3">
+            <span style="color:var(--tx-muted)">${Icons.render("compass", 22)}</span>
+            <div>
+              <div class="bold small">Không có phiên điểm danh nào đang mở</div>
+              <div class="xs muted">Bấm "Mở phiên mới" để bắt đầu một phiên — hệ thống sẽ tự tạo bản ghi VẮNG cho toàn bộ thành viên đang hoạt động.</div>
+            </div>
+          </div>
+        </div>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="card card-pad open-card" id="open-card">
+        <div class="open-grid">
+          <div class="open-info">
+            ${sessionBadge("OPEN")}
+            <h3 class="mt-2">${Utils.escapeHtml(s.ten_phien)}</h3>
+            <div class="rows">
+              ${s.event_ten ? `<div>${Icons.render("calendar", 14)} ${Utils.escapeHtml(s.event_ten)}</div>` : ""}
+              <div>${Icons.render("clock", 14)} Mở lúc ${Utils.fmtDateTime(s.mo_phien_at)}</div>
+              <div>${Icons.render("clock", 14)} Hiệu lực đến: ${s.hieu_luc_den ? Utils.fmtDateTime(s.hieu_luc_den) : "không giới hạn"}</div>
+              <div>${Icons.render("map-pin", 14)} Bán kính ${Utils.fmtNum(s.ban_kinh_m)} m${s.vi_do != null ? ` · ${Number(s.vi_do).toFixed(5)}, ${Number(s.kinh_do).toFixed(5)}` : ""}</div>
+            </div>
+          </div>
+          <div class="nonce-box">
+            <div class="nonce-label">Mã nonce — chiếu màn hình</div>
+            <div class="nonce-value" id="nonce-value">······</div>
+            <div class="nonce-count">Hết hạn sau <b id="nonce-remain">–</b>s · tự xoay mỗi 60 giây</div>
+            <div class="progress nonce-timer"><span id="nonce-bar" style="width:100%"></span></div>
+            <button class="btn btn-ghost btn-sm mt-2" id="btn-refresh-nonce" title="Lấy mã mới ngay">${Icons.render("refresh", 14)} Làm mới</button>
+          </div>
+          <div class="open-actions">
+            <button class="btn btn-outline" id="btn-override">${Icons.render("sliders", 16)} Điều chỉnh thủ công</button>
+            <button class="btn btn-danger" id="btn-close-session">${Icons.render("lock", 16)} Đóng phiên</button>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById("btn-refresh-nonce").addEventListener("click", fetchNonce);
+    document.getElementById("btn-override").addEventListener("click", openOverrideModal);
+    document.getElementById("btn-close-session").addEventListener("click", onCloseSession);
+    fetchNonce();
+  }
+
+  function stopNonceTimer() {
+    if (nonceTimer) { clearInterval(nonceTimer); nonceTimer = null; }
+  }
+
+  async function fetchNonce() {
+    const s = state.openSession;
+    if (!s || state.nonceFetching) return;
+    state.nonceFetching = true;
+    try {
+      const data = await ApiClient.get(`/attendance/sessions/${s.id}/nonce/`);
+      // Phiên có thể vừa bị đóng giữa chừng
+      if (data.trang_thai && data.trang_thai !== "OPEN") { await loadOpenSession(); return; }
+      state.nonce = String(data.nonce || "").trim();
+      state.nonceRemain = Number(data.expires_in) > 0 ? Math.floor(Number(data.expires_in)) : 60;
+      const val = document.getElementById("nonce-value");
+      if (!val) return; // card đã bị render lại
+      val.textContent = state.nonce.padStart(6, "0").slice(-6);
+      updateNonceUI();
+      stopNonceTimer();
+      nonceTimer = setInterval(() => {
+        state.nonceRemain -= 1;
+        if (state.nonceRemain <= 0) { fetchNonce(); return; }
+        updateNonceUI();
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      Toast.error(err.message || "Không lấy được mã nonce.");
+    } finally {
+      state.nonceFetching = false;
+    }
+  }
+
+  function updateNonceUI() {
+    const remainEl = document.getElementById("nonce-remain");
+    const barEl = document.getElementById("nonce-bar");
+    if (remainEl) remainEl.textContent = state.nonceRemain;
+    if (barEl) {
+      const pct = Math.max(0, Math.min(100, (state.nonceRemain / 60) * 100));
+      barEl.style.width = pct + "%";
+    }
+  }
+
+  async function onCloseSession() {
+    const s = state.openSession;
+    if (!s) return;
+    if (!confirm(`Đóng phiên "${s.ten_phien}"?\nThành viên sẽ không thể check-in nữa sau khi phiên đóng.`)) return;
+    const btn = document.getElementById("btn-close-session");
+    const undo = Utils.btnLoading(btn, "Đang đóng...");
+    try {
+      await ApiClient.post(`/attendance/sessions/${s.id}/close/`);
+      Toast.success(`Đã đóng phiên "${s.ten_phien}".`, "Thành công");
+      stopNonceTimer();
+      await Promise.all([loadOpenSession(), loadSessions()]);
+    } catch (err) {
+      Toast.error(err.message || "Không đóng được phiên.");
+    } finally {
+      undo();
+    }
+  }
+
+  /* ================= Điều chỉnh thủ công (bulk override) ================= */
+  async function openOverrideModal() {
+    const s = state.openSession;
+    if (!s) return;
+    const btn = document.getElementById("btn-override");
+    const undoBtn = Utils.btnLoading(btn, "Đang tải thành viên...");
+    let members = [];
+    try {
+      const { items } = await ApiClient.getList("/members/", { page: 1, page_size: 100 });
+      members = items;
+    } catch (err) {
+      undoBtn();
+      Toast.error(err.message || "Không tải được danh sách thành viên.");
+      return;
+    }
+    undoBtn();
+
+    const memberRows = members.length
+      ? members
+          .map(
+            (m) => `<label>
+              <input type="checkbox" class="ov-check" value="${m.id}">
+              <span class="who">
+                <span class="bold">${Utils.escapeHtml(m.ho_ten)}</span>
+                <span class="lop"> · ${Utils.escapeHtml(m.mssv || "")}${m.lop ? " · " + Utils.escapeHtml(m.lop) : ""}</span>
+              </span>
+              <span class="badge badge-neutral">${Utils.escapeHtml(m.trang_thai_hd || "")}</span>
+            </label>`
+          )
+          .join("")
+      : `<div class="empty-mini">Không có thành viên nào.</div>`;
+
+    openModal({
+      title: "Điều chỉnh điểm danh thủ công",
+      bodyHTML: `
+        <p class="small muted">Ghi đè trực tiếp bản ghi điểm danh của phiên <b>${Utils.escapeHtml(s.ten_phien)}</b>.
+        Chọn thành viên rồi áp dụng một trạng thái chung cho cả nhóm được tick.</p>
+        <div class="form-group mt-2">
+          <label class="form-label" for="ov-status">Trạng thái áp dụng</label>
+          <select class="form-select" id="ov-status">
+            <option value="CO_MAT">Có mặt</option>
+            <option value="VANG">Vắng</option>
+            <option value="CO_PHEP">Có phép</option>
+            <option value="DI_MUON">Đi muộn</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="xs muted" id="ov-count">0/${members.length} thành viên được chọn</span>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" id="ov-all">${Icons.render("check-square", 13)} Chọn tất cả</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="ov-none">Bỏ chọn</button>
+          </div>
+        </div>
+        <div class="ov-member-list">${memberRows}</div>`,
+      footerHTML: `
+        <button class="btn btn-ghost" data-close>Hủy</button>
+        <button class="btn btn-primary" id="ov-submit" disabled>${Icons.render("check", 16)} Áp dụng (0)</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+        const submit = backdrop.querySelector("#ov-submit");
+        const countEl = backdrop.querySelector("#ov-count");
+        const syncCount = () => {
+          const n = Utils.qsa(".ov-check:checked", backdrop).length;
+          countEl.textContent = `${n}/${members.length} thành viên được chọn`;
+          submit.disabled = n === 0;
+          submit.innerHTML = `${Icons.render("check", 16)} Áp dụng (${n})`;
+        };
+        Utils.qsa(".ov-check", backdrop).forEach((c) => c.addEventListener("change", syncCount));
+        backdrop.querySelector("#ov-all").addEventListener("click", () => {
+          Utils.qsa(".ov-check", backdrop).forEach((c) => { c.checked = true; });
+          syncCount();
+        });
+        backdrop.querySelector("#ov-none").addEventListener("click", () => {
+          Utils.qsa(".ov-check", backdrop).forEach((c) => { c.checked = false; });
+          syncCount();
+        });
+        submit.addEventListener("click", async () => {
+          const trangThai = backdrop.querySelector("#ov-status").value;
+          const items = Utils.qsa(".ov-check:checked", backdrop).map((c) => ({ member_id: Number(c.value), trang_thai: trangThai }));
+          if (!items.length) return;
+          const undo = Utils.btnLoading(submit, "Đang ghi đè...");
+          try {
+            // ⚠ Backend thực tế nhận PUT (không phải POST như CONTRACT ghi) — đã test thật
+            const res = await ApiClient.put(`/attendance/sessions/${s.id}/bulk-override/`, { items });
+            close();
+            Toast.success(`Đã ghi đè điểm danh cho ${res?.updated ?? items.length} thành viên (${trangThai === "CO_MAT" ? "Có mặt" : trangThai === "VANG" ? "Vắng" : trangThai === "CO_PHEP" ? "Có phép" : "Đi muộn"}).`, "Thành công");
+            loadOpenSession();
+          } catch (err) {
+            Toast.error(err.message || "Không ghi đè được điểm danh.");
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= Danh sách phiên ================= */
+  function rowHTML(s) {
+    return `<tr>
+      <td>
+        <div class="bold small">${Utils.escapeHtml(s.ten_phien)}</div>
+        ${s.event_ten ? `<div class="xs muted">${Utils.escapeHtml(s.event_ten)}</div>` : ""}
+      </td>
+      <td>${sessionBadge(s.trang_thai)}</td>
+      <td class="small muted">${Utils.fmtDateTime(s.mo_phien_at)}</td>
+      <td class="small muted">${s.hieu_luc_den ? Utils.fmtDateTime(s.hieu_luc_den) : "—"}</td>
+      <td class="num small">${s.ban_kinh_m != null ? Utils.fmtNum(s.ban_kinh_m) + " m" : "—"}</td>
+      <td class="small muted">${s.dong_phien_at ? Utils.fmtDateTime(s.dong_phien_at) : "—"}</td>
+    </tr>`;
+  }
+
+  async function loadSessions() {
+    const wrap = document.getElementById("sessions-table-wrap");
+    const pager = document.getElementById("sessions-pagination");
+    Utils.skeleton(wrap, 4);
+    try {
+      const params = { page: state.page };
+      if (state.trangThai) params.trang_thai = state.trangThai;
+      const { items, pagination } = await ApiClient.getList("/attendance/sessions/", params);
+      state.sessions = items;
+      state.pagination = pagination;
+      if (!items.length) {
+        Utils.empty(wrap, {
+          icon: "compass",
+          title: "Chưa có phiên điểm danh nào",
+          desc: state.trangThai ? "Không có phiên nào ở trạng thái này." : "Mở phiên đầu tiên để thành viên check-in GPS.",
+          actionLabel: state.trangThai ? "" : "Mở phiên mới",
+          onAction: state.trangThai ? null : openNewSessionModal,
+        });
+        pager.innerHTML = "";
+        renderKpis();
+        return;
+      }
+      wrap.innerHTML = `
+        <div class="table-wrap"><table class="table">
+          <thead><tr><th>Tên phiên</th><th>Trạng thái</th><th>Mở lúc</th><th>Hiệu lực đến</th><th class="num">Bán kính</th><th>Đóng lúc</th></tr></thead>
+          <tbody>${items.map(rowHTML).join("")}</tbody>
+        </table></div>`;
+      renderPagination(pager, pagination, (p) => { state.page = p; loadSessions(); });
+      renderKpis();
+    } catch (err) {
+      console.error(err);
+      Utils.empty(wrap, {
+        icon: "alert-triangle",
+        title: "Không tải được danh sách phiên",
+        desc: err.message || "Vui lòng thử lại.",
+        actionLabel: "Thử lại",
+        onAction: loadSessions,
+      });
+      Toast.error(err.message || "Không tải được danh sách phiên");
+    }
+  }
+
+  /* ================= Mở phiên mới ================= */
+  async function openNewSessionModal() {
+    let events = [];
+    try {
+      const { items } = await ApiClient.getList("/events/", { page: 1 });
+      events = items;
+    } catch (err) {
+      console.error(err); // sự kiện chỉ là tùy chọn — không chặn việc mở phiên
+    }
+    const eventOptions = events
+      .map((ev) => `<option value="${ev.id}">${Utils.escapeHtml(ev.ten_hoat_dong)} (${Utils.escapeHtml(ev.ma_hd || "")})</option>`)
+      .join("");
+
+    openModal({
+      title: "Mở phiên điểm danh mới",
+      bodyHTML: `
+        <form id="session-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="ss-ten">Tên phiên <span class="req">*</span></label>
+            <input class="form-input" id="ss-ten" type="text" required placeholder="VD: Sinh hoạt định kỳ tháng 10/2026">
+          </div>
+          <div class="form-group">
+            <div class="flex items-center justify-between">
+              <label class="form-label" style="margin-bottom:0">Tọa độ GPS <span class="req">*</span></label>
+              <button type="button" class="btn btn-outline btn-sm" id="ss-gps">${Icons.render("navigation", 14)} Dùng GPS hiện tại</button>
+            </div>
+            <div class="form-row mt-2">
+              <input class="form-input" id="ss-vi-do" type="number" step="any" required placeholder="Vĩ độ (VD: 16.4637)" aria-label="Vĩ độ">
+              <input class="form-input" id="ss-kinh-do" type="number" step="any" required placeholder="Kinh độ (VD: 107.5909)" aria-label="Kinh độ">
+            </div>
+            <p class="form-hint">Đứng đúng địa điểm tổ chức rồi bấm "Dùng GPS hiện tại", hoặc nhập tay tọa độ tâm bán kính.</p>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="ss-ban-kinh">Bán kính cho phép (m)</label>
+              <input class="form-input" id="ss-ban-kinh" type="number" min="1" value="50">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ss-hieu-luc">Hiệu lực đến (tùy chọn)</label>
+              <input class="form-input" id="ss-hieu-luc" type="datetime-local">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ss-event">Gắn với sự kiện (tùy chọn)</label>
+            <select class="form-select" id="ss-event">
+              <option value="">— Không gắn sự kiện —</option>
+              ${eventOptions}
+            </select>
+          </div>
+          <p class="form-hint">${Icons.render("info", 13)} Khi mở phiên, hệ thống <b>tự tạo bản ghi VẮNG</b> cho toàn bộ thành viên đang hoạt động — check-in GPS sẽ ghi đè thành CÓ MẶT / ĐI MUỘN.</p>
+        </form>`,
+      footerHTML: `
+        <button class="btn btn-ghost" data-close>Hủy</button>
+        <button class="btn btn-primary" id="btn-save-session">${Icons.render("play", 16)} Mở phiên</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+        backdrop.querySelector("#session-form").addEventListener("submit", (ev) => {
+          ev.preventDefault();
+          backdrop.querySelector("#btn-save-session").click();
+        });
+        const gpsBtn = backdrop.querySelector("#ss-gps");
+        gpsBtn.addEventListener("click", () => {
+          if (!navigator.geolocation) { Toast.error("Trình duyệt không hỗ trợ định vị."); return; }
+          const undo = Utils.btnLoading(gpsBtn, "Đang định vị...");
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              backdrop.querySelector("#ss-vi-do").value = pos.coords.latitude.toFixed(6);
+              backdrop.querySelector("#ss-kinh-do").value = pos.coords.longitude.toFixed(6);
+              undo();
+              Toast.success("Đã điền tọa độ GPS hiện tại.");
+            },
+            (err) => { undo(); Toast.error("Không lấy được vị trí: " + err.message); },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        });
+        backdrop.querySelector("#btn-save-session").addEventListener("click", async (e) => {
+          e.preventDefault();
+          const ten = backdrop.querySelector("#ss-ten").value.trim();
+          const viDo = numOrNull(backdrop.querySelector("#ss-vi-do").value);
+          const kinhDo = numOrNull(backdrop.querySelector("#ss-kinh-do").value);
+          if (!ten) { Toast.warning("Vui lòng nhập tên phiên."); return; }
+          if (viDo === null || kinhDo === null) { Toast.warning("Vui lòng điền tọa độ GPS (dùng nút Dùng GPS hiện tại hoặc nhập tay)."); return; }
+          const undo = Utils.btnLoading(e.currentTarget, "Đang mở phiên...");
+          try {
+            const payload = { ten_phien: ten, vi_do: viDo, kinh_do: kinhDo };
+            const banKinh = numOrNull(backdrop.querySelector("#ss-ban-kinh").value);
+            if (banKinh !== null) payload.ban_kinh_m = banKinh;
+            const hieuLuc = localToISO(backdrop.querySelector("#ss-hieu-luc").value);
+            if (hieuLuc) payload.hieu_luc_den = hieuLuc;
+            const evId = backdrop.querySelector("#ss-event").value;
+            if (evId) payload.event = Number(evId);
+            await ApiClient.post("/attendance/sessions/", payload);
+            close();
+            Toast.success(`Đã mở phiên "${ten}". Bản ghi VẮNG đã được tạo cho toàn bộ thành viên đang hoạt động — thành viên check-in sẽ được ghi đè thành Có mặt/Đi muộn.`, "Phiên đang mở");
+            state.page = 1;
+            await Promise.all([loadOpenSession(), loadSessions()]);
+            document.getElementById("open-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          } catch (err) {
+            Toast.error(err.message || "Không mở được phiên điểm danh.");
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= Nav + khởi tạo ================= */
+  function renderAdminNav(active) {
+    document.getElementById("brand-logo").innerHTML = Icons.render("zap", 20);
+    const items = [
+      ["dashboard", "layout", "Dashboard", "/frontend/admin/dashboard.html"],
+      ["members", "users", "Thành viên", "/frontend/admin/members.html"],
+      ["funds", "wallet", "Quỹ CLB", "/frontend/admin/funds.html"],
+      ["events", "calendar", "Sự kiện", "/frontend/admin/events.html"],
+      ["attendance", "compass", "Điểm danh", "/frontend/admin/attendance.html"],
+      ["documents", "book-open", "Tài liệu", "/frontend/admin/documents.html"],
+    ];
+    document.getElementById("side-nav").innerHTML =
+      '<div class="nav-label">Quản lý</div>' +
+      items
+        .map(([k, ic, label, href]) =>
+          `<a class="nav-item${k === active ? " active" : ""}" href="${href}">${Icons.render(ic, 18)}<span>${label}</span></a>`
+        )
+        .join("");
+    const user = Auth.cachedUser();
+    document.getElementById("topbar-user").innerHTML =
+      `<span class="small bold">${Utils.escapeHtml(user?.ho_ten || user?.email || "")}</span>
+       <span class="avatar avatar-sm" title="${Utils.escapeHtml(user?.role || "")}">${Utils.initials(user?.ho_ten || user?.email)}</span>`;
+    document.getElementById("burger-icon").innerHTML = Icons.render("menu", 20);
+    document.getElementById("btn-burger").addEventListener("click", () => {
+      document.getElementById("shell").classList.add("nav-open");
+      document.getElementById("scrim").classList.remove("hidden");
+    });
+    document.getElementById("scrim").addEventListener("click", () => {
+      document.getElementById("shell").classList.remove("nav-open");
+      document.getElementById("scrim").classList.add("hidden");
+    });
+    document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+  }
+
+  async function init() {
+    renderAdminNav("attendance");
+    document.getElementById("btn-new-session-icon").innerHTML = Icons.render("plus", 17);
+    document.getElementById("btn-new-session").addEventListener("click", openNewSessionModal);
+    document.getElementById("filter-status").addEventListener("change", (e) => {
+      state.trangThai = e.target.value;
+      state.page = 1;
+      loadSessions();
+    });
+    await Promise.all([loadOpenSession(), loadSessions()]);
+  }
+
+  Auth.requireRole(["ADMIN", "BCN"])
+    .then(() => init())
+    .catch(() => { /* requireRole đã tự redirect */ });
+})();
+</script>
+</body>
+</html>

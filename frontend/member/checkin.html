@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="member">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-in GPS — CLB IP ĐHSP Huế</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ---- page-scoped styles (không đụng css dùng chung) ---- */
+    .section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: var(--text-sm); font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--tx-muted); margin: 0 0 var(--s-3);
+    }
+    .section-title svg { color: var(--c-indigo); flex: none; }
+    .glass-card { padding: var(--s-5); }
+
+    /* phiên điểm danh */
+    .session-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .meta-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: var(--r-pill);
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
+      font-size: var(--text-xs); font-weight: 600; color: var(--tx-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+    .meta-chip svg { color: var(--c-indigo); }
+    .meta-chip.urgent { border-color: rgba(220,38,38,.5); color: #FCA5A5; }
+    .meta-chip.urgent svg { color: #FCA5A5; }
+
+    /* radar status */
+    .radar-status { text-align: center; font-size: var(--text-sm); font-weight: 600; margin-top: var(--s-4); }
+    .radar-distance {
+      text-align: center; margin-top: 4px;
+      font-family: var(--font-mono); font-size: var(--text-md);
+      font-weight: 700; color: #A5B4FC; font-variant-numeric: tabular-nums;
+    }
+    .radar-ok   { color: #7EE2A0; }
+    .radar-far  { color: #FCD34D; }
+
+    /* nonce */
+    .nonce-input {
+      width: 100%; text-align: center;
+      font-family: var(--font-mono); font-weight: 800;
+      font-size: 2rem; letter-spacing: 0.55em; text-indent: 0.55em;
+      padding: 14px 8px; border-radius: var(--r-control);
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border-strong);
+      color: var(--tx-primary); caret-color: var(--c-indigo);
+      outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+    }
+    .nonce-input:focus { border-color: var(--c-indigo); box-shadow: var(--shadow-glow); }
+
+    /* kết quả check-in */
+    .result-head { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-4); }
+    .result-ico {
+      width: 52px; height: 52px; flex: none; border-radius: 50%;
+      display: grid; place-items: center;
+      background: rgba(22,163,74,.18); color: #7EE2A0;
+    }
+    .result-ico.late { background: rgba(217,119,6,.2); color: #FCD34D; }
+    .result-row {
+      display: flex; justify-content: space-between; gap: var(--s-3);
+      padding: 9px 0; border-bottom: 1px dashed var(--border-color);
+      font-size: var(--text-sm);
+    }
+    .result-row:last-child { border-bottom: 0; }
+    .result-row .val { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* lịch sử */
+    .hist-row {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: 11px 0; border-bottom: 1px dashed var(--border-color);
+    }
+    .hist-row:last-child { border-bottom: 0; }
+    .hist-xp { font-weight: 800; font-size: var(--text-xs); color: #7EE2A0; font-variant-numeric: tabular-nums; flex: none; }
+
+    /* demo mode */
+    .demo-box {
+      margin-top: var(--s-4); padding: var(--s-4);
+      border-radius: var(--r-control);
+      border: 1px dashed rgba(245,158,11,.5); background: rgba(245,158,11,.07);
+    }
+  </style>
+</head>
+<body>
+  <div class="member-shell">
+    <header class="member-header">
+      <div class="flex items-center gap-3">
+        <span class="avatar" id="me-avatar"></span>
+        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
+      </div>
+      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
+    </header>
+
+    <section>
+      <h1 class="page-title" style="margin:0 0 4px">Check-in GPS 📍</h1>
+      <p class="small muted" style="margin:0">Đến đúng chỗ, nhập đúng mã — XP về tay ngay!</p>
+    </section>
+
+    <!-- PHIÊN ĐIỂM DANH + RADAR -->
+    <section id="main-zone">
+      <div class="glass glass-card">
+        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div>
+      </div>
+    </section>
+
+    <!-- LỊCH SỬ ĐIỂM DANH -->
+    <section>
+      <h2 class="section-title"><span id="ic-history"></span>Lịch sử điểm danh</h2>
+      <div class="glass glass-card" id="history-box">
+        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:55%"></div><div class="skeleton" style="width:75%"></div></div></div>
+      </div>
+    </section>
+
+    <div style="height:8px"></div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/icons.js"></script>
+  <script src="/frontend/js/toast.js"></script>
+  <script src="/frontend/js/utils.js"></script>
+  <script src="/frontend/js/auth.js"></script>
+  <script src="/frontend/js/celebration.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      /* ================= State ================= */
+      const state = {
+        session: null,
+        position: null,      // {latitude, longitude, accuracy}
+        distance: null,      // mét
+        nonce: "",
+        submitted: false,
+        timerId: null,
+      };
+
+      /* ================= Nav member (FRONTEND_CONTRACT §6) ================= */
+      function renderMemberNav(active) {
+        const items = [
+          ["home", "home", "Nhà", "/frontend/member/home.html"],
+          ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
+          ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
+          ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
+          ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
+          ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
+        ];
+        document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
+          `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
+            ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
+        ).join("");
+        document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
+        document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+        const me = Auth.cachedUser();
+        const av = document.getElementById("me-avatar");
+        if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
+        const nm = document.getElementById("me-name");
+        if (nm && me) nm.textContent = me.ho_ten || me.email;
+        const lv = document.getElementById("me-level");
+        if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
+      }
+
+      /* ================= Haversine (R = 6371000 m) ================= */
+      function haversine(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const toRad = (d) => (d * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      /* ================= device_id (tái dùng localStorage) ================= */
+      function getDeviceId() {
+        let id = localStorage.getItem("clbip_device_id");
+        if (!id) {
+          try {
+            id = btoa(navigator.userAgent + screen.width + screen.height).slice(0, 24);
+          } catch {
+            id = "dev" + Math.random().toString(36).slice(2, 14);
+          }
+          localStorage.setItem("clbip_device_id", id);
+        }
+        return id;
+      }
+
+      /* ================= Countdown hieu_luc_den ================= */
+      function startCountdown(deadlineStr, chipEl) {
+        if (state.timerId) clearInterval(state.timerId);
+        if (!deadlineStr) {
+          chipEl.innerHTML = `${Icons.render("clock", 13)} Không giới hạn giờ`;
+          return;
+        }
+        const deadline = new Date(deadlineStr).getTime();
+        const tick = () => {
+          const diff = deadline - Date.now();
+          if (isNaN(deadline)) { chipEl.innerHTML = `${Icons.render("clock", 13)} —`; return; }
+          if (diff <= 0) {
+            chipEl.innerHTML = `${Icons.render("clock", 13)} Đã hết giờ`;
+            chipEl.classList.add("urgent");
+            updateSubmitState();
+            clearInterval(state.timerId);
+            return;
+          }
+          const s = Math.floor(diff / 1000);
+          const hh = String(Math.floor(s / 3600)).padStart(2, "0");
+          const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+          const ss = String(s % 60).padStart(2, "0");
+          const urgent = s < 300;
+          chipEl.classList.toggle("urgent", urgent);
+          chipEl.innerHTML = `${Icons.render("clock", 13)} Hết hạn sau ${hh}:${mm}:${ss}`;
+        };
+        tick();
+        state.timerId = setInterval(tick, 1000);
+      }
+
+      /* ================= Radar + vị trí ================= */
+      function setRadarMode(mode, statusText, distanceText) {
+        const dot = document.getElementById("radar-dot");
+        const status = document.getElementById("radar-status");
+        const dist = document.getElementById("radar-distance");
+        if (dot) dot.classList.remove("ok", "far");
+        if (mode && dot) dot.classList.add(mode);          // "ok" | "far"
+        if (status) {
+          status.textContent = statusText;
+          status.className = "radar-status" + (mode === "ok" ? " radar-ok" : mode === "far" ? " radar-far" : "");
+        }
+        if (dist) dist.textContent = distanceText || "";
+      }
+
+      function applyPosition(pos) {
+        const s = state.session;
+        state.position = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy ?? null,
+        };
+        if (s && s.vi_do != null && s.kinh_do != null) {
+          state.distance = haversine(
+            state.position.latitude, state.position.longitude,
+            Number(s.vi_do), Number(s.kinh_do)
+          );
+          const d = Math.round(state.distance);
+          const inRange = state.distance <= Number(s.ban_kinh_m || 0);
+          setRadarMode(
+            inRange ? "ok" : "far",
+            inRange
+              ? "Bạn đang trong vùng điểm danh — nhập mã để chốt ngay! ✅"
+              : `Bạn đang ngoài bán kính ${Math.round(Number(s.ban_kinh_m))} m, di chuyển đến gần hơn nhé! 🏃`,
+            `Cách điểm danh: ${Utils.fmtNum(d)} m`
+          );
+        } else {
+          setRadarMode(null, "Phiên này không cấu hình tọa độ GPS.", "");
+        }
+        hideDemoBox();
+        updateSubmitState();
+      }
+
+      function requestGeolocation() {
+        setRadarMode(null, "Đang định vị GPS…", "Giữ máy ở nơi thoáng để bắt sóng nhanh hơn");
+        if (!("geolocation" in navigator)) {
+          geoFailed("Thiết bị không hỗ trợ GPS.");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => applyPosition(pos),
+          (err) => geoFailed(err.message || "Không lấy được vị trí GPS."),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
+
+      function geoFailed(reason) {
+        Toast.warning("Không lấy được vị trí GPS — bạn có thể nhập tọa độ thủ công ở khung Demo bên dưới 🧪");
+        setRadarMode(null, "Chưa có vị trí — thử GPS lại hoặc nhập tay.", reason ? `Lỗi: ${reason}` : "");
+        showDemoBox();
+        updateSubmitState();
+      }
+
+      /* ================= Demo mode: nhập tọa độ tay ================= */
+      function showDemoBox() {
+        const box = document.getElementById("demo-box");
+        if (!box) return;
+        box.classList.remove("hidden");
+      }
+      function hideDemoBox() {
+        const box = document.getElementById("demo-box");
+        if (!box) return;
+        box.classList.add("hidden");
+      }
+
+      /* ================= Trạng thái nút XÁC NHẬN ================= */
+      function updateSubmitState() {
+        const btn = document.getElementById("btn-checkin");
+        if (!btn || state.submitted) return;
+        const s = state.session;
+        const expired = s?.hieu_luc_den ? (new Date(s.hieu_luc_den).getTime() - Date.now() <= 0) : false;
+        const inRange = state.distance != null && state.distance <= Number(s?.ban_kinh_m || 0);
+        const hasPos = !!state.position && state.distance != null;
+        const validNonce = /^\d{6}$/.test(state.nonce);
+        btn.disabled = !s || !hasPos || !inRange || !validNonce || expired;
+        const hint = document.getElementById("nonce-hint");
+        if (hint) {
+          hint.textContent = !hasPos
+            ? "Cần xác định vị trí GPS trước khi điểm danh."
+            : !inRange
+              ? "Bạn phải ở trong bán kính cho phép mới bấm được nút."
+              : !validNonce
+                ? "Nhập đủ mã 6 số trên máy chiếu của BCN."
+                : "Sẵn sàng! Bấm xác nhận để nhận XP 🚀";
+        }
+      }
+
+      /* ================= Check-in ================= */
+      async function doCheckIn() {
+        const btn = document.getElementById("btn-checkin");
+        const undo = Utils.btnLoading(btn, "Đang gửi mã...");
+        try {
+          const data = await ApiClient.post("/attendance/check-in/", {
+            session_id: state.session.id,
+            latitude: state.position.latitude,
+            longitude: state.position.longitude,
+            client_time: new Date().toISOString(),
+            device_id: getDeviceId(),
+            nonce: state.nonce,
+            is_mock: false,
+            accuracy: state.position.accuracy,
+          });
+          state.submitted = true;
+          if (state.timerId) clearInterval(state.timerId);
+          undo();
+          Celebrate.cheer();
+          const xp = data?.xp_gained ?? 0;
+          const streak = data?.streak_count ?? "—";
+          const late = data?.trang_thai === "DI_MUON";
+          Toast.success(`Check-in thành công! +${xp} XP`, "Xong rồi nha 🎉");
+          showResultCard(data, late, xp, streak);
+          btn.textContent = "Đã điểm danh";
+          btn.disabled = true;
+          loadHistory(); // refresh lịch sử
+        } catch (err) {
+          undo();
+          Toast.error(err?.message || "Check-in thất bại");
+        }
+      }
+
+      function showResultCard(data, late, xp, streak) {
+        const zone = document.getElementById("result-zone");
+        zone.classList.remove("hidden");
+        zone.innerHTML = `
+          <div class="glass glass-accent glass-card">
+            <div class="result-head">
+              <span class="result-ico${late ? " late" : ""}">${Icons.render(late ? "clock" : "check", 24)}</span>
+              <div>
+                <div class="bold" style="font-size:var(--text-lg)">${late ? "Đi muộn ⏰" : "Đúng giờ ✅"}</div>
+                <div class="xs muted">Check-in vào lúc ${Utils.escapeHtml(Utils.fmtDateTime(new Date().toISOString()))}</div>
+              </div>
+            </div>
+            <div class="result-row"><span class="muted">Phiên</span><span class="val">${Utils.escapeHtml(data?.session_ten || state.session.ten_phien)}</span></div>
+            <div class="result-row"><span class="muted">Khoảng cách</span><span class="val">${data?.khoang_cach_m != null ? Utils.fmtNum(Math.round(Number(data.khoang_cach_m))) + " m" : "—"}</span></div>
+            <div class="result-row"><span class="muted">XP nhận được</span><span class="val" style="color:#7EE2A0">+${Utils.escapeHtml(String(xp))} XP</span></div>
+            <div class="result-row"><span class="muted">Chuỗi điểm danh</span><span class="val">🔥 ${Utils.escapeHtml(String(streak))} ngày</span></div>
+          </div>`;
+        zone.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      /* ================= Render phiên + radar ================= */
+      function renderSession(s) {
+        const zone = document.getElementById("main-zone");
+        zone.innerHTML = `
+          <div class="glass glass-accent glass-card" style="margin-bottom:var(--s-4)">
+            <div class="flex items-center justify-between gap-2 wrap mb-2">
+              <div class="bold" style="font-size:var(--text-lg)">${Utils.escapeHtml(s.ten_phien)}</div>
+              ${s.event_ten ? Utils.badge(`🎉 ${s.event_ten}`, "accent") : ""}
+            </div>
+            <div class="session-meta">
+              <span class="meta-chip" id="countdown-chip">${Icons.render("clock", 13)} …</span>
+              <span class="meta-chip">${Icons.render("target", 13)} Bán kính ${Utils.fmtNum(Math.round(Number(s.ban_kinh_m || 0)))} m</span>
+              ${s.mo_phien_at ? `<span class="meta-chip">${Icons.render("play", 13)} Mở ${Utils.escapeHtml(Utils.timeAgo(s.mo_phien_at))}</span>` : ""}
+            </div>
+          </div>
+
+          <div class="glass glass-card">
+            <div class="radar">
+              <div class="radar-ring"></div>
+              <div class="radar-ring"></div>
+              <div class="radar-ring"></div>
+              <div class="radar-sweep"></div>
+              <div class="radar-dot" id="radar-dot"></div>
+            </div>
+            <div class="radar-status" id="radar-status">Đang định vị GPS…</div>
+            <div class="radar-distance" id="radar-distance"></div>
+            <div class="text-center mt-4">
+              <button class="btn btn-ghost btn-sm" id="btn-regeo">${Icons.render("refresh", 15)} Quét lại GPS</button>
+            </div>
+
+            <!-- Demo mode: nhập tọa độ thủ công khi GPS lỗi -->
+            <div class="demo-box hidden" id="demo-box">
+              <div class="small bold mb-2" style="color:#FCD34D">🧪 Demo — nhập tọa độ thủ công</div>
+              <div class="form-row">
+                <div class="form-group" style="margin-bottom:8px">
+                  <label class="form-label" for="demo-lat">Vĩ độ (latitude)</label>
+                  <input class="form-input" id="demo-lat" type="number" step="any" inputmode="decimal" placeholder="16.4637">
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                  <label class="form-label" for="demo-lng">Kinh độ (longitude)</label>
+                  <input class="form-input" id="demo-lng" type="number" step="any" inputmode="decimal" placeholder="107.5909">
+                </div>
+              </div>
+              <button class="btn btn-outline btn-sm w-100" id="btn-demo-apply">Dùng tọa độ này</button>
+            </div>
+          </div>
+
+          <!-- NONCE + XÁC NHẬN -->
+          <div class="glass glass-card" style="margin-top:var(--s-4)">
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label" for="nonce-input">Mã điểm danh (6 số)</label>
+              <input class="nonce-input" id="nonce-input" inputmode="numeric" autocomplete="one-time-code"
+                maxlength="6" placeholder="••••••" aria-describedby="nonce-hint">
+              <div class="form-hint" id="nonce-hint">Nhập mã đang hiển thị trên máy chiếu của BCN.</div>
+            </div>
+            <button class="btn btn-violet btn-lg btn-block" id="btn-checkin" disabled>${Icons.render("check", 18)} XÁC NHẬN ĐIỂM DANH</button>
+          </div>
+
+          <div id="result-zone" class="hidden" style="margin-top:var(--s-4)"></div>`;
+
+        /* gắn sự kiện */
+        document.getElementById("btn-regeo").addEventListener("click", requestGeolocation);
+        document.getElementById("btn-demo-apply").addEventListener("click", () => {
+          const lat = parseFloat(document.getElementById("demo-lat").value);
+          const lng = parseFloat(document.getElementById("demo-lng").value);
+          if (isNaN(lat) || isNaN(lng)) {
+            Toast.warning("Nhập đủ vĩ độ và kinh độ (số thập phân) nhé!");
+            return;
+          }
+          applyPosition({ coords: { latitude: lat, longitude: lng, accuracy: null } });
+          Toast.info("Đã dùng tọa độ thủ công (demo mode) 🧪");
+        });
+        const nonceInput = document.getElementById("nonce-input");
+        nonceInput.addEventListener("input", () => {
+          nonceInput.value = nonceInput.value.replace(/\D/g, "").slice(0, 6);
+          state.nonce = nonceInput.value;
+          updateSubmitState();
+        });
+        document.getElementById("btn-checkin").addEventListener("click", doCheckIn);
+
+        startCountdown(s.hieu_luc_den, document.getElementById("countdown-chip"));
+      }
+
+      function renderNoSession() {
+        const zone = document.getElementById("main-zone");
+        Utils.empty(zone, {
+          icon: "compass",
+          title: "Không có phiên điểm danh nào đang mở",
+          desc: "Khi BCN mở phiên điểm danh, radar sẽ tự động hiện ra tại đây. Giữ điện thoại sẵn sàng nhé! 📡",
+        });
+        Utils.empty(document.getElementById("history-box"), {
+          icon: "inbox",
+          title: "Chưa có lịch sử điểm danh",
+          desc: "Các lượt điểm danh của bạn sẽ được ghi lại ở đây.",
+        });
+      }
+
+      /* ================= Lịch sử điểm danh ================= */
+      const ATT_BADGE = {
+        CO_MAT:  ["Có mặt", "success"],
+        DI_MUON: ["Đi muộn", "warning"],
+        VANG:    ["Vắng", "danger"],
+        CO_PHEP: ["Có phép", "info"],
+      };
+
+      async function loadHistory() {
+        const box = document.getElementById("history-box");
+        Utils.skeleton(box, 3);
+        try {
+          const { items } = await ApiClient.getList("/attendance/me/");
+          if (!items.length) {
+            Utils.empty(box, { icon: "inbox", title: "Chưa có lịch sử điểm danh", desc: "Lượt đầu tiên của bạn sẽ xuất hiện ngay sau khi check-in!" });
+            return;
+          }
+          box.innerHTML = items.map((r) => {
+            const [label, tone] = ATT_BADGE[r.trang_thai] || [r.trang_thai, "neutral"];
+            return `
+              <div class="hist-row">
+                <div class="flex-1" style="min-width:0">
+                  <div class="small bold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Utils.escapeHtml(r.session_ten || "Phiên")}</div>
+                  <div class="xs muted">${r.checked_in_at ? Utils.escapeHtml(Utils.fmtDateTime(r.checked_in_at)) : "Chưa check-in"}${r.khoang_cach_m != null ? ` · ${Utils.fmtNum(Math.round(Number(r.khoang_cach_m)))} m` : ""}</div>
+                </div>
+                ${Utils.badge(label, tone)}
+                <span class="hist-xp">${Number(r.xp_awarded || 0) > 0 ? "+" + Utils.fmtNum(r.xp_awarded) + " XP" : "—"}</span>
+              </div>`;
+          }).join("");
+        } catch (err) {
+          Toast.error(err?.message || "Không tải được lịch sử điểm danh");
+          Utils.empty(box, { icon: "alert-triangle", title: "Lỗi tải lịch sử" });
+        }
+      }
+
+      /* ================= INIT ================= */
+      async function init() {
+        document.getElementById("ic-history").innerHTML = Icons.render("clock", 15);
+        loadHistory();
+        try {
+          const { items } = await ApiClient.getList("/attendance/sessions/", { trang_thai: "OPEN" });
+          const s = items[0] || null;
+          if (!s) {
+            renderNoSession();
+            return;
+          }
+          state.session = s;
+          renderSession(s);
+          updateSubmitState();
+          requestGeolocation();
+        } catch (err) {
+          Toast.error(err?.message || "Không tải được phiên điểm danh");
+          Utils.empty(document.getElementById("main-zone"), {
+            icon: "alert-triangle",
+            title: "Lỗi tải phiên điểm danh",
+            desc: "Thử tải lại trang giúp mình nhé!",
+          });
+        }
+      }
+
+      renderMemberNav("checkin");
+      Auth.requireRole(["MEMBER"]).then(init).catch(() => {});
+    })();
+  </script>
+</body>
+</html>

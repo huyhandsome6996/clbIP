@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="member">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0B1020">
+  <title>Sự kiện — CLB IP ĐHSP Huế</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* Page-scoped: thẻ sự kiện + vé QR (không đụng css dùng chung) */
+    .ev-card { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+    .ev-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); }
+    .ev-title { font-size: var(--text-md); font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; }
+    .ev-meta { display: flex; align-items: flex-start; gap: 8px; font-size: var(--text-sm); color: var(--tx-secondary); }
+    .ev-meta svg { width: 15px; height: 15px; flex: none; margin-top: 2px; color: var(--c-indigo); }
+    .ev-poster { width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border-color); }
+    .ev-quota { display: flex; flex-direction: column; gap: 6px; }
+    .ev-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+    .ev-wait { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); color: var(--tx-muted); width: 100%;
+      padding: 9px 12px; border-radius: var(--r-control); background: rgba(255,255,255,.04); border: 1px dashed var(--border-color); }
+    .ev-wait svg { width: 15px; height: 15px; flex: none; }
+  </style>
+</head>
+<body>
+  <div class="member-shell">
+    <header class="member-header">
+      <div class="flex items-center gap-3">
+        <span class="avatar" id="me-avatar"></span>
+        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
+      </div>
+      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
+    </header>
+
+    <main>
+      <h1 class="page-title">Sự kiện 🔥</h1>
+      <p class="muted small mt-2">Săn chỗ, rinh vé QR về túi — hẹn gặp bạn ở diễn đàn nha!</p>
+
+      <div class="tabs mt-4" role="tablist" id="ev-tabs">
+        <button class="tab active" data-tab="all" role="tab" aria-selected="true">Tất cả sự kiện</button>
+        <button class="tab" data-tab="mine" role="tab" aria-selected="false">🎟️ Vé của tôi</button>
+      </div>
+
+      <div id="event-list" class="mt-4" aria-live="polite"></div>
+
+      <div class="pagination hidden" id="pager">
+        <span class="page-info" id="page-info"></span>
+        <div class="page-btns">
+          <button class="btn btn-outline btn-sm" id="btn-prev"></button>
+          <button class="btn btn-outline btn-sm" id="btn-next"></button>
+        </div>
+      </div>
+    </main>
+
+    <div style="height:8px"></div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/icons.js"></script>
+  <script src="/frontend/js/toast.js"></script>
+  <script src="/frontend/js/utils.js"></script>
+  <script src="/frontend/js/auth.js"></script>
+  <script src="/frontend/js/celebration.js"></script>
+  <script src="/frontend/assets/qrcode.min.js"></script>
+  <script>
+    "use strict";
+    const esc = Utils.escapeHtml;
+
+    /* ---------- Nav member (CONTRACT §6) ---------- */
+    function renderMemberNav(active) {
+      const items = [
+        ["home", "home", "Nhà", "/frontend/member/home.html"],
+        ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
+        ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
+        ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
+        ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
+        ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
+      ];
+      document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
+        `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
+          ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
+      ).join("");
+      document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
+      document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+      const me = Auth.cachedUser();
+      const av = document.getElementById("me-avatar");
+      if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
+      const nm = document.getElementById("me-name");
+      if (nm && me) nm.textContent = me.ho_ten || me.email;
+      const lv = document.getElementById("me-level");
+      if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
+    }
+
+    /* ---------- Modal helper (CONTRACT §7) ---------- */
+    function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+      backdrop.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+          <div class="modal-head"><h3>${esc(title)}</h3>
+            <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
+          <div class="modal-body">${bodyHTML}</div>
+          ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+        </div>`;
+      const close = () => backdrop.remove();
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+      backdrop.querySelector(".modal-close").addEventListener("click", close);
+      backdrop.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
+      document.body.appendChild(backdrop);
+      if (onMount) onMount(backdrop, close);
+      return { el: backdrop, close };
+    }
+
+    /* ---------- Mapping nhãn ---------- */
+    const STATUS_BADGE = {
+      OPEN_REGISTRATION: { label: "Đang mở đăng ký", tone: "success" },
+      PLANNING:          { label: "Sắp diễn ra",      tone: "warning" },
+      IN_PROGRESS:       { label: "Đang diễn ra",     tone: "info" },
+      COMPLETED:         { label: "Đã kết thúc",      tone: "neutral" },
+      CANCELLED:         { label: "Đã hủy",           tone: "danger" },
+    };
+    const LOAI_LABEL = {
+      WORKSHOP: "Workshop",
+      HACKATHON: "Hackathon",
+      SINH_HOAT_DINH_KY: "Sinh hoạt định kỳ",
+      TEAMBUILDING: "Teambuilding",
+    };
+
+    const state = {
+      events: [], pagination: null, page: 1, tab: "all",
+      tickets: [], ticketMap: new Map(), eventsMap: new Map(),
+    };
+
+    /* ---------- Data ---------- */
+    async function loadEvents(page = 1) {
+      const { items, pagination } = await ApiClient.getList("/events/", { page });
+      state.events = items || [];
+      state.pagination = pagination;
+      state.page = pagination?.page || page;
+      state.eventsMap = new Map(state.events.map((e) => [e.id, e]));
+    }
+    function loadTickets() {
+      // my-tickets trả MẢNG vé (đã test thật); phòng hờ object → lấy .items
+      return ApiClient.get("/events/my-tickets/").then((d) => {
+        state.tickets = Array.isArray(d) ? d : (d?.items || []);
+        state.ticketMap = new Map();
+        state.tickets
+          .filter((t) => t.trang_thai === "REGISTERED")
+          .forEach((t) => { if (!state.ticketMap.has(t.event)) state.ticketMap.set(t.event, t); });
+      });
+    }
+    async function refresh(page = state.page) {
+      await Promise.all([loadEvents(page), loadTickets()]);
+      render();
+    }
+
+    /* ---------- Render ---------- */
+    function visibleEvents() {
+      return state.tab === "mine"
+        ? state.events.filter((e) => state.ticketMap.has(e.id))
+        : state.events;
+    }
+
+    function eventCard(ev) {
+      const st = STATUS_BADGE[ev.trang_thai] || { label: ev.trang_thai, tone: "neutral" };
+      const ticket = state.ticketMap.get(ev.id);
+      const hadCancelled = state.tickets.some((t) => t.event === ev.id && t.trang_thai === "CANCELLED");
+      const loai = LOAI_LABEL[ev.loai_hd] || ev.loai_hd || "";
+
+      const max = Number(ev.so_luong_toi_da) || 0;
+      const reg = Number(ev.registered_count) || 0;
+      const pct = max > 0 ? Math.min(100, Math.round((reg / max) * 100)) : 0;
+      const quotaText = max > 0
+        ? `${Icons.render("users", 15)} <span><strong>${reg}</strong>/${max} người đã đăng ký</span>`
+        : `${Icons.render("users", 15)} <span><strong>${reg}</strong> người đã đăng ký</span>`;
+
+      let actionHTML = "";
+      if (ticket) {
+        actionHTML = `
+          <button class="btn btn-primary" data-act="view" style="flex:1">${Icons.render("qr", 17)} Xem vé QR 🎟️</button>
+          <button class="btn btn-ghost btn-sm" data-act="cancel">${Icons.render("x", 15)} Hủy vé</button>`;
+      } else if (ev.trang_thai === "OPEN_REGISTRATION") {
+        actionHTML = `<button class="btn btn-primary btn-block" data-act="register">${Icons.render("user-plus", 17)} ${hadCancelled ? "Đăng ký lại" : "Đăng ký tham gia"}</button>`;
+      } else if (ev.trang_thai === "PLANNING") {
+        actionHTML = `<div class="ev-wait">${Icons.render("clock", 15)} <span>Sắp mở đăng ký — bật thông báo kẻo lỡ nha!</span></div>`;
+      } else if (ev.trang_thai === "IN_PROGRESS") {
+        actionHTML = `<div class="ev-wait">${Icons.render("zap", 15)} <span>Đang diễn ra — check-in ngay nếu bạn đang ở đó!</span></div>`;
+      } else {
+        actionHTML = `<div class="ev-wait">${Icons.render("flag", 15)} <span>${esc(st.label)} — hẹn bạn ở sự kiện tiếp theo nhé!</span></div>`;
+      }
+
+      return `
+      <article class="glass ev-card" data-event-id="${ev.id}">
+        ${ev.poster ? `<img class="ev-poster" src="${esc(ev.poster)}" alt="Poster ${esc(ev.ten_hoat_dong)}" loading="lazy" onerror="this.remove()">` : ""}
+        <div class="ev-head">
+          <div style="min-width:0">
+            <h3 class="ev-title">${esc(ev.ten_hoat_dong)}</h3>
+            <div class="flex items-center gap-2 mt-2 wrap">
+              ${loai ? `<span class="badge badge-accent">${esc(loai)}</span>` : ""}
+              ${ticket ? Utils.badge("🎟️ Đã có vé", "accent") : ""}
+            </div>
+          </div>
+          ${Utils.badge(st.label, st.tone)}
+        </div>
+        <div class="ev-meta">${Icons.render("calendar", 15)}<span>${esc(Utils.fmtDateTime(ev.thoi_gian_bat_dau))}</span></div>
+        <div class="ev-meta">${Icons.render("map-pin", 15)}<span>${esc(ev.dia_diem || "Sắp cập nhật địa điểm")}</span></div>
+        <div class="ev-quota">
+          <div class="flex items-center gap-2 small" style="color:var(--tx-secondary)">${quotaText}</div>
+          ${max > 0 ? `<div class="progress"><span style="width:${pct}%"></span></div>` : ""}
+        </div>
+        <div class="ev-actions">${actionHTML}</div>
+      </article>`;
+    }
+
+    function render() {
+      const list = document.getElementById("event-list");
+      const listEvents = visibleEvents();
+      list.innerHTML = listEvents.map(eventCard).join("");
+
+      // Trạng thái rỗng cho từng tab
+      if (state.tab === "mine" && listEvents.length === 0) {
+        Utils.empty(list, {
+          icon: "qr",
+          title: "Bạn chưa có vé nào",
+          desc: "Đăng ký sự kiện ở tab “Tất cả sự kiện” để rinh vé QR siêu xịn về túi nha!",
+          actionLabel: "Xem tất cả sự kiện",
+          onAction: () => switchTab("all"),
+        });
+      } else if (state.tab === "all" && listEvents.length === 0) {
+        Utils.empty(list, {
+          icon: "calendar",
+          title: "Chưa có sự kiện nào",
+          desc: "BCN đang ấp ủ điều gì đó cực cháy — quay lại sau nhé!",
+        });
+      }
+
+      // Phân trang (ẩn khi chỉ có 1 trang)
+      const pager = document.getElementById("pager");
+      const tp = state.pagination?.total_pages || 1;
+      if (state.tab === "all" && tp > 1) {
+        pager.classList.remove("hidden");
+        document.getElementById("page-info").textContent = `Trang ${state.page}/${tp}`;
+      } else {
+        pager.classList.add("hidden");
+      }
+    }
+
+    function switchTab(tab) {
+      state.tab = tab;
+      Utils.qsa("#ev-tabs .tab").forEach((b) => {
+        const on = b.dataset.tab === tab;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-selected", String(on));
+      });
+      render();
+    }
+
+    /* ---------- Vé QR (Apple Wallet style) ---------- */
+    function openTicketModal(ticket, ev) {
+      const name = ev?.ten_hoat_dong || ticket.event_ten || "Sự kiện CLB IP";
+      const time = ev?.thoi_gian_bat_dau ? Utils.fmtDateTime(ev.thoi_gian_bat_dau) : "";
+      const place = ev?.dia_diem || "";
+      const me = Auth.cachedUser();
+      openModal({
+        title: "Vé điện tử của bạn",
+        bodyHTML: `
+          <div class="ticket">
+            <div class="ticket-top">
+              <div class="xs bold" style="letter-spacing:.18em; color:#C7D2FE">CLB IP · VÉ ĐIỆN TỬ</div>
+              <h3 class="mt-2" style="font-size:var(--text-lg); line-height:1.3">${esc(name)}</h3>
+              ${time ? `<div class="small mt-2 flex items-center gap-2">${Icons.render("calendar", 14)} ${esc(time)}</div>` : ""}
+              ${place ? `<div class="small mt-2 flex items-center gap-2">${Icons.render("map-pin", 14)} ${esc(place)}</div>` : ""}
+            </div>
+            <div class="ticket-notch"><span class="dash"></span></div>
+            <div class="ticket-qr">
+              <div id="qr-mount" aria-label="Mã QR check-in"></div>
+              <div class="ticket-code" id="ticket-code" title="Bấm để sao chép">${esc(ticket.ma_ve)}</div>
+              <div class="xs muted text-center">${esc(ticket.member_ten || me?.ho_ten || "")} · trình mã này ở cổng check-in nhé!</div>
+            </div>
+          </div>`,
+        footerHTML: `<button class="btn btn-primary" data-close>Đã hiểu, giữ vé kỹ nha!</button>`,
+        onMount(backdrop) {
+          const mount = backdrop.querySelector("#qr-mount");
+          try {
+            new QRCode(mount, { text: ticket.ma_ve, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+          } catch (e) {
+            console.error("QR render fail:", e);
+            Toast.warning("Không vẽ được mã QR — xuất trình mã chữ cho BCN nhé!");
+          }
+          backdrop.querySelector("#ticket-code").addEventListener("click", () => {
+            navigator.clipboard?.writeText(ticket.ma_ve)
+              .then(() => Toast.success("Đã sao chép mã vé!"))
+              .catch(() => {});
+          });
+        },
+      });
+    }
+
+    /* ---------- Hành động ---------- */
+    async function onRegister(eventId, btn) {
+      const undo = Utils.btnLoading(btn, "Đang giữ chỗ...");
+      try {
+        const reg = await ApiClient.post(`/events/${eventId}/register/`);
+        Toast.success("Đăng ký thành công! 🎉 Vé của bạn đây!");
+        try { await loadTickets(); } catch (_) { /* giữ reg vừa nhận */ }
+        if (reg) { state.tickets.unshift(reg); if (reg.trang_thai === "REGISTERED") state.ticketMap.set(reg.event, reg); }
+        render();
+        openTicketModal(reg || { ma_ve: "", member_ten: Auth.cachedUser()?.ho_ten }, state.eventsMap.get(eventId));
+        loadEvents(state.page).then(render).catch(() => {}); // cập nhật registered_count
+      } catch (err) {
+        Toast.error(err.message); // 409 full / trùng vé / chưa mở đăng ký
+      } finally {
+        undo();
+      }
+    }
+
+    async function onCancel(eventId, btn) {
+      if (!confirm("Hủy vé thì chỗ ngồi sẽ nhường cho bạn khác. Chắc chưa đó? 🥺")) return;
+      const undo = Utils.btnLoading(btn, "Đang hủy...");
+      try {
+        await ApiClient.post(`/events/${eventId}/cancel-registration/`);
+        Toast.success("Đã hủy vé. Hẹn gặp bạn ở sự kiện sau nhé!");
+        await refresh();
+      } catch (err) {
+        Toast.error(err.message);
+      } finally {
+        undo();
+      }
+    }
+
+    /* ---------- Khởi tạo ---------- */
+    async function init() {
+      const list = document.getElementById("event-list");
+      Utils.skeleton(list, 3);
+      try {
+        await Promise.all([loadEvents(1), loadTickets()]);
+      } catch (err) {
+        Toast.error(err.message || "Không tải được sự kiện");
+        Utils.empty(list, { icon: "alert-triangle", title: "Không tải được sự kiện", desc: "Kiểm tra mạng rồi thử lại nha!" });
+        return;
+      }
+      render();
+
+      document.getElementById("ev-tabs").addEventListener("click", (e) => {
+        const tab = e.target.closest(".tab");
+        if (tab) switchTab(tab.dataset.tab);
+      });
+
+      // Delegation: register / view / cancel
+      list.addEventListener("click", (e) => {
+        const act = e.target.closest("[data-act]");
+        if (!act) return;
+        const card = act.closest("[data-event-id]");
+        if (!card) return;
+        const id = Number(card.dataset.eventId);
+        if (act.dataset.act === "register") onRegister(id, act);
+        else if (act.dataset.act === "view") {
+          const ticket = state.ticketMap.get(id);
+          if (ticket) openTicketModal(ticket, state.eventsMap.get(id));
+        }
+        else if (act.dataset.act === "cancel") onCancel(id, act);
+      });
+
+      document.getElementById("btn-prev").innerHTML = `${Icons.render("chevron-left", 15)} Trước`;
+      document.getElementById("btn-next").innerHTML = `Sau ${Icons.render("chevron-right", 15)}`;
+      document.getElementById("btn-prev").addEventListener("click", () => {
+        if (state.page > 1) { Utils.skeleton(list, 3); loadEvents(state.page - 1).then(render).catch((err) => Toast.error(err.message)); }
+      });
+      document.getElementById("btn-next").addEventListener("click", () => {
+        const tp = state.pagination?.total_pages || 1;
+        if (state.page < tp) { Utils.skeleton(list, 3); loadEvents(state.page + 1).then(render).catch((err) => Toast.error(err.message)); }
+      });
+    }
+
+    /* Guard chạy xong mới khởi tạo (CONTRACT §1) */
+    (async () => {
+      try { await Auth.requireRole(["MEMBER"]); } catch { return; }
+      renderMemberNav("events");
+      init();
+    })();
+  </script>
+</body>
+</html>

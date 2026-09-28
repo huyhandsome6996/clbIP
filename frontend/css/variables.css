@@ -1,0 +1,143 @@
+/* ============================================================
+   CLB IP ĐHSP Huế 2.0 — Design Tokens (variables.css)
+   Hai theme song song, khóa theo trang:
+   - [data-theme="admin"]  : Classic Navy #0F4C81 — tin cậy, thể chế
+   - [data-theme="member"] : Cyber-Glass tối — Indigo #6366F1 / Violet #8B5CF6
+   Quy tắc bo góc (SHAPE CONSISTENCY LOCK):
+   cards = 16px · controls (button/input/select) = 10px · badges/pills = full
+   Z-INDEX SCALE: sidebar 100 · dropdown 200 · modal 300 · toast 400 · confetti 500
+   ============================================================ */
+
+:root {
+  /* ---- Brand palette (dùng chung) ---- */
+  --c-indigo: #6366F1;
+  --c-indigo-strong: #4F46E5;
+  --c-indigo-soft: #EEF0FE;
+  --c-violet: #8B5CF6;
+  --c-violet-strong: #7C3AED;
+  --c-navy: #0F4C81;
+  --c-navy-deep: #0A3A64;
+  --c-navy-ink: #082C4D;
+
+  /* ---- Semantic (giá trị chung, override theo theme bên dưới) ---- */
+  --c-success: #16A34A;
+  --c-success-soft: #DCFCE7;
+  --c-danger: #DC2626;
+  --c-danger-soft: #FEE2E2;
+  --c-warning: #D97706;
+  --c-warning-soft: #FEF3C7;
+  --c-info: #0284C7;
+  --c-info-soft: #E0F2FE;
+
+  /* ---- Radii (SHAPE LOCK) ---- */
+  --r-card: 16px;
+  --r-control: 10px;
+  --r-pill: 999px;
+
+  /* ---- Spacing scale (4pt) ---- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px;
+  --s-12: 48px;--s-16: 64px;--s-20: 80px;
+
+  /* ---- Typography ---- */
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --text-xs: 0.75rem;    /* 12 */
+  --text-sm: 0.8125rem;  /* 13 */
+  --text-base: 0.9375rem;/* 15 */
+  --text-md: 1rem;       /* 16 */
+  --text-lg: 1.125rem;   /* 18 */
+  --text-xl: 1.375rem;   /* 22 */
+  --text-2xl: 1.75rem;   /* 28 */
+  --text-3xl: 2.25rem;   /* 36 */
+  --text-4xl: 3rem;      /* 48 */
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 420ms;
+
+  /* ---- Z-index scale ---- */
+  --z-sidebar: 100;
+  --z-topbar: 100;
+  --z-dropdown: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-confetti: 500;
+}
+
+/* ============================================================
+   THEME: ADMIN — Classic Navy trên nền sáng
+   ============================================================ */
+[data-theme="admin"] {
+  color-scheme: light;
+
+  --bg-page: #F3F6FA;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #EDF2F8;
+  --bg-sidebar: var(--c-navy);
+  --bg-sidebar-active: rgba(255, 255, 255, 0.12);
+
+  --tx-primary: #12283E;
+  --tx-secondary: #45586C;
+  --tx-muted: #6B7E92;
+  --tx-inverse: #F7FAFD;
+  --tx-sidebar: #C9DAEB;
+
+  --border-color: #DCE5EF;
+  --border-strong: #C3D2E3;
+
+  --c-accent: var(--c-navy);
+  --c-accent-strong: var(--c-navy-deep);
+  --c-accent-soft: #E3EEF7;
+  --c-accent-contrast: #FFFFFF;
+
+  /* Shadow tint theo navy */
+  --shadow-sm: 0 1px 2px rgba(15, 76, 129, 0.06);
+  --shadow-md: 0 4px 14px rgba(15, 76, 129, 0.10);
+  --shadow-lg: 0 12px 34px rgba(15, 76, 129, 0.16);
+  --shadow-modal: 0 24px 64px rgba(8, 44, 77, 0.28);
+
+  --topbar-h: 64px;
+  --sidebar-w: 248px;
+}
+
+/* ============================================================
+   THEME: MEMBER — Cyber-Glass tối (Gen Z)
+   ============================================================ */
+[data-theme="member"] {
+  color-scheme: dark;
+
+  --bg-page: #0B1020;
+  --bg-page-2: #101736;
+  --bg-surface: #151C38;
+  --bg-subtle: #1B2447;
+  --bg-sidebar: rgba(13, 18, 40, 0.86);
+
+  --tx-primary: #F2F4FF;
+  --tx-secondary: #B9C0E4;
+  --tx-muted: #8189B5;
+  --tx-inverse: #0B1020;
+  --tx-sidebar: #C9CEEF;
+
+  --border-color: rgba(139, 146, 217, 0.22);
+  --border-strong: rgba(139, 146, 217, 0.40);
+
+  --c-accent: var(--c-indigo);
+  --c-accent-strong: var(--c-indigo-strong);
+  --c-accent-soft: rgba(99, 102, 241, 0.16);
+  --c-accent-contrast: #FFFFFF;
+
+  --c-violet-soft: rgba(139, 92, 246, 0.16);
+
+  /* Shadows tinted theo nền tối (glow nhẹ) */
+  --shadow-sm: 0 1px 2px rgba(3, 6, 20, 0.5);
+  --shadow-md: 0 6px 20px rgba(3, 6, 20, 0.45);
+  --shadow-lg: 0 16px 44px rgba(3, 6, 20, 0.55);
+  --shadow-glow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 8px 30px rgba(99, 102, 241, 0.28);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.6);
+
+  --topbar-h: 60px;
+  --bottomnav-h: 64px;
+}

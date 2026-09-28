@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="member">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảng vàng — CLB IP ĐHSP Huế</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ---- page-scoped styles (không đụng css dùng chung) ---- */
+    .section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: var(--text-sm); font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--tx-muted); margin: 0 0 var(--s-3);
+    }
+    .section-title svg { color: var(--c-indigo); flex: none; }
+    .glass-card { padding: var(--s-5); }
+
+    /* podium: đặt slot 2-1-3 (nhì – nhất – ba) */
+    .podium .pillar { margin-top: var(--s-2); }
+    .podium .podium-slot .avatar { width: 46px; height: 46px; font-size: var(--text-md); }
+
+    /* bảng hạng 4+ */
+    .rank-row {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: 10px 8px; border-radius: var(--r-control);
+      border-bottom: 1px dashed var(--border-color);
+      transition: background var(--dur-fast);
+    }
+    .rank-row:last-child { border-bottom: 0; }
+    .rank-row.me-row { background: rgba(99,102,241,0.14); border: 1px solid rgba(99,102,241,0.45); }
+    .rank-no {
+      width: 28px; flex: none; text-align: center;
+      font-weight: 800; font-size: var(--text-sm);
+      color: var(--tx-muted); font-variant-numeric: tabular-nums;
+    }
+    .rank-name { flex: 1; min-width: 0; font-weight: 600; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rank-xp { flex: none; font-weight: 800; font-size: var(--text-sm); color: #A5B4FC; font-variant-numeric: tabular-nums; }
+
+    /* thẻ vị trí của tôi */
+    .my-rank-row { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); padding: 8px 0; font-size: var(--text-sm); }
+    .my-rank-row .val { font-weight: 800; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="member-shell">
+    <header class="member-header">
+      <div class="flex items-center gap-3">
+        <span class="avatar" id="me-avatar"></span>
+        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
+      </div>
+      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
+    </header>
+
+    <section>
+      <h1 class="page-title" style="margin:0 0 4px">Bảng vàng CLB 👑</h1>
+      <p class="small muted" style="margin:0" id="sub-title">Tụ điểm XP — ai leo top nhanh nhất?</p>
+    </section>
+
+    <!-- BỌC VINH DANH -->
+    <section>
+      <h2 class="section-title"><span id="ic-trophy"></span>Bục vinh danh Top 3</h2>
+      <div class="glass glass-card" id="podium-box">
+        <div class="skeleton-row">
+          <div class="skeleton skeleton-avatar"></div>
+          <div class="skeleton-lines"><div class="skeleton" style="width:55%"></div><div class="skeleton"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VỊ TRÍ CỦA TÔI -->
+    <section id="my-zone" hidden>
+      <!-- thẻ vị trí của tôi chèn bởi JS -->
+    </section>
+
+    <!-- BẢNG XẾP HẠNG 4+ -->
+    <section id="list-zone" hidden>
+      <h2 class="section-title"><span id="ic-list"></span>Xếp hạng 4 → 10</h2>
+      <div class="glass glass-card" id="rank-list"></div>
+    </section>
+
+    <div style="height:8px"></div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/icons.js"></script>
+  <script src="/frontend/js/toast.js"></script>
+  <script src="/frontend/js/utils.js"></script>
+  <script src="/frontend/js/auth.js"></script>
+  <script src="/frontend/js/celebration.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      /* ================= Nav member (FRONTEND_CONTRACT §6) ================= */
+      function renderMemberNav(active) {
+        const items = [
+          ["home", "home", "Nhà", "/frontend/member/home.html"],
+          ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
+          ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
+          ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
+          ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
+          ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
+        ];
+        document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
+          `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
+            ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
+        ).join("");
+        document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
+        document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+        const me = Auth.cachedUser();
+        const av = document.getElementById("me-avatar");
+        if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
+        const nm = document.getElementById("me-name");
+        if (nm && me) nm.textContent = me.ho_ten || me.email;
+        const lv = document.getElementById("me-level");
+        if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
+      }
+
+      /* ================= Avatar helper ================= */
+      function avatarHtml(entry) {
+        const name = entry.name || "?";
+        if (entry.avatar) {
+          return `<img src="${Utils.escapeHtml(entry.avatar)}" alt="" loading="lazy">`;
+        }
+        return Utils.escapeHtml(Utils.initials(name));
+      }
+
+      /* ================= BỌC VINH DANH (Top 1-2-3) ================= */
+      function slotHtml(entry, place, pillarCls) {
+        if (!entry) {
+          return `<div class="podium-slot ${place}"><div class="pillar ${pillarCls}">—</div></div>`;
+        }
+        const isFirst = place === "first";
+        return `
+          <div class="podium-slot ${place}">
+            ${isFirst ? `<span class="crown">${Icons.render("crown", 22)}</span>` : ""}
+            <span class="avatar">${avatarHtml(entry)}</span>
+            <div class="podium-name">${Utils.escapeHtml(entry.name)}</div>
+            <div class="podium-xp">+${Utils.fmtNum(entry.xp)} XP</div>
+            <div class="pillar ${pillarCls}">${entry.rank ?? ""}</div>
+          </div>`;
+      }
+
+      function renderPodium(top10) {
+        const box = document.getElementById("podium-box");
+        if (!top10.length) {
+          Utils.empty(box, {
+            icon: "trophy",
+            title: "Bảng vàng còn trống",
+            desc: "Chưa có ai ghi điểm XP — check-in thật nhiều để lên bảng đầu tiên nhé! 🚀",
+          });
+          return;
+        }
+        /* DOM: nhì – nhất – ba (giữa cao nhất) */
+        box.innerHTML = `
+          <div class="podium">
+            ${slotHtml(top10[1], "second", "pillar-2")}
+            ${slotHtml(top10[0], "first", "pillar-1")}
+            ${slotHtml(top10[2], "third", "pillar-3")}
+          </div>`;
+      }
+
+      /* ================= THẺ VỊ TRÍ CỦA TÔI ================= */
+      function renderMyPosition(myPos, top10, totalMembers) {
+        const zone = document.getElementById("my-zone");
+        zone.hidden = false;
+
+        /* BCN/ADMIN không có my_position */
+        if (!myPos) {
+          zone.innerHTML = `
+            <div class="glass glass-card text-center">
+              <div class="mb-2">${Icons.render("shield", 26)}</div>
+              <div class="bold mb-2">Tài khoản BCN không tham gia xếp hạng</div>
+              <div class="xs muted">Bạn vẫn xem được bảng vàng để động viên các thành viên nhé! 💜</div>
+            </div>`;
+          return;
+        }
+
+        const rank = myPos.rank ?? "—";
+        const inTop = !!myPos.in_top_k;
+        const gap = Number(myPos.xp_gap_to_top_k || 0);
+        const thresholdXp = top10.length === 10 ? Number(top10[9].xp || 0) : (top10.length ? Number(top10[top10.length - 1].xp || 0) : 0);
+
+        /* % tiến độ chạm mốc Top 10 = threshold / (threshold + gap) */
+        let pct = 100;
+        if (!inTop) {
+          pct = thresholdXp + gap > 0 ? (thresholdXp / (thresholdXp + gap)) * 100 : 0;
+        }
+
+        const first = top10.find((e) => e.rank === rank);
+        const myXp = first?.xp ?? (Auth.cachedUser()?.xp_points ?? null);
+
+        zone.innerHTML = `
+          <div class="glass glass-accent glass-card">
+            <div class="flex items-center justify-between gap-3 wrap mb-4">
+              <div class="bold" style="font-size:var(--text-lg)">${inTop ? "Bạn đang trong Top 10 🎉" : "Vị trí của bạn 💪"}</div>
+              ${inTop ? Utils.badge(`Hạng #${Utils.escapeHtml(String(rank))}`, "success") : Utils.badge(`Hạng #${Utils.escapeHtml(String(rank))}`, "accent")}
+            </div>
+            <div class="my-rank-row"><span class="muted">Tổng thành viên</span><span class="val">${Utils.fmtNum(totalMembers)} người</span></div>
+            ${myXp !== null ? `<div class="my-rank-row"><span class="muted">XP của bạn</span><span class="val" style="color:#A5B4FC">${Utils.fmtNum(myXp)} XP</span></div>` : ""}
+            ${inTop
+              ? `<div class="my-rank-row"><span class="muted">Khoảng cách Top 10</span><span class="val" style="color:#7EE2A0">Bạn đã ở trong Top 10 rồi!</span></div>`
+              : `<div class="my-rank-row"><span class="muted">Mốc Top 10</span><span class="val">${Utils.fmtNum(thresholdXp)} XP</span></div>
+                 <div class="progress mt-2 mb-2"><span style="width:${Math.min(pct, 100).toFixed(1)}%"></span></div>
+                 <div class="small bold" style="color:#FCD34D">Còn ${Utils.fmtNum(gap)} XP nữa để vào Top 10 💪</div>`}
+          </div>`;
+      }
+
+      /* ================= BẢNG XẾP HẠNG 4 → 10 ================= */
+      function renderList(top10, myPos) {
+        const zone = document.getElementById("list-zone");
+        const list = top10.slice(3);
+        if (!top10.length || !list.length) {
+          if (top10.length) return; /* chỉ có 1-3 người: không cần bảng 4+ */
+          zone.hidden = true;
+          return;
+        }
+        const myName = (Auth.cachedUser()?.ho_ten || "").trim().toLowerCase();
+        const myRank = myPos?.rank ?? -1;
+
+        zone.hidden = false;
+        document.getElementById("rank-list").innerHTML = list.map((e) => {
+          const isMe = e.rank === myRank || (myName && String(e.name || "").trim().toLowerCase() === myName);
+          return `
+            <div class="rank-row${isMe ? " me-row" : ""}">
+              <span class="rank-no">#${Utils.escapeHtml(String(e.rank))}</span>
+              <span class="avatar avatar-sm">${avatarHtml(e)}</span>
+              <span class="rank-name">${Utils.escapeHtml(e.name)}${isMe ? ' <span class="xs bold" style="color:#B4B8FF">(bạn)</span>' : ""}</span>
+              <span class="rank-xp">${Utils.fmtNum(e.xp)} XP</span>
+            </div>`;
+        }).join("");
+      }
+
+      /* ================= INIT ================= */
+      async function init() {
+        document.getElementById("ic-trophy").innerHTML = Icons.render("trophy", 15);
+        document.getElementById("ic-list").innerHTML = Icons.render("bar-chart", 15);
+        const box = document.getElementById("podium-box");
+        Utils.skeleton(box, 3, { avatar: true });
+        try {
+          const data = await ApiClient.get("/gamification/leaderboard/");
+          const top10 = Array.isArray(data?.top_10) ? data.top_10 : [];
+          const myPos = data?.my_position ?? null;
+          const totalMembers = Number(data?.total_members || 0);
+          document.getElementById("sub-title").textContent =
+            `${Utils.fmtNum(totalMembers)} thành viên đang đua XP — luôn theo dõi bảng vàng để không bị bỏ lại phía sau nhé! 🏁`;
+          renderPodium(top10);
+          renderMyPosition(myPos, top10, totalMembers);
+          renderList(top10, myPos);
+        } catch (err) {
+          Toast.error(err?.message || "Không tải được bảng xếp hạng");
+          Utils.empty(box, { icon: "alert-triangle", title: "Lỗi tải bảng xếp hạng", desc: "Thử tải lại trang giúp mình nhé!" });
+        }
+      }
+
+      renderMemberNav("leaderboard");
+      Auth.requireRole(["MEMBER"]).then(init).catch(() => {});
+    })();
+  </script>
+</body>
+</html>

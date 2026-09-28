@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.exceptions import NotFoundException
+from apps.common.exceptions import NotFoundException, ValidationException
 from apps.events.models import ActivityEvent, EventBudgetDetail, EventCommunication, EventRegistration
 from apps.events.serializers import (
     ActivityEventCreateUpdateSerializer,
@@ -242,6 +242,45 @@ class EventTaskListCreateView(APIView):
 
 
 # ======================================================================
+# PATCH /api/v1/events/<id>/tasks/<task_id>/ — cập nhật trạng thái task
+# (đánh dấu hoàn thành → cộng XP cho người phụ trách qua complete_task)
+# ======================================================================
+class EventTaskDetailView(APIView):
+    """Cập nhật task (đủ điều kiện DAG mới được tích — validate ở frontend + service)."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Cập nhật task (đánh dấu hoàn thành / mở lại)",
+        description="Body: {is_completed: bool}. is_completed=true cộng XP người phụ trách.",
+        request=None,
+        responses=EventTaskSerializer,
+        tags=["Events"],
+    )
+    def patch(self, request, pk: int, task_id: int):
+        task = EventTaskService.get_task_or_404(task_id, event_id=pk)
+        is_completed = request.data.get("is_completed")
+        if not isinstance(is_completed, bool):
+            raise ValidationException("Trường 'is_completed' bắt buộc là boolean.")
+
+        if is_completed and not task.is_completed:
+            task = EventTaskService.complete_task(task_id)
+        elif is_completed is False and task.is_completed:
+            task.is_completed = False
+            task.save(update_fields=["is_completed", "updated_at"])
+
+        data = EventTaskSerializer(task).data
+        return Response(
+            {
+                "success": True,
+                "data": data,
+                "message": "Đã cập nhật trạng thái task",
+                "errors": None,
+            }
+        )
+
+
+# ======================================================================
 # GET /api/v1/events/<id>/tasks/topological-order/
 # ======================================================================
 class TaskOrderView(APIView):
@@ -266,6 +305,38 @@ class TaskOrderView(APIView):
                 "success": True,
                 "data": data,
                 "message": "Lấy thứ tự thực thi (topological order) thành công",
+                "errors": None,
+            }
+        )
+
+
+# ======================================================================
+# GET /api/v1/events/my-tickets/ — vé điện tử của CHÍNH TÔI (MEMBER)
+# ======================================================================
+class MyTicketsView(APIView):
+    """Vé điện tử của người gọi — phục vụ trang member/events.html render QR."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Vé sự kiện của tôi",
+        description="Danh sách EventRegistration của chính người gọi (mới nhất trước).",
+        responses=EventRegistrationSerializer(many=True),
+        tags=["Events"],
+    )
+    def get(self, request):
+        member = EventService.get_member_profile_or_forbidden(request.user)
+        tickets = (
+            EventRegistration.objects.filter(member=member)
+            .select_related("event")
+            .order_by("-created_at")
+        )
+        data = EventRegistrationSerializer(tickets, many=True).data
+        return Response(
+            {
+                "success": True,
+                "data": data,
+                "message": "Lấy vé của tôi thành công",
                 "errors": None,
             }
         )

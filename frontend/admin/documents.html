@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="admin">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tài liệu — Quản trị CLB IP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ===== Style riêng trang Tài liệu ===== */
+    .page-toolbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+      margin-bottom: var(--s-5);
+    }
+    .page-toolbar h2 { font-size: var(--text-xl); letter-spacing: -0.02em; }
+    .page-toolbar .sub { color: var(--tx-muted); font-size: var(--text-sm); margin-top: 2px; }
+    .toolbar-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; flex: 1; justify-content: flex-end; min-width: 280px; }
+
+    .doc-title { font-weight: 700; color: var(--tx-primary); font-size: var(--text-sm); }
+    .doc-desc { color: var(--tx-muted); font-size: var(--text-xs); margin-top: 2px; max-width: 380px; }
+    .tag-chip {
+      display: inline-block;
+      border: 1px solid var(--border-color);
+      background: var(--bg-subtle);
+      border-radius: var(--r-pill);
+      padding: 1px 8px;
+      font-size: var(--text-xs);
+      color: var(--tx-secondary);
+      margin: 3px 4px 0 0;
+    }
+    .ft-size { display: block; font-size: var(--text-xs); color: var(--tx-muted); margin-top: 2px; }
+    .actions-cell { display: flex; gap: 4px; justify-content: flex-end; }
+    .actions-cell .btn { padding: 7px; }
+    .actions-cell .btn svg { width: 16px; height: 16px; }
+
+    .preview-frame {
+      width: 100%;
+      height: min(62dvh, 560px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--r-control);
+      background: #fff;
+    }
+    .preview-loading { display: grid; place-items: center; min-height: 200px; color: var(--tx-muted); font-size: var(--text-sm); }
+
+    .ac-empty { padding: 12px 14px; font-size: var(--text-sm); color: var(--tx-muted); text-align: center; }
+    .file-input-zone {
+      border: 1.5px dashed var(--border-strong);
+      border-radius: var(--r-control);
+      padding: var(--s-4);
+      text-align: center;
+      color: var(--tx-muted);
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+    }
+    .file-input-zone:hover { border-color: var(--c-accent); background: var(--c-accent-soft); }
+    .file-input-zone.has-file { border-color: var(--c-success); color: var(--c-success); font-weight: 600; }
+    .file-input-zone input[type="file"] { display: none; }
+    .file-input-zone svg { width: 26px; height: 26px; display: block; margin: 0 auto 6px; }
+  </style>
+</head>
+<body>
+<div class="admin-shell" id="shell">
+  <aside class="admin-sidebar">
+    <div class="side-brand">
+      <span class="logo" id="brand-logo"></span>
+      <div><div class="t1">CLB IP ĐHSP Huế</div><div class="t2">Quản trị 2.0</div></div>
+    </div>
+    <nav class="side-nav" id="side-nav"><!-- JS render nav --></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost w-100" id="btn-logout" style="color:var(--tx-sidebar)">Đăng xuất</button>
+    </div>
+  </aside>
+  <div class="scrim hidden" id="scrim"></div>
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="flex items-center gap-3">
+        <button class="btn btn-ghost burger" id="btn-burger" aria-label="Mở menu"><span id="burger-icon"></span></button>
+        <h1 style="font-size:var(--text-lg)">Kho tài liệu</h1>
+      </div>
+      <div class="flex items-center gap-3" id="topbar-user"><!-- avatar + tên --></div>
+    </header>
+    <main class="admin-content">
+      <div class="page-toolbar">
+        <div>
+          <h2>Tài liệu học thuật</h2>
+          <p class="sub">Kho báu tài liệu của CLB — tìm kiếm tức thời bằng cây Tiền tố (Trie).</p>
+        </div>
+        <div class="toolbar-actions">
+          <div class="autocomplete" style="flex:1;max-width:380px;min-width:220px">
+            <div class="searchbar">
+              <span id="search-icon"></span>
+              <input class="form-input" id="doc-search" type="text" autocomplete="off"
+                     placeholder="Tìm tài liệu theo tên hoặc tag..." aria-label="Tìm tài liệu">
+            </div>
+            <div class="ac-list hidden" id="ac-list"></div>
+          </div>
+          <select class="form-select" id="filter-nhom" style="width:auto" aria-label="Lọc theo nhóm">
+            <option value="">Tất cả nhóm</option>
+            <option value="CHUYEN_MON">Chuyên môn</option>
+            <option value="NGHIEP_VU">Nghiệp vụ</option>
+            <option value="KY_NANG">Kỹ năng</option>
+          </select>
+          <button class="btn btn-primary" id="btn-upload"><span id="btn-upload-icon"></span>Tải lên</button>
+        </div>
+      </div>
+
+      <div id="docs-table-wrap"></div>
+      <div id="docs-pagination" class="pagination"></div>
+    </main>
+  </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/icons.js"></script>
+<script src="/frontend/js/toast.js"></script>
+<script src="/frontend/js/utils.js"></script>
+<script src="/frontend/js/auth.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const NHOM = {
+    CHUYEN_MON: ["info", "Chuyên môn"],
+    NGHIEP_VU: ["accent", "Nghiệp vụ"],
+    KY_NANG: ["warning", "Kỹ năng"],
+  };
+  const FILE_TYPES = {
+    pdf: ["danger", "PDF"],
+    docx: ["info", "DOCX"],
+    pptx: ["warning", "PPTX"],
+    xlsx: ["success", "XLSX"],
+    png: ["accent", "PNG"],
+    jpg: ["accent", "JPG"],
+    jpeg: ["accent", "JPEG"],
+  };
+  const ACCEPT_EXT = ["pdf", "docx", "pptx", "xlsx", "png", "jpg", "jpeg"];
+  const MAX_SIZE = 15 * 1024 * 1024; // 15MB — khớp hardening backend
+
+  const state = {
+    items: [],
+    pagination: null,
+    page: 1,
+    nhom: "",
+    search: "",
+  };
+
+  /* ================= Helper chung ================= */
+  function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${Utils.escapeHtml(title)}">
+        <div class="modal-head"><h3>${Utils.escapeHtml(title)}</h3>
+          <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
+        <div class="modal-body">${bodyHTML}</div>
+        ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+      </div>`;
+    const close = () => {
+      backdrop.remove();
+      if (onMount && onMount._onClose) onMount._onClose();
+    };
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+    backdrop.querySelector(".modal-close").addEventListener("click", close);
+    document.body.appendChild(backdrop);
+    if (onMount) onMount(backdrop, close);
+    return { el: backdrop, close };
+  }
+
+  function nhomBadge(code) {
+    const [tone, label] = NHOM[code] || ["neutral", code || "—"];
+    return Utils.badge(label, tone);
+  }
+  function fileTypeBadge(code) {
+    const [tone, label] = FILE_TYPES[String(code || "").toLowerCase()] || ["neutral", (code || "?").toUpperCase()];
+    return Utils.badge(label, tone);
+  }
+  /** bytes → "12.4 KB" / "3.2 MB" */
+  function fmtSize(bytes) {
+    const b = Number(bytes);
+    if (isNaN(b) || b < 0) return "—";
+    if (b < 1024) return b + " B";
+    if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+    return (b / 1048576).toFixed(1) + " MB";
+  }
+  /** Chuẩn hóa URL file (relative /media/... → tuyệt đối cùng origin) */
+  function fileUrl(f) {
+    if (!f) return "";
+    if (/^https?:\/\//i.test(f)) return f;
+    const origin = location.protocol.startsWith("http")
+      ? location.origin
+      : String(window.API_BASE || "").replace(/\/api\/v1\/?$/, "");
+    return origin + (f.startsWith("/") ? "" : "/") + f;
+  }
+  function downloadName(doc) {
+    const base = String(doc.tieu_de || "tai-lieu").replace(/[\\/:*?"<>|]+/g, " ").trim();
+    const ext = (doc.file_type || String(doc.file || "").split(".").pop() || "").toLowerCase();
+    return ext ? `${base}.${ext}` : base;
+  }
+  function renderPagination(el, pg, onPage) {
+    if (!el) return;
+    if (!pg || !pg.total_pages || pg.total_pages <= 1) { el.innerHTML = ""; return; }
+    el.innerHTML = `
+      <span class="page-info">Trang ${pg.page}/${pg.total_pages} · ${Utils.fmtNum(pg.total_items)} tài liệu</span>
+      <div class="page-btns">
+        <button class="btn btn-outline btn-sm" id="pg-prev" ${pg.page <= 1 ? "disabled" : ""}>${Icons.render("chevron-left", 15)} Trước</button>
+        <button class="btn btn-outline btn-sm" id="pg-next" ${pg.page >= pg.total_pages ? "disabled" : ""}>Sau ${Icons.render("chevron-right", 15)}</button>
+      </div>`;
+    const prev = el.querySelector("#pg-prev");
+    const next = el.querySelector("#pg-next");
+    if (prev) prev.addEventListener("click", () => onPage(pg.page - 1));
+    if (next) next.addEventListener("click", () => onPage(pg.page + 1));
+  }
+
+  /* ================= Bảng tài liệu ================= */
+  function rowHTML(d) {
+    const tags = String(d.tags || "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return `<tr>
+      <td>
+        <div class="doc-title">${Utils.escapeHtml(d.tieu_de)}</div>
+        ${d.mo_ta ? `<div class="doc-desc">${Utils.escapeHtml(d.mo_ta)}</div>` : ""}
+        ${tags.length ? `<div>${tags.map((t) => `<span class="tag-chip">${Utils.escapeHtml(t)}</span>`).join("")}</div>` : ""}
+      </td>
+      <td>${nhomBadge(d.nhom)}</td>
+      <td>
+        ${fileTypeBadge(d.file_type)}
+        <span class="ft-size">${fmtSize(d.file_size)}</span>
+      </td>
+      <td class="num small">${Utils.fmtNum(d.luot_tai ?? 0)}</td>
+      <td class="small">${Utils.escapeHtml(d.uploaded_by_ho_ten || "—")}</td>
+      <td class="small muted">${Utils.fmtDate(d.created_at)}</td>
+      <td>
+        <div class="actions-cell">
+          <button class="btn btn-outline btn-sm" data-act="download" data-id="${d.id}" title="Tải xuống" aria-label="Tải xuống ${Utils.escapeHtml(d.tieu_de)}">${Icons.render("download", 15)}</button>
+          <button class="btn btn-outline btn-sm" data-act="preview" data-id="${d.id}" title="Xem trước" aria-label="Xem trước ${Utils.escapeHtml(d.tieu_de)}">${Icons.render("eye", 15)}</button>
+          <button class="btn btn-outline btn-sm" data-act="delete" data-id="${d.id}" title="Xóa" aria-label="Xóa ${Utils.escapeHtml(d.tieu_de)}" style="color:var(--c-danger);border-color:var(--c-danger)">${Icons.render("trash", 15)}</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  async function loadDocs() {
+    const wrap = document.getElementById("docs-table-wrap");
+    const pager = document.getElementById("docs-pagination");
+    Utils.skeleton(wrap, 5);
+    try {
+      const params = { page: state.page };
+      if (state.nhom) params.nhom = state.nhom;
+      if (state.search) params.search = state.search;
+      const { items, pagination } = await ApiClient.getList("/documents/", params);
+      state.items = items;
+      state.pagination = pagination;
+      if (!items.length) {
+        Utils.empty(wrap, {
+          icon: "book-open",
+          title: state.search || state.nhom ? "Không tìm thấy tài liệu phù hợp" : "Kho tài liệu đang trống",
+          desc: state.search || state.nhom
+            ? "Thử từ khóa khác hoặc bỏ bộ lọc nhóm."
+            : "Tải lên tài liệu đầu tiên để cả CLB cùng học tập và chia sẻ.",
+          actionLabel: state.search || state.nhom ? "" : "Tải lên tài liệu",
+          onAction: state.search || state.nhom ? null : openUploadModal,
+        });
+        pager.innerHTML = "";
+        return;
+      }
+      wrap.innerHTML = `
+        <div class="table-wrap"><table class="table">
+          <thead><tr>
+            <th style="width:32%">Tài liệu</th><th>Nhóm</th><th>Loại tệp</th>
+            <th class="num">Lượt tải</th><th>Người chia sẻ</th><th>Ngày tạo</th><th class="actions" style="width:1%"></th>
+          </tr></thead>
+          <tbody>${items.map(rowHTML).join("")}</tbody>
+        </table></div>`;
+      Utils.qsa("[data-act]", wrap).forEach((btn) => {
+        const id = Number(btn.dataset.id);
+        const doc = items.find((d) => d.id === id);
+        btn.addEventListener("click", () => {
+          const act = btn.dataset.act;
+          if (act === "download") onDownload(doc, btn);
+          else if (act === "preview") onPreview(doc, btn);
+          else onDelete(doc);
+        });
+      });
+      renderPagination(pager, pagination, (p) => { state.page = p; loadDocs(); });
+    } catch (err) {
+      console.error(err);
+      Utils.empty(wrap, {
+        icon: "alert-triangle",
+        title: "Không tải được danh sách tài liệu",
+        desc: err.message || "Vui lòng thử lại.",
+        actionLabel: "Thử lại",
+        onAction: loadDocs,
+      });
+      Toast.error(err.message || "Không tải được danh sách tài liệu");
+    }
+  }
+
+  /* ================= Hành động: tải / xem trước / xóa ================= */
+  async function onDownload(doc, btn) {
+    if (!doc) return;
+    const undo = Utils.btnLoading(btn, "");
+    try {
+      await ApiClient.download(`/documents/${doc.id}/download/`, downloadName(doc));
+      Toast.success(`Đang tải "${doc.tieu_de}".`, "Tải xuống");
+      loadDocs(); // tăng lượt tải trên server → làm mới số
+    } catch (err) {
+      Toast.error(err.message || "Không tải được tài liệu.");
+    } finally {
+      undo();
+    }
+  }
+
+  function onPreview(doc, btn) {
+    if (!doc) return;
+    if (String(doc.file_type || "").toLowerCase() !== "pdf") {
+      Toast.info("Xem trước hiện chỉ hỗ trợ tệp PDF. Với định dạng khác, hãy tải xuống để mở bằng ứng dụng phù hợp.");
+      return;
+    }
+    const undo = Utils.btnLoading(btn, "");
+    let blobUrl = null;
+    (async () => {
+      try {
+        // Backend đặt X-Frame-Options: DENY → lấy blob (kèm Bearer) rồi nhúng blob URL
+        const res = await fetch(fileUrl(doc.file), {
+          headers: { Authorization: `Bearer ${ApiClient.getAccessToken()}` },
+        });
+        if (!res.ok) throw new ApiError(`Không xem trước được tài liệu (HTTP ${res.status}).`, res.status);
+        const blob = await res.blob();
+        if (blob.size === 0) throw new Error("Tệp rỗng hoặc không truy cập được.");
+        blobUrl = URL.createObjectURL(blob);
+        openModal({
+          title: `Xem trước — ${doc.tieu_de}`,
+          bodyHTML: `<div class="preview-loading" id="preview-loading">Đang nạp bản xem trước...</div>
+                     <iframe class="preview-frame hidden" id="preview-frame" title="Bản xem trước PDF"></iframe>`,
+          footerHTML: `<button class="btn btn-outline" data-close>Đóng</button>`,
+          onMount(backdrop, close) {
+            backdrop.querySelector("[data-close]").addEventListener("click", close);
+            const frame = backdrop.querySelector("#preview-frame");
+            frame.src = blobUrl;
+            frame.addEventListener("load", () => {
+              frame.classList.remove("hidden");
+              const loading = backdrop.querySelector("#preview-loading");
+              if (loading) loading.remove();
+            });
+            // Dọn blob URL khi modal đóng (được gán trước khi close() có thể chạy)
+            onMount._onClose = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        Toast.error(err.message || "Không xem trước được tài liệu.");
+      } finally {
+        undo();
+      }
+    })();
+  }
+
+  async function onDelete(doc) {
+    if (!doc) return;
+    if (!confirm(`Xóa tài liệu "${doc.tieu_de}"?\nHành động này không thể hoàn tác (tệp cũng bị xóa khỏi máy chủ).`)) return;
+    try {
+      await ApiClient.delete(`/documents/${doc.id}/`);
+      Toast.success(`Đã xóa tài liệu "${doc.tieu_de}".`, "Thành công");
+      // Nếu trang đang xem trở nên trống → lùi 1 trang
+      if (state.items.length === 1 && state.page > 1) state.page -= 1;
+      loadDocs();
+    } catch (err) {
+      Toast.error(err.message || "Không xóa được tài liệu. Bạn chỉ xóa được tài liệu do đơn vị mình tải lên.");
+    }
+  }
+
+  /* ================= Trie autocomplete ================= */
+  const acList = document.getElementById("ac-list");
+  const searchInput = document.getElementById("doc-search");
+
+  function hideAc() { acList.classList.add("hidden"); acList.innerHTML = ""; }
+
+  async function doSuggest() {
+    const q = searchInput.value.trim();
+    if (!q) { hideAc(); return; }
+    try {
+      const data = await ApiClient.get("/documents/search/", { q });
+      // Backend trả MẢNG hoặc {items:[], count} tùy phiên bản — xử lý cả hai an toàn
+      const results = Array.isArray(data) ? data : data.items || [];
+      if (!results.length) {
+        acList.innerHTML = `<div class="ac-empty">Không tìm thấy tài liệu khớp "${Utils.escapeHtml(q)}"</div>`;
+        acList.classList.remove("hidden");
+        return;
+      }
+      acList.innerHTML = results
+        .map(
+          (r) => `<div class="ac-item" data-title="${Utils.escapeHtml(r.tieu_de || "")}">
+            ${Icons.render("file-text", 16)}
+            <div class="flex-1" style="min-width:0">
+              <div class="ac-title">${Utils.escapeHtml(r.tieu_de || "—")}</div>
+              <div class="ac-sub">${Utils.escapeHtml((NHOM[r.nhom] || [])[1] || r.nhom || "")}${r.uploaded_by_ho_ten ? " · " + Utils.escapeHtml(r.uploaded_by_ho_ten) : ""}</div>
+            </div>
+          </div>`
+        )
+        .join("");
+      acList.classList.remove("hidden");
+      Utils.qsa(".ac-item", acList).forEach((item) => {
+        // pointerdown để chạy trước blur của input
+        item.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          const title = item.dataset.title || "";
+          searchInput.value = title;
+          state.search = title;
+          state.page = 1;
+          hideAc();
+          loadDocs();
+        });
+      });
+    } catch (err) {
+      console.error(err);
+      hideAc();
+    }
+  }
+  const debouncedSuggest = Utils.debounce(doSuggest, 300);
+
+  searchInput.addEventListener("input", () => {
+    state.search = searchInput.value.trim();
+    state.page = 1;
+    debouncedSuggest();
+  });
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); hideAc(); state.page = 1; loadDocs(); }
+    if (e.key === "Escape") hideAc();
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".autocomplete")) hideAc();
+  });
+
+  /* ================= Upload tài liệu ================= */
+  function openUploadModal() {
+    openModal({
+      title: "Tải lên tài liệu",
+      bodyHTML: `
+        <form id="upload-form" novalidate>
+          <div class="form-group">
+            <label class="form-label">Chọn tệp <span class="req">*</span></label>
+            <label class="file-input-zone" id="file-zone">
+              <span id="file-zone-icon"></span>
+              <span id="file-zone-text">Bấm để chọn tệp — PDF, DOCX, PPTX, XLSX, PNG, JPG (tối đa 15MB)</span>
+              <input type="file" id="doc-file" accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg">
+            </label>
+            <p class="form-error hidden" id="file-error"></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="up-tieu-de">Tiêu đề <span class="req">*</span></label>
+            <input class="form-input" id="up-tieu-de" type="text" required placeholder="VD: Đề cương OOP giữa kỳ">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="up-nhom">Nhóm <span class="req">*</span></label>
+              <select class="form-select" id="up-nhom">
+                <option value="CHUYEN_MON">Chuyên môn</option>
+                <option value="NGHIEP_VU">Nghiệp vụ</option>
+                <option value="KY_NANG">Kỹ năng</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="up-tags">Tags (phân tách bằng dấu phẩy)</label>
+              <input class="form-input" id="up-tags" type="text" placeholder="VD: C++, Web, Đề thi">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="up-mota">Mô tả</label>
+            <textarea class="form-textarea" id="up-mota" rows="2" placeholder="Mô tả ngắn về nội dung tài liệu..."></textarea>
+          </div>
+        </form>`,
+      footerHTML: `
+        <button class="btn btn-ghost" data-close>Hủy</button>
+        <button class="btn btn-primary" id="btn-save-doc">${Icons.render("upload", 16)} Tải lên</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+        backdrop.querySelector("#upload-form").addEventListener("submit", (ev) => {
+          ev.preventDefault();
+          backdrop.querySelector("#btn-save-doc").click();
+        });
+        const fileInput = backdrop.querySelector("#doc-file");
+        const zone = backdrop.querySelector("#file-zone");
+        const zoneText = backdrop.querySelector("#file-zone-text");
+        backdrop.querySelector("#file-zone-icon").innerHTML = Icons.render("upload", 26);
+
+        fileInput.addEventListener("change", () => {
+          const f = fileInput.files && fileInput.files[0];
+          if (!f) return;
+          const ext = (f.name.split(".").pop() || "").toLowerCase();
+          if (!ACCEPT_EXT.includes(ext)) {
+            Toast.error(`Định dạng .${ext} không được hỗ trợ. Chỉ nhận: ${ACCEPT_EXT.map((e2) => "." + e2).join(", ")}.`);
+            fileInput.value = "";
+            return;
+          }
+          if (f.size > MAX_SIZE) {
+            Toast.error(`Tệp ${(f.size / 1048576).toFixed(1)} MB vượt giới hạn 15MB.`);
+            fileInput.value = "";
+            return;
+          }
+          zone.classList.add("has-file");
+          zoneText.textContent = `${f.name} (${fmtSize(f.size)})`;
+        });
+
+        backdrop.querySelector("#btn-save-doc").addEventListener("click", async (e) => {
+          e.preventDefault();
+          const file = fileInput.files && fileInput.files[0];
+          const tieuDe = backdrop.querySelector("#up-tieu-de").value.trim();
+          const fileErr = backdrop.querySelector("#file-error");
+          fileErr.classList.add("hidden");
+          if (!file) {
+            fileErr.textContent = "Vui lòng chọn tệp để tải lên.";
+            fileErr.classList.remove("hidden");
+            return;
+          }
+          if (!tieuDe) { Toast.warning("Vui lòng nhập tiêu đề tài liệu."); return; }
+          // FormData: KHÔNG set Content-Type thủ công — trình duyệt tự set boundary
+          const fd = new FormData();
+          fd.append("file", file);
+          fd.append("tieu_de", tieuDe);
+          fd.append("nhom", backdrop.querySelector("#up-nhom").value);
+          const tags = backdrop.querySelector("#up-tags").value.trim();
+          if (tags) fd.append("tags", tags);
+          const moTa = backdrop.querySelector("#up-mota").value.trim();
+          if (moTa) fd.append("mo_ta", moTa);
+
+          const undo = Utils.btnLoading(e.currentTarget, "Đang tải lên...");
+          try {
+            const created = await ApiClient.post("/documents/", fd);
+            close();
+            Toast.success(`Đã tải lên "${created?.tieu_de || tieuDe}" (+100 XP cho người chia sẻ).`, "Kho tài liệu");
+            state.page = 1;
+            loadDocs();
+          } catch (err) {
+            Toast.error(err.message || "Không tải lên được tài liệu.");
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= Nav + khởi tạo ================= */
+  function renderAdminNav(active) {
+    document.getElementById("brand-logo").innerHTML = Icons.render("zap", 20);
+    const items = [
+      ["dashboard", "layout", "Dashboard", "/frontend/admin/dashboard.html"],
+      ["members", "users", "Thành viên", "/frontend/admin/members.html"],
+      ["funds", "wallet", "Quỹ CLB", "/frontend/admin/funds.html"],
+      ["events", "calendar", "Sự kiện", "/frontend/admin/events.html"],
+      ["attendance", "compass", "Điểm danh", "/frontend/admin/attendance.html"],
+      ["documents", "book-open", "Tài liệu", "/frontend/admin/documents.html"],
+    ];
+    document.getElementById("side-nav").innerHTML =
+      '<div class="nav-label">Quản lý</div>' +
+      items
+        .map(([k, ic, label, href]) =>
+          `<a class="nav-item${k === active ? " active" : ""}" href="${href}">${Icons.render(ic, 18)}<span>${label}</span></a>`
+        )
+        .join("");
+    const user = Auth.cachedUser();
+    document.getElementById("topbar-user").innerHTML =
+      `<span class="small bold">${Utils.escapeHtml(user?.ho_ten || user?.email || "")}</span>
+       <span class="avatar avatar-sm" title="${Utils.escapeHtml(user?.role || "")}">${Utils.initials(user?.ho_ten || user?.email)}</span>`;
+    document.getElementById("burger-icon").innerHTML = Icons.render("menu", 20);
+    document.getElementById("btn-burger").addEventListener("click", () => {
+      document.getElementById("shell").classList.add("nav-open");
+      document.getElementById("scrim").classList.remove("hidden");
+    });
+    document.getElementById("scrim").addEventListener("click", () => {
+      document.getElementById("shell").classList.remove("nav-open");
+      document.getElementById("scrim").classList.add("hidden");
+    });
+    document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+  }
+
+  async function init() {
+    renderAdminNav("documents");
+    document.getElementById("search-icon").innerHTML = Icons.render("search", 17);
+    document.getElementById("btn-upload-icon").innerHTML = Icons.render("upload", 17);
+    document.getElementById("btn-upload").addEventListener("click", openUploadModal);
+    document.getElementById("filter-nhom").addEventListener("change", (e) => {
+      state.nhom = e.target.value;
+      state.page = 1;
+      loadDocs();
+    });
+    await loadDocs();
+  }
+
+  Auth.requireRole(["ADMIN", "BCN"])
+    .then(() => init())
+    .catch(() => { /* requireRole đã tự redirect */ });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="member">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0B1020">
+  <title>Hồ sơ — CLB IP ĐHSP Huế</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* Page-scoped: thẻ hologram, kho huy hiệu, lịch sử XP (không đụng css dùng chung) */
+    .prof-stack { display: flex; flex-direction: column; gap: var(--s-4); }
+    .holo-name { font-size: var(--text-xl); font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+    .stat-mini { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+    @media (max-width: 479.98px) { .stat-mini { grid-template-columns: 1fr 1fr; } }
+    .stat-mini .kpi { padding: var(--s-4); min-width: 0; }
+    .stat-mini .kpi-value { font-size: var(--text-lg); }
+    .bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s-3); }
+    .bd-item {
+      position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      text-align: center; padding: var(--s-4) var(--s-3); border-radius: 14px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border-color);
+      filter: grayscale(1); opacity: .55;
+    }
+    .bd-item.unlocked { filter: none; opacity: 1; border-color: transparent; }
+    .bd-item.unlocked::before {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+      background: linear-gradient(135deg, rgba(99,102,241,.75), rgba(139,92,246,.45), rgba(56,189,248,.35));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+    .bd-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%;
+      background: var(--c-accent-soft); color: #B4B8FF; font-size: 24px; line-height: 1; }
+    .bd-icon svg { width: 24px; height: 24px; }
+    .bd-name { font-size: var(--text-sm); font-weight: 700; }
+    .bd-desc { font-size: var(--text-xs); color: var(--tx-muted); line-height: 1.4; }
+    .xp-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+      padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+    .xp-row:last-child { border-bottom: 0; }
+    .ct-row { display: flex; align-items: center; gap: var(--s-3); padding: 10px 0; }
+    .ct-row .ct-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+      background: var(--c-accent-soft); color: #B4B8FF; flex: none; }
+    .ct-row .ct-icon svg { width: 17px; height: 17px; }
+  </style>
+</head>
+<body>
+  <div class="member-shell">
+    <header class="member-header">
+      <div class="flex items-center gap-3">
+        <span class="avatar" id="me-avatar"></span>
+        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
+      </div>
+      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
+    </header>
+
+    <main class="prof-stack">
+      <div>
+        <h1 class="page-title">Hồ sơ của tôi ✨</h1>
+        <p class="muted small mt-2">Thẻ thành viên holo của bạn — flex nhẹ thôi, đừng quá xịn!</p>
+      </div>
+
+      <!-- THẺ HOLOGRAM -->
+      <section class="holo-card" aria-label="Thẻ thành viên">
+        <div class="flex items-center gap-4">
+          <div class="level-ring" id="ring" style="--pct:0">
+            <span class="ring"></span>
+            <span class="avatar avatar-lg" id="holo-avatar">?</span>
+          </div>
+          <div style="min-width:0">
+            <div class="holo-name" id="holo-name">…</div>
+            <div class="holo-id mt-2" id="holo-mssv">· · ·</div>
+            <div class="flex items-center gap-2 mt-2 wrap" id="holo-badges"></div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between mt-4 wrap gap-2">
+          <span class="streak-chip" id="holo-streak">🔥 …</span>
+          <span class="badge badge-accent" id="holo-lop">—</span>
+        </div>
+      </section>
+
+      <!-- STATS 4 Ô -->
+      <div class="stat-mini" id="stats-grid">
+        <div class="kpi glass"><span class="kpi-icon" id="ic-xp"></span><div><div class="kpi-value" id="st-xp">…</div><div class="kpi-label">XP</div></div></div>
+        <div class="kpi glass"><span class="kpi-icon" id="ic-streak"></span><div><div class="kpi-value" id="st-streak">…</div><div class="kpi-label">Streak 🔥</div></div></div>
+        <div class="kpi glass"><span class="kpi-icon" id="ic-att"></span><div><div class="kpi-value" id="st-att">…</div><div class="kpi-label">Tỷ lệ điểm danh</div></div></div>
+        <div class="kpi glass"><span class="kpi-icon" id="ic-ev"></span><div><div class="kpi-value" id="st-ev">…</div><div class="kpi-label">Sự kiện tham gia</div></div></div>
+      </div>
+
+      <!-- TIẾN ĐỘ LEVEL -->
+      <section class="glass card-pad">
+        <div class="flex items-center justify-between gap-2">
+          <div class="bold small">Tiến độ Level</div>
+          <span class="badge badge-accent" id="lvl-badge">Level …</span>
+        </div>
+        <div class="progress mt-4"><span id="lvl-bar" style="width:0%"></span></div>
+        <div class="xs muted mt-2" id="lvl-note">Đang tính toán…</div>
+      </section>
+
+      <!-- KHO HUY HIỆU -->
+      <section class="glass card-pad">
+        <div class="bold small mb-4">Kho huy hiệu 🏅</div>
+        <div id="badge-grid" aria-live="polite"></div>
+      </section>
+
+      <!-- LỊCH SỬ XP -->
+      <section class="glass card-pad">
+        <div class="bold small mb-2">Lịch sử XP gần đây</div>
+        <div id="xp-list" aria-live="polite"></div>
+      </section>
+
+      <!-- LIÊN HỆ -->
+      <section class="glass card-pad">
+        <div class="bold small mb-2">Thông tin liên hệ</div>
+        <div class="ct-row">
+          <span class="ct-icon" id="ct-icon-phone"></span>
+          <div style="min-width:0"><div class="small bold" id="ct-sdt">…</div><div class="xs muted">Số điện thoại</div></div>
+        </div>
+        <div class="ct-row">
+          <span class="ct-icon" id="ct-icon-mail"></span>
+          <div style="min-width:0; overflow-wrap:anywhere"><div class="small bold" id="ct-email">…</div><div class="xs muted">Email</div></div>
+        </div>
+        <button class="btn btn-outline btn-sm mt-2" id="btn-sdt"></button>
+        <div class="xs muted mt-2" id="sdt-note"></div>
+      </section>
+    </main>
+
+    <div style="height:8px"></div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/icons.js"></script>
+  <script src="/frontend/js/toast.js"></script>
+  <script src="/frontend/js/utils.js"></script>
+  <script src="/frontend/js/auth.js"></script>
+  <script src="/frontend/js/celebration.js"></script>
+  <script>
+    "use strict";
+    const esc = Utils.escapeHtml;
+    const XP_PER_LEVEL = 200;
+
+    /* ---------- Nav member (CONTRACT §6) ---------- */
+    function renderMemberNav(active) {
+      const items = [
+        ["home", "home", "Nhà", "/frontend/member/home.html"],
+        ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
+        ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
+        ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
+        ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
+        ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
+      ];
+      document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
+        `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
+          ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
+      ).join("");
+      document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
+      document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+      const me = Auth.cachedUser();
+      const av = document.getElementById("me-avatar");
+      if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
+      const nm = document.getElementById("me-name");
+      if (nm && me) nm.textContent = me.ho_ten || me.email;
+      const lv = document.getElementById("me-level");
+      if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
+    }
+
+    /* ---------- Modal helper (CONTRACT §7) ---------- */
+    function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+      backdrop.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+          <div class="modal-head"><h3>${esc(title)}</h3>
+            <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
+          <div class="modal-body">${bodyHTML}</div>
+          ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+        </div>`;
+      const close = () => backdrop.remove();
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+      backdrop.querySelector(".modal-close").addEventListener("click", close);
+      backdrop.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
+      document.body.appendChild(backdrop);
+      if (onMount) onMount(backdrop, close);
+      return { el: backdrop, close };
+    }
+
+    /* ---------- State ---------- */
+    let profileId = null;
+    let currentSdt = "";
+    let currentLevelView = 1; // giữ level hiện hành để paintStatus không reset nhãn Level
+
+    const TRANG_THAI_LABEL = {
+      ACTIVE: "Đang hoạt động", HOAT_DONG: "Đang hoạt động",
+      BAO_LUU: "Bảo lưu", NGHI_HUU: "Ngừng hoạt động",
+    };
+
+    /* ---------- Xác định profile id (CONTRACT §3.6 mẹo) ---------- */
+    async function resolveProfileId() {
+      try {
+        const lb = await ApiClient.get("/gamification/leaderboard/");
+        const my = lb?.my_position;
+        if (my && my.rank != null && Array.isArray(lb.top_10)) {
+          const hit = lb.top_10.find((t) => t.rank === my.rank); // so sánh rank trong top_10
+          if (hit?.id != null) return hit.id;                    // id chính là profile pk
+        }
+      } catch (e) { console.warn("leaderboard:", e); }
+      try {
+        const att = await ApiClient.get("/attendance/me/");      // fallback
+        const m = att?.items?.[0]?.member;
+        if (m != null) return m;
+      } catch (e) { console.warn("attendance/me:", e); }
+      return null;
+    }
+
+    /* ---------- Render từng khối ---------- */
+    function setAvatar(el, url, name) {
+      if (url) el.innerHTML = `<img src="${esc(url)}" alt="${esc(name)}" onerror="this.remove()">`;
+      else el.textContent = Utils.initials(name);
+    }
+
+    function paintFromUser(u) {
+      if (!u) return;
+      const name = u.ho_ten || u.email || "Thành viên";
+      setAvatar(document.getElementById("holo-avatar"), u.avatar, name);
+      document.getElementById("holo-name").textContent = name;
+      document.getElementById("holo-mssv").textContent = String(u.mssv || "—").toUpperCase();
+      document.getElementById("holo-lop").textContent = u.lop || "—";
+      document.getElementById("st-xp").textContent = Utils.fmtNum(u.xp_points ?? 0);
+      document.getElementById("st-streak").textContent = `${u.streak_count ?? 0} ngày`;
+      document.getElementById("st-ev").textContent = "…";
+      document.getElementById("ct-email").textContent = u.email || "—";
+      paintLevel(u.xp_points ?? 0, u.current_level ?? 1, u.streak_count ?? 0);
+      paintStatus(u.trang_thai_hd);
+      paintRing(u.xp_points ?? 0);
+    }
+
+    function paintStatus(trangThai) {
+      const el = document.getElementById("holo-badges");
+      const label = TRANG_THAI_LABEL[trangThai] || trangThai || "—";
+      const tone = trangThai === "ACTIVE" || trangThai === "HOAT_DONG" ? "success" : "warning";
+      el.innerHTML = `<span class="badge badge-accent" id="holo-level-badge">Level ${currentLevelView}</span>${Utils.badge(label, tone)}`;
+    }
+
+    function paintRing(xp) {
+      const pct = Math.round(((xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100);
+      document.getElementById("ring").style.setProperty("--pct", String(pct));
+    }
+
+    function paintLevel(xp, level, streak) {
+      currentLevelView = level ?? 1;
+      const into = ((xp % XP_PER_LEVEL) + XP_PER_LEVEL) % XP_PER_LEVEL;
+      const remaining = into === 0 && xp > 0 ? 0 : XP_PER_LEVEL - into;
+      const pct = Math.round((into / XP_PER_LEVEL) * 100);
+      document.getElementById("lvl-bar").style.width = `${pct}%`;
+      document.getElementById("lvl-badge").textContent = `Level ${level ?? 1}`;
+      const lb = document.getElementById("holo-level-badge");
+      if (lb) lb.textContent = `Level ${level ?? 1}`;
+      document.getElementById("lvl-note").textContent =
+        remaining === 0
+          ? "Bạn đã chạm ngưỡng — Level mới đang chờ đó! 🚀"
+          : `Còn ${Utils.fmtNum(remaining)} XP nữa lên Level ${(level ?? 1) + 1} — cố lên chứ! 💪`;
+      document.getElementById("holo-streak").textContent = `🔥 ${streak ?? 0} ngày streak`;
+      document.getElementById("me-level").textContent = `Level ${level ?? 1} · ${Utils.fmtNum(xp)} XP`;
+    }
+
+    function paintBadges(items, awardedMap) {
+      const grid = document.getElementById("badge-grid");
+      if (!items.length) {
+        Utils.empty(grid, { icon: "award", title: "Chưa có huy hiệu nào", desc: "Check-in đều, chia sẻ tài liệu — huy hiệu tự về tay bạn!" });
+        return;
+      }
+      grid.innerHTML = `<div class="bd-grid">` + items.map((b) => {
+        // icon backend có thể là tên Feather HOẶC emoji — xử lý cả hai, fallback "award"
+        let iconHTML;
+        if (b.icon && Icons.has(b.icon)) iconHTML = Icons.render(b.icon, 26);
+        else if (b.icon) iconHTML = esc(b.icon); // emoji từ backend
+        else iconHTML = Icons.render("award", 26);
+        const awarded = awardedMap?.get(b.ten_badge) || null;
+        return `
+        <div class="bd-item${b.unlocked ? " unlocked" : ""}" data-badge="${esc(b.ma_badge || b.ten_badge)}" data-awarded-at="${esc(awarded || "")}">
+          <div class="bd-icon">${iconHTML}</div>
+          <div class="bd-name">${esc(b.ten_badge)}</div>
+          <div class="bd-desc">${esc(b.mo_ta || "")}</div>
+          ${b.unlocked ? Utils.badge("Đã mở khóa", "success") : Utils.badge("🔒 Chưa mở", "neutral")}
+        </div>`;
+      }).join("") + `</div>`;
+
+      // Huy hiệu mới mở khóa trong 7 ngày gần nhất → bắn confetti tại thẻ
+      const now = Date.now();
+      Utils.qsa(".bd-item.unlocked", grid).forEach((el) => {
+        const at = el.dataset.awardedAt;
+        if (!at) return;
+        const t = new Date(at).getTime();
+        if (!isNaN(t) && now - t <= 7 * 86400 * 1000) Celebrate.at(el);
+      });
+    }
+
+    function paintRecentXp(rows) {
+      const box = document.getElementById("xp-list");
+      if (!rows || !rows.length) {
+        Utils.empty(box, { icon: "zap", title: "Chưa có điểm XP nào", desc: "Check-in, hoàn thành task hay chia sẻ tài liệu để gom XP nha!" });
+        return;
+      }
+      box.innerHTML = rows.map((r) => {
+        const plus = Number(r.amount) >= 0;
+        return `
+        <div class="xp-row">
+          <div style="min-width:0">
+            <div class="small bold">${esc(r.reason || "Hoạt động")}</div>
+            <div class="xs muted">${esc(Utils.timeAgo(r.created_at))}</div>
+          </div>
+          ${plus ? `<span class="badge badge-success">+${Utils.fmtNum(r.amount)} XP</span>`
+                 : `<span class="badge badge-danger">-${Utils.fmtNum(Math.abs(r.amount))} XP</span>`}
+        </div>`;
+      }).join("");
+    }
+
+    function paintContact(p360) {
+      currentSdt = p360?.sdt || "";
+      document.getElementById("ct-sdt").textContent = currentSdt || "Chưa cập nhật";
+      document.getElementById("ct-email").textContent = p360?.email || Auth.cachedUser()?.email || "—";
+      const btn = document.getElementById("btn-sdt");
+      btn.innerHTML = `${Icons.render("edit", 15)} Cập nhật SĐT`;
+      btn.classList.remove("hidden");
+      document.getElementById("sdt-note").textContent = "Số này để BCN liên hệ bạn khi cần — cập nhật cho chuẩn nha!";
+    }
+
+    /* ---------- Cập nhật SĐT: PATCH /members/{profile_id}/ {sdt} (đã test 200 với member) ---------- */
+    function openSdtModal() {
+      openModal({
+        title: "Cập nhật số điện thoại",
+        bodyHTML: `
+          <div class="form-group">
+            <label class="form-label" for="sdt-input">Số điện thoại</label>
+            <input class="form-input" id="sdt-input" inputmode="tel" maxlength="15"
+                   placeholder="VD: 0912345678" value="${esc(currentSdt)}">
+            <div class="form-hint">Bỏ trống nếu muốn xóa số hiện tại.</div>
+            <div class="form-error hidden" id="sdt-err"></div>
+          </div>`,
+        footerHTML: `
+          <button class="btn btn-ghost" data-close>Để sau</button>
+          <button class="btn btn-primary" id="sdt-save">${Icons.render("check", 16)} Lưu</button>`,
+        onMount(backdrop, close) {
+          const input = backdrop.querySelector("#sdt-input");
+          const errEl = backdrop.querySelector("#sdt-err");
+          const saveBtn = backdrop.querySelector("#sdt-save");
+          input.focus();
+          input.addEventListener("keydown", (e) => { if (e.key === "Enter") saveBtn.click(); });
+          saveBtn.addEventListener("click", async () => {
+            const val = input.value.trim();
+            if (val && !/^(\+?84|0)\d{8,10}$/.test(val.replace(/[\s.-]/g, ""))) {
+              errEl.textContent = "Số chưa đúng định dạng Việt Nam (VD: 0912345678).";
+              errEl.classList.remove("hidden");
+              input.setAttribute("aria-invalid", "true");
+              return;
+            }
+            errEl.classList.add("hidden");
+            input.removeAttribute("aria-invalid");
+            const undo = Utils.btnLoading(saveBtn, "Đang lưu...");
+            try {
+              await ApiClient.patch(`/members/${profileId}/`, { sdt: val });
+              currentSdt = val;
+              document.getElementById("ct-sdt").textContent = val || "Chưa cập nhật";
+              Toast.success("Đã cập nhật SĐT rồi nha! ✨");
+              close();
+            } catch (err) {
+              Toast.error(err.message); // 403 → không đủ quyền
+            } finally {
+              undo();
+            }
+          });
+        },
+      });
+    }
+
+    /* ---------- Khởi tạo ---------- */
+    async function init() {
+      const user = Auth.cachedUser();
+      paintFromUser(user);
+
+      // Icon tĩnh
+      document.getElementById("ic-xp").innerHTML = Icons.render("zap", 21);
+      document.getElementById("ic-streak").innerHTML = Icons.render("trending-up", 21);
+      document.getElementById("ic-att").innerHTML = Icons.render("target", 21);
+      document.getElementById("ic-ev").innerHTML = Icons.render("calendar", 21);
+      document.getElementById("ct-icon-phone").innerHTML = Icons.render("phone", 17);
+      document.getElementById("ct-icon-mail").innerHTML = Icons.render("mail", 17);
+
+      // Skeleton cho 2 khu list
+      Utils.skeleton(document.getElementById("badge-grid"), 3);
+      Utils.skeleton(document.getElementById("xp-list"), 3);
+
+      profileId = await resolveProfileId();
+      if (!profileId) {
+        Toast.info("Chưa lấy được mã hồ sơ chi tiết — đang hiện dữ liệu cơ bản nha!");
+        Utils.empty(document.getElementById("badge-grid"), { icon: "award", title: "Không tải được huy hiệu" });
+        Utils.empty(document.getElementById("xp-list"), { icon: "zap", title: "Không tải được lịch sử XP" });
+        return;
+      }
+
+      // Tải song song profile360 + gamification/me + badges
+      const [p360Res, meRes, badgeRes] = await Promise.allSettled([
+        ApiClient.get(`/members/${profileId}/profile360/`),
+        ApiClient.get("/gamification/me/"),
+        ApiClient.get("/gamification/badges/"),
+      ]);
+
+      const p360 = p360Res.status === "fulfilled" ? p360Res.value : null;
+      const gme = meRes.status === "fulfilled" ? meRes.value : null;
+      const badges = badgeRes.status === "fulfilled" ? badgeRes.value : null;
+
+      if (gme) {
+        paintLevel(gme.xp ?? user?.xp_points ?? 0, gme.level ?? user?.current_level ?? 1, gme.streak_count ?? user?.streak_count ?? 0);
+        paintRing(gme.xp ?? 0);
+        document.getElementById("st-xp").textContent = Utils.fmtNum(gme.xp ?? 0);
+        document.getElementById("st-streak").textContent = `${gme.streak_count ?? 0} ngày`;
+      }
+
+      if (p360) {
+        setAvatar(document.getElementById("holo-avatar"), p360.avatar || user?.avatar, p360.ho_ten || user?.ho_ten);
+        document.getElementById("holo-name").textContent = p360.ho_ten || user?.ho_ten || "…";
+        document.getElementById("holo-mssv").textContent = String(p360.mssv || user?.mssv || "—").toUpperCase();
+        document.getElementById("holo-lop").textContent = p360.lop || user?.lop || "—";
+        paintStatus(p360.trang_thai_hd || user?.trang_thai_hd);
+        const stats = p360.stats || {};
+        document.getElementById("st-att").textContent = `${stats.attendance_rate_percent ?? 0}%`;
+        document.getElementById("st-ev").textContent = Utils.fmtNum(stats.events_registered ?? 0);
+        if (!gme) {
+          paintLevel(stats.xp_points ?? 0, stats.current_level ?? 1, stats.streak_count ?? 0);
+          document.getElementById("st-xp").textContent = Utils.fmtNum(stats.xp_points ?? 0);
+          document.getElementById("st-streak").textContent = `${stats.streak_count ?? 0} ngày`;
+        }
+        // Huy hiệu: gắn awarded_at từ profile360.badges (theo ten_badge) để bắt "mới mở khóa"
+        const awardedMap = new Map((p360.badges || []).map((b) => [b.ten_badge, b.awarded_at]));
+        if (badges?.items) paintBadges(badges.items, awardedMap);
+        else Utils.empty(document.getElementById("badge-grid"), { icon: "award", title: "Không tải được huy hiệu" });
+        paintRecentXp(p360.recent_xp || []);
+        paintContact(p360);
+      } else {
+        if (badges?.items) paintBadges(badges.items, new Map());
+        else Utils.empty(document.getElementById("badge-grid"), { icon: "award", title: "Không tải được huy hiệu" });
+        Utils.empty(document.getElementById("xp-list"), { icon: "zap", title: "Không tải được lịch sử XP" });
+        document.getElementById("st-att").textContent = "—";
+        document.getElementById("st-ev").textContent = "—";
+        Toast.error("Không tải được hồ sơ 360° — thử tải lại trang nhé!");
+      }
+
+      document.getElementById("btn-sdt").addEventListener("click", openSdtModal);
+    }
+
+    /* Guard chạy xong mới khởi tạo (CONTRACT §1) */
+    (async () => {
+      try { await Auth.requireRole(["MEMBER"]); } catch { return; }
+      renderMemberNav("profile");
+      init();
+    })();
+  </script>
+</body>
+</html>

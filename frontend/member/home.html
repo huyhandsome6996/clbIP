@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="member">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trang chủ — CLB IP ĐHSP Huế</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ---- page-scoped styles (không đụng css dùng chung) ---- */
+    .section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: var(--text-sm); font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--tx-muted); margin: 0 0 var(--s-3);
+    }
+    .section-title svg { color: var(--c-indigo); flex: none; }
+    .glass-card { padding: var(--s-5); }
+
+    /* quest row */
+    .quest-row {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: 10px 12px; border-radius: var(--r-control);
+      background: rgba(255,255,255,0.045);
+      border: 1px solid var(--border-color);
+    }
+    .quest-ico {
+      width: 34px; height: 34px; flex: none; border-radius: 10px;
+      display: grid; place-items: center;
+      background: var(--c-accent-soft); color: #B4B8FF;
+    }
+    .quest-done { border-color: rgba(34,197,94,.4); }
+    .quest-done .quest-ico { background: rgba(22,163,74,.18); color: #7EE2A0; }
+
+    /* post */
+    .post-card { padding: var(--s-4); border-radius: var(--r-card); background: rgba(255,255,255,0.045); border: 1px solid var(--border-color); }
+    .post-card + .post-card { margin-top: var(--s-3); }
+    .post-title { font-weight: 700; font-size: var(--text-md); margin: 6px 0 4px; line-height: 1.35; }
+    .post-content { font-size: var(--text-sm); color: var(--tx-secondary); line-height: 1.6; overflow-wrap: anywhere; }
+    .post-content p { margin: 0 0 8px; }
+    .post-content p:last-child { margin-bottom: 0; }
+    .post-content a { color: #A5B4FC; }
+    .post-meta { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--tx-muted); margin-top: 10px; }
+
+    /* event chip */
+    .event-chip {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: 12px; border-radius: var(--r-card);
+      background: rgba(255,255,255,0.045); border: 1px solid var(--border-color);
+    }
+    .event-chip + .event-chip { margin-top: var(--s-3); }
+    .event-ico { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--c-accent-soft); color: #B4B8FF; }
+
+    /* poll */
+    .poll-opt {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+      width: 100%; text-align: left;
+      padding: 11px 14px; border-radius: var(--r-control);
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
+      color: var(--tx-primary); font-size: var(--text-sm); font-weight: 600;
+      cursor: pointer; transition: border-color var(--dur-fast), background var(--dur-fast);
+    }
+    .poll-opt:hover:not(:disabled) { border-color: var(--c-indigo); background: rgba(99,102,241,0.12); }
+    .poll-opt:disabled { cursor: default; opacity: 0.85; }
+    .poll-opt.chosen { border-color: #22C55E; background: rgba(34,197,94,0.12); }
+    .poll-votes { font-size: var(--text-xs); color: var(--tx-muted); font-variant-numeric: tabular-nums; flex: none; }
+
+    /* FAB góp ý ẩn danh */
+    .fab {
+      position: fixed;
+      bottom: calc(var(--bottomnav-h) + 20px);
+      right: 16px; z-index: var(--z-dropdown);
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 18px; border: 0; cursor: pointer;
+      border-radius: var(--r-pill);
+      background: linear-gradient(135deg, var(--c-indigo), var(--c-violet));
+      color: #fff; font-weight: 700; font-size: var(--text-sm);
+      box-shadow: var(--shadow-glow);
+      transition: transform var(--dur-fast) var(--ease-out);
+    }
+    .fab:hover { transform: translateY(-2px); }
+    @media (min-width: 1024px) { .fab { right: calc(50% - 280px + 16px); } }
+  </style>
+</head>
+<body>
+  <div class="member-shell">
+    <header class="member-header">
+      <div class="flex items-center gap-3">
+        <span class="avatar" id="me-avatar"></span>
+        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
+      </div>
+      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
+    </header>
+
+    <section class="flex items-center justify-between gap-3 wrap">
+      <h1 class="page-title" id="welcome-title" style="margin:0">Chào bạn 👋</h1>
+      <span class="streak-chip" id="streak-chip" hidden>🔥 Streak — ngày</span>
+    </section>
+
+    <!-- Thẻ thành viên mini -->
+    <section class="glass glass-accent glass-card" id="member-card">
+      <div class="skeleton-row">
+        <div class="skeleton skeleton-avatar"></div>
+        <div class="skeleton-lines"><div class="skeleton" style="width:50%"></div><div class="skeleton"></div></div>
+      </div>
+    </section>
+
+    <!-- Nhiệm vụ tuần -->
+    <section>
+      <h2 class="section-title"><span id="ic-target"></span>Nhiệm vụ tuần</h2>
+      <div class="glass glass-card" id="quests-box">
+        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:55%"></div><div class="skeleton" style="width:80%"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Feed bảng tin -->
+    <section>
+      <h2 class="section-title"><span id="ic-megaphone"></span>Bảng tin CLB</h2>
+      <div class="glass glass-card" id="posts-box">
+        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:65%"></div><div class="skeleton"></div><div class="skeleton" style="width:90%"></div></div></div>
+      </div>
+    </section>
+
+    <!-- Sự kiện sắp diễn ra -->
+    <section>
+      <h2 class="section-title"><span id="ic-calendar"></span>Sự kiện sắp diễn ra</h2>
+      <div id="events-box">
+        <div class="glass glass-card"><div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div></div>
+      </div>
+    </section>
+
+    <!-- Bình chọn cộng đồng -->
+    <section>
+      <h2 class="section-title"><span id="ic-poll"></span>Bình chọn cộng đồng</h2>
+      <div class="glass glass-card" id="poll-box">
+        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:70%"></div><div class="skeleton" style="width:85%"></div></div></div>
+      </div>
+    </section>
+
+    <div style="height:8px"></div>
+  </div>
+
+  <!-- Nút nổi góp ý ẩn danh -->
+  <button class="fab" id="btn-feedback">
+    <span id="fab-icon"></span>Góp ý ẩn danh
+  </button>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/icons.js"></script>
+  <script src="/frontend/js/toast.js"></script>
+  <script src="/frontend/js/utils.js"></script>
+  <script src="/frontend/js/auth.js"></script>
+  <script src="/frontend/js/celebration.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      /* ============ Modal helper (FRONTEND_CONTRACT §7) ============ */
+      function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+        const backdrop = document.createElement("div");
+        backdrop.className = "modal-backdrop";
+        backdrop.innerHTML = `
+          <div class="modal" role="dialog" aria-modal="true" aria-label="${Utils.escapeHtml(title)}">
+            <div class="modal-head"><h3>${Utils.escapeHtml(title)}</h3>
+              <button class="modal-close">${Icons.render("x", 20)}</button></div>
+            <div class="modal-body">${bodyHTML}</div>
+            ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+          </div>`;
+        const close = () => backdrop.remove();
+        backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+        backdrop.querySelector(".modal-close").addEventListener("click", close);
+        document.body.appendChild(backdrop);
+        if (onMount) onMount(backdrop, close);
+        return { el: backdrop, close };
+      }
+
+      /* ============ Nav member (FRONTEND_CONTRACT §6) ============ */
+      function renderMemberNav(active) {
+        const items = [
+          ["home", "home", "Nhà", "/frontend/member/home.html"],
+          ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
+          ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
+          ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
+          ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
+          ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
+        ];
+        document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
+          `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
+            ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
+        ).join("");
+        document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
+        document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+        const me = Auth.cachedUser();
+        const av = document.getElementById("me-avatar");
+        if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
+        const nm = document.getElementById("me-name");
+        if (nm && me) nm.textContent = me.ho_ten || me.email;
+        const lv = document.getElementById("me-level");
+        if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
+      }
+
+      /* Tên gọi thân thiện: "Nguyễn Nhật Nam" → "Nam" */
+      function firstName(user) {
+        const name = user?.ho_ten || user?.email || "";
+        const parts = String(name).trim().split(/\s+/);
+        return parts[parts.length - 1] || "bạn";
+      }
+
+      /* ============ 1. Nhiệm vụ tuần (shape động → render defensive) ============ */
+      function renderQuests(wq) {
+        const box = document.getElementById("quests-box");
+        if (!wq) {
+          Utils.empty(box, { icon: "target", title: "Chưa có nhiệm vụ tuần", desc: "Quay lại sau để nhận nhiệm vụ mới nhé!" });
+          return;
+        }
+        /* Trường hợp A: mảng nhiệm vụ [{tên, phần thưởng XP, trạng thái}] — key động */
+        if (Array.isArray(wq)) {
+          if (wq.length === 0) {
+            Utils.empty(box, { icon: "target", title: "Chưa có nhiệm vụ tuần", desc: "Quay lại sau để nhận nhiệm vụ mới nhé!" });
+            return;
+          }
+          box.innerHTML = wq.map((q) => {
+            const name = Utils.escapeHtml(q.ten_nhiem_vu || q.ten || q.name || q.title || "Nhiệm vụ");
+            const reward = q.phan_thuong_xp ?? q.reward_xp ?? q.reward ?? q.xp;
+            const done = q.hoan_thanh ?? q.is_done ?? q.completed ?? (q.status === "DONE" || q.status === "hoan_thanh");
+            const rewardTxt = reward !== undefined && reward !== null ? `+${Utils.escapeHtml(String(reward))} XP` : "";
+            return `
+              <div class="quest-row${done ? " quest-done" : ""}">
+                <span class="quest-ico">${Icons.render(done ? "check" : "target", 17)}</span>
+                <div class="flex-1">
+                  <div class="small bold">${name}</div>
+                  ${rewardTxt ? `<div class="xs muted">Phần thưởng: ${rewardTxt}</div>` : ""}
+                </div>
+                ${Utils.badge(done ? "Hoàn thành" : "Đang làm", done ? "success" : "accent")}
+              </div>`;
+          }).join("");
+          return;
+        }
+        /* Trường hợp B (shape thật hiện tại): object counter */
+        const xpWeek = Number(wq.xp_this_week || 0);
+        const quests = [
+          ["compass", "Điểm danh sinh hoạt", wq.attendance_count],
+          ["book-open", "Chia sẻ tài liệu", wq.document_shared],
+          ["check-square", "Hoàn thành task sự kiện", wq.task_completed],
+        ];
+        box.innerHTML = `
+          <div class="flex items-center justify-between mb-4">
+            <span class="xs muted">Tuần bắt đầu ${Utils.escapeHtml(Utils.fmtDate(wq.week_start))}</span>
+            ${Utils.badge(`+${xpWeek} XP tuần này`, "accent")}
+          </div>
+          ${quests.map(([ic, label, val]) => `
+            <div class="quest-row" style="margin-bottom:8px">
+              <span class="quest-ico">${Icons.render(ic, 17)}</span>
+              <div class="flex-1">
+                <div class="small bold">${Utils.escapeHtml(label)}</div>
+                <div class="xs muted">Số lần thực hiện trong tuần</div>
+              </div>
+              <span class="bold">${Utils.escapeHtml(String(val ?? 0))}</span>
+            </div>`).join("")}`;
+      }
+
+      /* ============ 2. Feed bảng tin ============ */
+      function renderPosts(items) {
+        const box = document.getElementById("posts-box");
+        if (!items.length) {
+          Utils.empty(box, { icon: "inbox", title: "Chưa có tin tức nào", desc: "Bài viết từ Ban chủ nhiệm sẽ xuất hiện ở đây." });
+          return;
+        }
+        box.innerHTML = items.map((p) => {
+          const meta = Utils.escapeHtml(p.created_by || "Ban chủ nhiệm");
+          /* noi_dung đã được backend sanitize (bleach) → chèn trực tiếp */
+          return `
+            <article class="post-card">
+              ${p.is_pinned ? Utils.badge("📌 Ban chủ nhiệm ghim", "accent") : ""}
+              <div class="post-title">${Utils.escapeHtml(p.tieu_de)}</div>
+              <div class="post-content">${p.noi_dung || ""}</div>
+              <div class="post-meta">${Icons.render("user", 12)} ${meta} · ${Utils.escapeHtml(Utils.timeAgo(p.created_at))}</div>
+            </article>`;
+        }).join("");
+      }
+
+      /* ============ 3. Sự kiện sắp diễn ra (3 đầu) ============ */
+      function renderEvents(items) {
+        const box = document.getElementById("events-box");
+        if (!items.length) {
+          box.innerHTML = `<div class="glass glass-card" id="events-empty"></div>`;
+          Utils.empty(document.getElementById("events-empty"), { icon: "calendar", title: "Chưa có sự kiện nào", desc: "Sự kiện mới của CLB sẽ hiện ở đây, theo dõi nhé!" });
+          return;
+        }
+        box.innerHTML = `<div class="glass glass-card">${items.slice(0, 3).map((ev) => `
+          <div class="event-chip">
+            <span class="event-ico">${Icons.render("calendar", 19)}</span>
+            <div class="flex-1" style="min-width:0">
+              <div class="small bold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Utils.escapeHtml(ev.ten_hoat_dong)}</div>
+              <div class="xs muted">${Utils.escapeHtml(Utils.fmtDateTime(ev.thoi_gian_bat_dau))}</div>
+            </div>
+            <button class="btn btn-violet btn-sm" data-event-go="${ev.id}">Xem &amp; Đăng ký</button>
+          </div>`).join("")}</div>`;
+        box.querySelectorAll("[data-event-go]").forEach((btn) =>
+          btn.addEventListener("click", () => { window.location.href = "/frontend/member/events.html"; })
+        );
+      }
+
+      /* ============ 4. Bình chọn cộng đồng ============ */
+      const POLL_KEY = (id) => `clbip_poll_voted_${id}`;
+
+      function renderPoll(poll) {
+        const box = document.getElementById("poll-box");
+        if (!poll) {
+          Utils.empty(box, { icon: "bar-chart", title: "Chưa có bình chọn nào", desc: "Khi BCN mở bình chọn, nó sẽ hiện ngay tại đây." });
+          return;
+        }
+        const voted = localStorage.getItem(POLL_KEY(poll.id));
+        const closed = !!poll.is_closed;
+        const locked = voted !== null || closed;
+        const total = poll.total_votes || 0;
+
+        const optionsHtml = (poll.options || []).map((opt, i) => {
+          const count = Number((poll.votes || {})[String(i)] || 0);
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          const showResult = locked;
+          const chosen = voted === String(i);
+          return `
+            <button class="poll-opt${chosen ? " chosen" : ""}" data-poll="${poll.id}" data-idx="${i}" ${locked ? "disabled" : ""}>
+              <span>${chosen ? Icons.render("check", 15) : ""} ${Utils.escapeHtml(opt)}</span>
+              <span class="poll-votes">${showResult ? `${count} phiếu · ${pct}%` : ""}</span>
+            </button>`;
+        }).join("");
+
+        box.innerHTML = `
+          <div class="flex items-center justify-between gap-2 mb-4 wrap">
+            <div class="bold">${Utils.escapeHtml(poll.question)}</div>
+            ${closed ? Utils.badge("Đã đóng", "neutral") : (voted !== null ? Utils.badge("Bạn đã bình chọn", "success") : Utils.badge(`${total} phiếu`, "neutral"))}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">${optionsHtml}</div>
+          ${locked ? "" : `<div class="xs muted mt-4">Chọn một phương án — mỗi người chỉ được bình chọn một lần nhé!</div>`}`;
+
+        box.querySelectorAll(".poll-opt:not(:disabled)").forEach((btn) =>
+          btn.addEventListener("click", () => votePoll(poll, Number(btn.dataset.idx), btn))
+        );
+      }
+
+      async function votePoll(poll, idx, btn) {
+        const undo = Utils.btnLoading(btn, "Đang gửi...");
+        try {
+          const updated = await ApiClient.post(`/polls/${poll.id}/vote/`, { option_index: idx });
+          localStorage.setItem(POLL_KEY(poll.id), String(idx));
+          Toast.success("Đã bình chọn! Cảm ơn bạn đã góp tiếng nói 🗳️");
+          renderPoll(updated && updated.id ? updated : poll);
+        } catch (err) {
+          Toast.error(err?.message || "Bình chọn thất bại");
+          undo();
+        }
+      }
+
+      /* ============ 5. Thẻ thành viên mini + streak ============ */
+      function renderMemberCard(me, user) {
+        const box = document.getElementById("member-card");
+        const xp = Number(me?.xp ?? user?.xp_points ?? 0);
+        const level = Number(me?.level ?? user?.current_level ?? 1);
+        const pct = ((xp % 200) / 200) * 100;               // 200 XP / level
+        const remain = Math.max(200 - (xp % 200), 0);
+        const name = user?.ho_ten || user?.email || "?";
+        const streak = Number(me?.streak_count ?? user?.streak_count ?? 0);
+
+        /* streak chip */
+        const chip = document.getElementById("streak-chip");
+        chip.hidden = false;
+        chip.textContent = `🔥 Streak ${streak} ngày`;
+
+        const avName = Utils.initials(name);
+        const avatarHtml = user?.avatar
+          ? `<img src="${Utils.escapeHtml(user.avatar)}" alt="">`
+          : avName;
+
+        box.innerHTML = `
+          <div class="flex items-center gap-4">
+            <div class="level-ring" style="--pct:${pct.toFixed(1)}">
+              <span class="ring"></span>
+              <span class="avatar avatar-lg violet">${avatarHtml}</span>
+            </div>
+            <div class="flex-1" style="min-width:0">
+              <div class="flex items-center gap-2 wrap">
+                <span class="bold" style="font-size:var(--text-lg)">Level ${level}</span>
+                ${Utils.badge(`${Utils.fmtNum(xp)} XP`, "accent")}
+              </div>
+              <div class="xs muted mt-2 mb-2">Còn ${Utils.fmtNum(remain)} XP nữa thăng Level ${level + 1} — cố lên! ⚡</div>
+              <div class="progress"><span style="width:${Math.min(pct, 100).toFixed(1)}%"></span></div>
+            </div>
+          </div>`;
+      }
+
+      /* ============ 6. Góp ý ẩn danh ============ */
+      function openFeedbackModal() {
+        openModal({
+          title: "Góp ý ẩn danh 💌",
+          bodyHTML: `
+            <div class="form-group">
+              <label class="form-label" for="fb-content">Nội dung góp ý</label>
+              <textarea class="form-textarea" id="fb-content" maxlength="1000"
+                placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
+              <div class="form-hint">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi.</div>
+              <div class="form-error hidden" id="fb-error"></div>
+            </div>`,
+          footerHTML: `<button class="btn btn-violet w-100" id="fb-submit">${Icons.render("send", 16)} Gửi góp ý</button>`,
+          onMount(backdrop, close) {
+            const ta = backdrop.querySelector("#fb-content");
+            const errEl = backdrop.querySelector("#fb-error");
+            const btn = backdrop.querySelector("#fb-submit");
+            ta.focus();
+            btn.addEventListener("click", async () => {
+              const noi_dung = ta.value.trim();
+              errEl.classList.add("hidden");
+              if (!noi_dung) {
+                errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+                errEl.classList.remove("hidden");
+                return;
+              }
+              const undo = Utils.btnLoading(btn, "Đang gửi...");
+              try {
+                await ApiClient.post("/feedback/", { noi_dung });
+                close();
+                Toast.success("Góp ý đã gửi ẩn danh 💌");
+              } catch (err) {
+                Toast.error(err?.message || "Không gửi được góp ý");
+                undo();
+              }
+            });
+          },
+        });
+      }
+
+      /* ============ INIT ============ */
+      async function init(user) {
+        /* icon tĩnh */
+        document.getElementById("ic-target").innerHTML = Icons.render("target", 15);
+        document.getElementById("ic-megaphone").innerHTML = Icons.render("bell", 15);
+        document.getElementById("ic-calendar").innerHTML = Icons.render("calendar", 15);
+        document.getElementById("ic-poll").innerHTML = Icons.render("bar-chart", 15);
+        document.getElementById("fab-icon").innerHTML = Icons.render("message", 17);
+
+        document.getElementById("welcome-title").textContent = `Chào, ${firstName(user)} 👋`;
+
+        /* gamification: xp / level / streak / weekly_quests */
+        let me = null;
+        try { me = await ApiClient.get("/gamification/me/"); }
+        catch (err) { Toast.error(err?.message || "Không tải được thông tin gamification"); }
+        renderMemberCard(me, user);
+        renderQuests(me?.weekly_quests);
+
+        /* feed + events + polls chạy song song */
+        const postsP = ApiClient.getList("/posts/").then(({ items }) => renderPosts(items))
+          .catch((err) => { Toast.error(err?.message || "Không tải được bảng tin"); Utils.empty(document.getElementById("posts-box"), { icon: "alert-triangle", title: "Lỗi tải bảng tin" }); });
+        const eventsP = ApiClient.getList("/events/").then(({ items }) => renderEvents(items))
+          .catch((err) => { Toast.error(err?.message || "Không tải được sự kiện"); Utils.empty(document.getElementById("events-box"), { icon: "alert-triangle", title: "Lỗi tải sự kiện" }); });
+        const pollsP = ApiClient.getList("/polls/").then(({ items }) => renderPoll(items[0] || null))
+          .catch((err) => { Toast.error(err?.message || "Không tải được bình chọn"); Utils.empty(document.getElementById("poll-box"), { icon: "alert-triangle", title: "Lỗi tải bình chọn" }); });
+
+        document.getElementById("btn-feedback").addEventListener("click", openFeedbackModal);
+
+        await Promise.allSettled([postsP, eventsP, pollsP]);
+      }
+
+      renderMemberNav("home");
+      Auth.requireRole(["MEMBER"]).then(init).catch(() => {});
+    })();
+  </script>
+</body>
+</html>

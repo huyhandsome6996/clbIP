@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="member">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLB IP ĐHSP Huế 2.0</title>
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
+  <style>
+    .splash {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+    }
+    .splash-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--s-4);
+      padding: var(--s-10) var(--s-12);
+    }
+    .splash-logo {
+      width: 58px; height: 58px;
+      border-radius: 16px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--c-indigo), var(--c-violet));
+      box-shadow: var(--shadow-glow);
+      animation: splashPulse 1.6s var(--ease-out) infinite;
+    }
+    .splash-logo svg { width: 28px; height: 28px; color: #fff; }
+    .splash-text {
+      font-weight: 800;
+      font-size: var(--text-lg);
+      letter-spacing: -0.01em;
+    }
+    .splash-sub { color: var(--tx-muted); font-size: var(--text-sm); }
+    @keyframes splashPulse {
+      0%, 100% { transform: scale(1); box-shadow: var(--shadow-glow); }
+      50% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(99,102,241,.10), 0 8px 30px rgba(99,102,241,.28); }
+    }
+  </style>
+</head>
+<body>
+  <main class="splash">
+    <div class="splash-box glass">
+      <div class="splash-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div class="splash-text">CLB IP ĐHSP Huế 2.0</div>
+      <p class="splash-sub">Đang kiểm tra phiên đăng nhập...</p>
+    </div>
+  </main>
+
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/icons.js"></script>
+  <script src="/frontend/js/toast.js"></script>
+  <script src="/frontend/js/utils.js"></script>
+  <script src="/frontend/js/auth.js"></script>
+  <script>
+    // Chuyển hướng thông minh theo trạng thái đăng nhập + vai trò
+    (async function () {
+      if (!ApiClient.getAccessToken()) {
+        window.location.replace("/frontend/login.html");
+        return;
+      }
+      let user = Auth.cachedUser();
+      if (!user?.role) {
+        try { user = await Auth.me(); }
+        catch {
+          window.location.replace("/frontend/login.html?expired=1");
+          return;
+        }
+      }
+      window.location.replace(Auth.ROLE_HOME[user.role] || "/frontend/login.html");
+    })();
+  </script>
+</body>
+</html>

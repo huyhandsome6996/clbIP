@@ -1,0 +1,332 @@
+/* ============================================================
+   CLB IP ĐHSP Huế 2.0 — glassmorphism.css (theme MEMBER)
+   Glass surfaces · Radar GPS · Podium 3D · Hologram card
+   QR ticket (Apple Wallet style) · Confetti canvas
+   Lưu ý: mọi hiệu ứng infinite-loop chỉ chạy khi có motion muốn;
+   tắt gọn dưới prefers-reduced-motion (xem base.css) và có fallback
+   nền đặc dưới prefers-reduced-transparency.
+   ============================================================ */
+
+/* ---------- Glass surface ---------- */
+.glass {
+  position: relative;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.075),
+    rgba(255, 255, 255, 0.028)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-card);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10), /* viền khúc xạ trên */
+    var(--shadow-md);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+}
+.glass-strong {
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.11),
+    rgba(255, 255, 255, 0.05)
+  );
+}
+/* Fallback nền đặc khi người dùng tắt hiệu ứng trong suốt */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-strong {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--bg-surface);
+    border-color: var(--border-color);
+  }
+}
+
+/* Gradient viền accent (dùng cho thẻ quan trọng) */
+.glass-accent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(99,102,241,.65), rgba(139,92,246,.35), transparent 55%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ---------- Section title cho member ---------- */
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(92deg, #E4E7FF 20%, #A5B4FC 55%, #C4B5FD 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ============================================================
+   GPS RADAR — quét sci-fi cho trang check-in
+   ============================================================ */
+.radar {
+  position: relative;
+  width: min(300px, 76vw);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 50%,
+      rgba(99, 102, 241, 0.14) 0%,
+      rgba(99, 102, 241, 0.05) 55%,
+      transparent 72%);
+  border: 1px solid rgba(139, 146, 217, 0.35);
+}
+.radar::before,
+.radar::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 1px dashed rgba(139, 146, 217, 0.30);
+}
+.radar::after { inset: 28%; border-style: solid; border-color: rgba(139, 146, 217, 0.22); }
+
+.radar-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(99, 102, 241, 0.55);
+  animation: radarPulse 2.4s var(--ease-out) infinite;
+  pointer-events: none;
+}
+.radar-ring:nth-child(2) { animation-delay: 0.8s; }
+.radar-ring:nth-child(3) { animation-delay: 1.6s; }
+
+@keyframes radarPulse {
+  0%   { transform: scale(0.32); opacity: 0.9; }
+  100% { transform: scale(1.06); opacity: 0; }
+}
+
+.radar-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--c-indigo);
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.9);
+  position: relative;
+  z-index: 2;
+  transition: background var(--dur-base), box-shadow var(--dur-base);
+}
+.radar-dot.ok {
+  background: #22C55E;
+  box-shadow: 0 0 26px rgba(34, 197, 94, 0.95);
+}
+.radar-dot.far {
+  background: #F59E0B;
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.9);
+}
+
+/* Quét quét (sweep) — cone quay quanh tâm */
+.radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(99, 102, 241, 0.42) 0deg,
+    rgba(99, 102, 241, 0.06) 62deg,
+    transparent 90deg
+  );
+  animation: sweep 3.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes sweep { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   PODIUM — Bục vinh danh Top 1-2-3 (Min-Heap leaderboard)
+   ============================================================ */
+.podium {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  align-items: end;
+  gap: var(--s-4);
+  max-width: 640px;
+  margin: 0 auto;
+}
+.podium-slot { display: flex; flex-direction: column; align-items: center; gap: var(--s-3); }
+.podium-name { font-weight: 700; font-size: var(--text-sm); text-align: center; }
+.podium-xp {
+  font-size: var(--text-xs);
+  color: var(--tx-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pillar {
+  width: 100%;
+  border-radius: 14px 14px 6px 6px;
+  display: grid;
+  place-items: center;
+  font-size: var(--text-xl);
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.pillar-1 {
+  height: 128px;
+  background: linear-gradient(180deg, #FCD34D, #D97706 90%);
+  box-shadow: 0 14px 34px rgba(217, 119, 6, 0.4), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.pillar-2 {
+  height: 96px;
+  background: linear-gradient(180deg, #E2E8F0, #94A3B8 90%);
+  box-shadow: 0 12px 28px rgba(148, 163, 184, 0.35), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.pillar-3 {
+  height: 76px;
+  background: linear-gradient(180deg, #FDBA94, #C2661F 90%);
+  box-shadow: 0 10px 24px rgba(194, 102, 31, 0.35), inset 0 1px 0 rgba(255,255,255,.4);
+}
+.podium-slot.first .avatar { box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.9), 0 8px 26px rgba(252, 211, 77, 0.45); }
+.podium-slot.second .avatar { box-shadow: 0 0 0 3px rgba(226, 232, 240, 0.8), 0 8px 22px rgba(148, 163, 184, 0.4); }
+.podium-slot.third .avatar { box-shadow: 0 0 0 3px rgba(253, 186, 148, 0.8), 0 8px 22px rgba(194, 102, 31, 0.4); }
+
+/* Crown nhẹ trên đầu Top 1 */
+.crown { color: #FCD34D; }
+.crown svg { width: 22px; height: 22px; filter: drop-shadow(0 2px 6px rgba(252, 211, 77, 0.6)); }
+
+/* ============================================================
+   HOLOGRAM MEMBER CARD — thẻ thành viên hiệu ứng hào quang
+   ============================================================ */
+.holo-card {
+  position: relative;
+  border-radius: 20px;
+  padding: var(--s-5);
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(30, 41, 92, 0.92), rgba(20, 26, 60, 0.94)),
+    radial-gradient(24rem 12rem at 115% -20%, rgba(139, 92, 246, 0.4), transparent 60%);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  box-shadow: var(--shadow-lg);
+}
+/* Dải quang phổ lướt — chỉ chạy khi có hover/focus, không loop vô hạn */
+.holo-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(165, 180, 252, 0.16) 45%,
+    rgba(196, 181, 253, 0.22) 52%,
+    transparent 66%
+  );
+  transform: translateX(-120%);
+  transition: transform 1.1s var(--ease-out);
+  pointer-events: none;
+}
+.holo-card:hover::after { transform: translateX(120%); }
+
+.holo-id {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+  color: #A5B4FC;
+}
+
+/* ============================================================
+   QR TICKET — vé điện tử Apple Wallet style
+   ============================================================ */
+.ticket {
+  max-width: 380px;
+  margin: 0 auto;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #101736;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  box-shadow: var(--shadow-lg);
+}
+.ticket-top {
+  padding: var(--s-5);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(139, 92, 246, 0.22));
+}
+.ticket-notch {
+  position: relative;
+  height: 26px;
+  margin: 0 22px;
+}
+.ticket-notch::before,
+.ticket-notch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--bg-page); /* "đục lỗ" hai bên đường xé */
+  border: 1px solid rgba(129, 140, 248, 0.35);
+}
+.ticket-notch::before { left: -13px; }
+.ticket-notch::after { right: -13px; }
+.ticket-notch .dash {
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  border-top: 2px dashed rgba(129, 140, 248, 0.4);
+}
+.ticket-qr {
+  display: grid;
+  place-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5) var(--s-6);
+}
+.ticket-qr img,
+.ticket-qr canvas { border-radius: 12px; background: #fff; padding: 10px; }
+.ticket-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #C7D2FE;
+}
+
+/* ============================================================
+   CONFETTI CANVAS — ăn mừng khi check-in thành công
+   ============================================================ */
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-confetti);
+  pointer-events: none;
+}
+
+/* ============================================================
+   STREAK FIRE — chuỗi ngày liên tiếp
+   ============================================================ */
+.streak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: rgba(249, 115, 22, 0.16);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  color: #FDBA74;
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+/* ============================================================
+   LEVEL RING — vòng tròn level quanh avatar
+   ============================================================ */
+.level-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.level-ring .ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(var(--c-indigo) calc(var(--pct, 0) * 1%), rgba(255,255,255,0.10) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+}

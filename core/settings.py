@@ -17,6 +17,30 @@ import dj_database_url
 # ------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ------------------------------------------------------------------
+# 0.5 .ENV LOADER — nạp file .env ở thư mục gốc (không cần python-dotenv)
+# Dự án dùng MySQL làm CSDL chính: biến DB_ENGINE, MYSQL_* đọc từ đây.
+# ------------------------------------------------------------------
+def _load_env_file() -> None:
+    """Đọc cặp KEY=VALUE từ .env (bỏ qua comment #, giữ giá trị có khoảng trắng)."""
+    env_path = BASE_DIR / ".env"
+    if not env_path.exists():
+        return
+    try:
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip().strip("'\"")
+            if key and key not in os.environ:  # biến môi trường thật ưu tiên hơn .env
+                os.environ[key] = value
+    except OSError:
+        pass  # Không thể đọc .env → chạy bằng biến môi trường hệ thống
+
+
+_load_env_file()
+
 # Cờ nhận diện đang chạy unittest → tắt throttle/axes để test không bị nhiễu
 TESTING = "test" in sys.argv
 
@@ -111,19 +135,33 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 
 # ------------------------------------------------------------------
-# 3. DATABASE — Hỗ trợ MySQL (chính), PostgreSQL (Render) hoặc SQLite
 # ------------------------------------------------------------------
+# 3. DATABASE — MySQL (chính) / PostgreSQL (Render) / SQLite (fallback)
+# ------------------------------------------------------------------
+# Ưu tiên:
+#   1) DB_ENGINE=mysql / MYSQL_DATABASE / USE_MYSQL=1 → MySQL cục bộ
+#      (CSDL `clb_ip_db` utf8mb4 — theo CLBIP_Frontend_Integration_Prompt.md)
+#   2) DATABASE_URL=mysql://... → MySQL qua URL; postgres://... → Render
+#   3) Còn lại → SQLite local (dev nhanh, chạy unit test)
 try:
     import pymysql
-    pymysql.install_as_MySQLdb()
-except ImportError:
+
+    pymysql.install_as_MySQLdb()  # Django.db.backends.mysql dùng pymysql
+except ImportError:  # Render/PostgreSQL không cần pymysql
     pass
 
 _db_url = os.environ.get("DATABASE_URL", "").strip()
-_db_engine = os.environ.get("DB_ENGINE", "").lower()
+_db_engine = os.environ.get("DB_ENGINE", "").strip().lower()
 _mysql_name = os.environ.get("MYSQL_DATABASE", os.environ.get("MYSQL_NAME", "clb_ip_db"))
 
-if _db_url and not _db_url.startswith("file:"):
+_use_mysql = (
+    _db_engine == "mysql"
+    or _db_url.startswith("mysql")
+    or bool(os.environ.get("MYSQL_DATABASE"))
+    or os.environ.get("USE_MYSQL") == "1"
+)
+
+if _use_mysql and _db_url.startswith("mysql"):
     DATABASES = {
         "default": dj_database_url.parse(
             _db_url,
@@ -131,7 +169,7 @@ if _db_url and not _db_url.startswith("file:"):
             ssl_require=False,
         )
     }
-elif _db_engine == "mysql" or os.environ.get("MYSQL_DATABASE") or os.environ.get("USE_MYSQL") == "1":
+elif _use_mysql:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
@@ -141,17 +179,25 @@ elif _db_engine == "mysql" or os.environ.get("MYSQL_DATABASE") or os.environ.get
             "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
             "PORT": os.environ.get("MYSQL_PORT", "3306"),
             "OPTIONS": {
-                "charset": "utf8mb4",
+                "charset": "utf8mb4",  # Hỗ trợ đầy đủ tiếng Việt + emoji
                 "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
             },
         }
+    }
+elif _db_url and not _db_url.startswith("file:"):  # Bỏ qua DATABASE_URL không phải DB thật
+    DATABASES = {
+        "default": dj_database_url.parse(
+            _db_url,
+            conn_max_age=600,
+            ssl_require=False,  # Render quản lý SSL qua sslmode trong URL
+        )
     }
 else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
-            "OPTIONS": {"timeout": 30},
+            "OPTIONS": {"timeout": 30},  # Tránh 'database is locked' khi test concurrency
         }
     }
 

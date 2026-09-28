@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="admin">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quỹ CLB — Quản trị CLB IP</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ---- Layout riêng trang quỹ ---- */
+    .toolbar { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+    .toolbar .form-select, .toolbar .form-input { width: auto; }
+    .toolbar-spacer { flex: 1; }
+    @media (max-width: 767.98px) {
+      .toolbar .form-select, .toolbar .form-input { width: 100%; }
+      .toolbar-spacer { display: none; }
+    }
+
+    /* ---- Tông màu KPI thu/chi/dư ---- */
+    .kpi-icon.tint-success { background: var(--c-success-soft); color: var(--c-success); }
+    .kpi-icon.tint-danger  { background: var(--c-danger-soft);  color: var(--c-danger); }
+    .kpi-icon.tint-accent  { background: var(--c-accent-soft);  color: var(--c-accent); }
+
+    /* ---- Cảnh báo quỹ thấp ---- */
+    .low-banner {
+      display: flex; align-items: center; gap: var(--s-3);
+      background: var(--c-danger-soft); color: #991B1B;
+      border: 1px solid #FCA5A5; border-radius: var(--r-card);
+      padding: var(--s-4) var(--s-5); font-weight: 700;
+    }
+    .low-banner svg { width: 22px; height: 22px; flex: none; }
+
+    /* ---- Số tiền thu/chi ---- */
+    .amt-in  { color: var(--c-success); font-weight: 700; }
+    .amt-out { color: var(--c-danger);  font-weight: 700; }
+
+    /* ---- Radio THU/CHI ---- */
+    .radio-row { display: flex; gap: var(--s-4); }
+    .radio-opt {
+      flex: 1; display: flex; align-items: center; gap: var(--s-2);
+      border: 1px solid var(--border-strong); border-radius: var(--r-control);
+      padding: 10px 14px; cursor: pointer; font-weight: 600; font-size: var(--text-sm);
+      transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+    }
+    .radio-opt input { accent-color: var(--c-accent); }
+    .radio-opt:has(input:checked) { border-color: var(--c-accent); background: var(--c-accent-soft); }
+  </style>
+</head>
+<body>
+<div class="admin-shell" id="shell">
+  <aside class="admin-sidebar">
+    <div class="side-brand">
+      <span class="logo" id="brand-logo"></span>
+      <div><div class="t1">CLB IP ĐHSP Huế</div><div class="t2">Quản trị 2.0</div></div>
+    </div>
+    <nav class="side-nav" id="side-nav"><!-- JS render nav --></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost w-100" id="btn-logout" style="color:var(--tx-sidebar)">Đăng xuất</button>
+    </div>
+  </aside>
+  <div class="scrim hidden" id="scrim"></div>
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="flex items-center gap-3">
+        <button class="btn btn-ghost burger" id="btn-burger" aria-label="Mở menu"><span id="burger-icon"></span></button>
+        <h1 style="font-size:var(--text-lg)">Quỹ CLB</h1>
+      </div>
+      <div class="flex items-center gap-3" id="topbar-user"><!-- avatar + tên --></div>
+    </header>
+    <main class="admin-content">
+
+      <!-- ===== KPI thu / chi / dư ===== -->
+      <section class="kpi-grid" aria-label="Thống kê quỹ">
+        <div class="card kpi">
+          <span class="kpi-icon tint-success" id="kpi-ic-in"></span>
+          <div>
+            <div class="kpi-value" id="kpi-in" style="color:var(--c-success)">—</div>
+            <div class="kpi-label">Tổng thu</div>
+          </div>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-icon tint-danger" id="kpi-ic-out"></span>
+          <div>
+            <div class="kpi-value" id="kpi-out" style="color:var(--c-danger)">—</div>
+            <div class="kpi-label">Tổng chi</div>
+          </div>
+        </div>
+        <div class="card kpi">
+          <span class="kpi-icon tint-accent" id="kpi-ic-bal"></span>
+          <div>
+            <div class="kpi-value" id="kpi-bal">—</div>
+            <div class="kpi-label">Số dư hiện tại</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Cảnh báo quỹ thấp (ẩn/hiện theo low_balance) ===== -->
+      <section class="low-banner hidden" id="low-banner" role="alert">
+        <span id="low-banner-ic"></span>
+        <span>Số dư quỹ dưới ngưỡng an toàn 200.000₫ — cân nhắc hoãn các khoản chi không thiết yếu.</span>
+      </section>
+
+      <!-- ===== Toolbar: lọc + hành động ===== -->
+      <section class="toolbar" aria-label="Bộ lọc sổ quỹ">
+        <select class="form-select" id="f-loai" aria-label="Lọc theo loại giao dịch">
+          <option value="">Tất cả loại</option>
+          <option value="THU">Thu</option>
+          <option value="CHI">Chi</option>
+        </select>
+        <input class="form-input" type="date" id="f-from" aria-label="Từ ngày">
+        <input class="form-input" type="date" id="f-to" aria-label="Đến ngày">
+        <button class="btn btn-primary btn-sm" id="btn-apply">Áp dụng</button>
+        <button class="btn btn-ghost btn-sm" id="btn-clear">Xóa lọc</button>
+        <div class="toolbar-spacer"></div>
+        <button class="btn btn-outline" id="btn-export"><span id="ic-export"></span>Xuất Excel</button>
+        <button class="btn btn-primary" id="btn-new-gd"><span id="ic-new-gd"></span>Ghi sổ</button>
+      </section>
+
+      <!-- ===== Bảng giao dịch ===== -->
+      <section>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Mã phiếu</th><th>Loại</th><th class="num">Số tiền</th><th>Người thực hiện</th>
+                <th>Hình thức</th><th>Ngày GD</th><th class="num">Số dư sau</th><th>Khóa sổ</th>
+              </tr>
+            </thead>
+            <tbody id="funds-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="funds-pagination">
+          <span class="page-info"></span><span class="page-btns"></span>
+        </div>
+      </section>
+
+      <!-- ===== Khóa sổ kỳ ===== -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="flex items-center gap-2"><span id="ic-lock"></span>Các kỳ đã khóa sổ</h2>
+          <button class="btn btn-outline btn-sm" id="btn-lock"><span id="ic-lock-sm"></span>Khóa sổ kỳ</button>
+        </div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr><th>Tên kỳ</th><th>Từ ngày</th><th>Đến ngày</th><th>Người khóa</th><th>Thời điểm khóa</th></tr>
+              </thead>
+              <tbody id="locks-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/icons.js"></script>
+<script src="/frontend/js/toast.js"></script>
+<script src="/frontend/js/utils.js"></script>
+<script src="/frontend/js/auth.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ================= NAV DÙNG CHUNG (CONTRACT §6) ================= */
+  function renderAdminNav(active) {
+    document.getElementById("brand-logo").innerHTML = Icons.render("zap", 20);
+    const items = [
+      ["dashboard", "layout", "Dashboard", "/frontend/admin/dashboard.html"],
+      ["members", "users", "Thành viên", "/frontend/admin/members.html"],
+      ["funds", "wallet", "Quỹ CLB", "/frontend/admin/funds.html"],
+      ["events", "calendar", "Sự kiện", "/frontend/admin/events.html"],
+      ["attendance", "compass", "Điểm danh", "/frontend/admin/attendance.html"],
+      ["documents", "book-open", "Tài liệu", "/frontend/admin/documents.html"],
+    ];
+    document.getElementById("side-nav").innerHTML =
+      '<div class="nav-label">Quản lý</div>' +
+      items.map(([k, ic, label, href]) =>
+        `<a class="nav-item${k === active ? " active" : ""}" href="${href}">${Icons.render(ic, 18)}<span>${label}</span></a>`
+      ).join("");
+    const user = Auth.cachedUser();
+    document.getElementById("topbar-user").innerHTML =
+      `<span class="small bold">${Utils.escapeHtml(user?.ho_ten || user?.email || "")}</span>
+       <span class="avatar avatar-sm" title="${Utils.escapeHtml(user?.role || "")}">${Utils.initials(user?.ho_ten || user?.email)}</span>`;
+    document.getElementById("burger-icon").innerHTML = Icons.render("menu", 20);
+    document.getElementById("btn-burger").addEventListener("click", () => {
+      document.getElementById("shell").classList.add("nav-open");
+      document.getElementById("scrim").classList.remove("hidden");
+    });
+    document.getElementById("scrim").addEventListener("click", () => {
+      document.getElementById("shell").classList.remove("nav-open");
+      document.getElementById("scrim").classList.add("hidden");
+    });
+    document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+  }
+
+  /* ================= MODAL HELPER (CONTRACT §7) ================= */
+  function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${Utils.escapeHtml(title)}">
+        <div class="modal-head"><h3>${Utils.escapeHtml(title)}</h3>
+          <button class="modal-close">${Icons.render("x", 20)}</button></div>
+        <div class="modal-body">${bodyHTML}</div>
+        ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+      </div>`;
+    const close = () => backdrop.remove();
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+    backdrop.querySelector(".modal-close").addEventListener("click", close);
+    document.body.appendChild(backdrop);
+    if (onMount) onMount(backdrop, close);
+    return { el: backdrop, close };
+  }
+  function showFieldErrors(root, errors) {
+    if (!errors || typeof errors !== "object") return;
+    Object.entries(errors).forEach(([field, msgs]) => {
+      const el = root.querySelector(`.form-error[data-field="${field}"]`);
+      if (el) { el.textContent = Array.isArray(msgs) ? msgs.join(" ") : String(msgs); el.classList.remove("hidden"); }
+    });
+  }
+  function clearFieldErrors(root) {
+    Utils.qsa(".form-error", root).forEach((el) => { el.textContent = ""; el.classList.add("hidden"); });
+  }
+
+  /* ================= HẰNG SỐ HIỂN THỊ ================= */
+  const ic = (n, s) => Icons.render(n, s || 18);
+  const LOAI_GD = { THU: ["Thu", "success"], CHI: ["Chi", "danger"] };
+  const HINH_THUC = { TIEN_MAT: "Tiền mặt", CHUYEN_KHOAN: "Chuyển khoản" };
+
+  /* ================= STATE ================= */
+  const state = { page: 1, loaiGd: "", fromDate: "", toDate: "" };
+
+  /* ================= KHỞI TẠO ================= */
+  function init() {
+    renderAdminNav("funds");
+    renderStaticIcons();
+    bindToolbar();
+    loadStats();
+    loadTransactions();
+    loadLocks();
+  }
+
+  function renderStaticIcons() {
+    document.getElementById("kpi-ic-in").innerHTML = ic("trending-up", 21);
+    document.getElementById("kpi-ic-out").innerHTML = ic("trending-down", 21);
+    document.getElementById("kpi-ic-bal").innerHTML = ic("dollar", 21);
+    document.getElementById("low-banner-ic").innerHTML = ic("alert-triangle", 22);
+    // Nút "Áp dụng" (đặt bằng JS để nhúng icon svg gọn)
+    document.getElementById("btn-apply").innerHTML = `${ic("filter", 14)}Áp dụng`;
+    document.getElementById("ic-export").innerHTML = ic("download", 16);
+    document.getElementById("ic-new-gd").innerHTML = ic("plus", 16);
+    document.getElementById("ic-lock").innerHTML = ic("lock", 18);
+    document.getElementById("ic-lock-sm").innerHTML = ic("lock", 14);
+  }
+
+  function bindToolbar() {
+    document.getElementById("btn-apply").addEventListener("click", () => {
+      state.loaiGd = document.getElementById("f-loai").value;
+      state.fromDate = document.getElementById("f-from").value;
+      state.toDate = document.getElementById("f-to").value;
+      state.page = 1;
+      loadTransactions();
+    });
+    document.getElementById("btn-clear").addEventListener("click", () => {
+      document.getElementById("f-loai").value = "";
+      document.getElementById("f-from").value = "";
+      document.getElementById("f-to").value = "";
+      state.loaiGd = ""; state.fromDate = ""; state.toDate = "";
+      state.page = 1;
+      loadTransactions();
+    });
+    document.getElementById("btn-new-gd").addEventListener("click", openCreateModal);
+    document.getElementById("btn-export").addEventListener("click", exportExcel);
+    document.getElementById("btn-lock").addEventListener("click", openLockModal);
+  }
+
+  /* ================= KPI: THỐNG KÊ QUỸ ================= */
+  async function loadStats() {
+    try {
+      const s = await ApiClient.get("/funds/stats/");
+      document.getElementById("kpi-in").textContent = Utils.fmtVND(s.total_income);
+      document.getElementById("kpi-out").textContent = Utils.fmtVND(s.total_expense);
+      document.getElementById("kpi-bal").textContent = Utils.fmtVND(s.balance);
+      document.getElementById("low-banner").classList.toggle("hidden", !s.low_balance);
+    } catch (err) {
+      Toast.error(err.message);
+    }
+  }
+
+  /* ================= BẢNG GIAO DỊCH ================= */
+  function tableSkeleton(tbody, cols, rows) {
+    let html = "";
+    for (let i = 0; i < rows; i++) {
+      html += `<tr><td colspan="${cols}"><div class="skeleton" style="height:16px;width:${50 + ((i * 17) % 40)}%"></div></td></tr>`;
+    }
+    tbody.innerHTML = html;
+  }
+
+  async function loadTransactions() {
+    const tbody = document.getElementById("funds-tbody");
+    const pgBox = document.getElementById("funds-pagination");
+    tableSkeleton(tbody, 8, 5);
+    try {
+      const params = { page: state.page, sort: "-ngay_gd" };
+      if (state.loaiGd) params.loai_gd = state.loaiGd;
+      if (state.fromDate) params.from_date = state.fromDate;
+      if (state.toDate) params.to_date = state.toDate;
+      const { items, pagination } = await ApiClient.getList("/funds/", params);
+      if (!items.length) {
+        tbody.innerHTML = "";
+        Utils.empty(tbody, { icon: "wallet", title: "Chưa có giao dịch nào", desc: "Ghi sổ thu/chi đầu tiên hoặc nới rộng bộ lọc thời gian." });
+        pgBox.querySelector(".page-info").textContent = "";
+        pgBox.querySelector(".page-btns").innerHTML = "";
+        return;
+      }
+      tbody.innerHTML = items.map((t) => {
+        const [loaiLabel, loaiTone] = LOAI_GD[t.loai_gd] || [t.loai_gd, "neutral"];
+        const isIn = t.loai_gd === "THU";
+        const amount = isIn ? `+${Utils.fmtNum(t.so_tien)}` : `−${Utils.fmtNum(t.so_tien)}`;
+        return `
+        <tr>
+          <td class="mono">${Utils.escapeHtml(t.ma_phieu || "—")}</td>
+          <td>${Utils.badge(loaiLabel, loaiTone)}</td>
+          <td class="num"><span class="${isIn ? "amt-in" : "amt-out"}">${amount}</span></td>
+          <td class="small">${Utils.escapeHtml(t.nguoi_thuc_hien || "—")}</td>
+          <td>${Utils.escapeHtml(HINH_THUC[t.hinh_thuc] || t.hinh_thuc || "—")}</td>
+          <td class="small">${Utils.fmtDateTime(t.ngay_gd)}</td>
+          <td class="num">${Utils.fmtNum(t.so_du_sau)}</td>
+          <td>${t.is_locked ? `<span class="badge badge-warning">${ic("lock", 12)}Khóa</span>` : '<span class="muted small">—</span>'}</td>
+        </tr>`;
+      }).join("");
+      renderPagination(pgBox, pagination, (p) => { state.page = p; loadTransactions(); });
+    } catch (err) {
+      tbody.innerHTML = "";
+      Utils.empty(tbody, { icon: "alert-triangle", title: "Không tải được sổ quỹ", desc: err.message });
+    }
+  }
+
+  function renderPagination(box, pg, onPage) {
+    const info = box.querySelector(".page-info");
+    const btns = box.querySelector(".page-btns");
+    if (!pg || pg.total_pages <= 1) {
+      info.textContent = pg ? `${Utils.fmtNum(pg.total_items)} bản ghi` : "";
+      btns.innerHTML = "";
+      return;
+    }
+    info.textContent = `Trang ${pg.page}/${pg.total_pages} · ${Utils.fmtNum(pg.total_items)} bản ghi`;
+    btns.innerHTML = `
+      <button class="btn btn-outline btn-sm" id="pg-prev" ${pg.page <= 1 ? "disabled" : ""}>${ic("chevron-left", 14)}Trước</button>
+      <button class="btn btn-outline btn-sm" id="pg-next" ${pg.page >= pg.total_pages ? "disabled" : ""}>Sau${ic("chevron-right", 14)}</button>`;
+    btns.querySelector("#pg-prev").addEventListener("click", () => onPage(pg.page - 1));
+    btns.querySelector("#pg-next").addEventListener("click", () => onPage(pg.page + 1));
+  }
+
+  /* ================= MODAL: GHI SỔ THU / CHI ================= */
+  function openCreateModal() {
+    openModal({
+      title: "Ghi sổ thu / chi",
+      bodyHTML: `
+        <div class="form-group">
+          <label class="form-label">Loại giao dịch <span class="req">*</span></label>
+          <div class="radio-row">
+            <label class="radio-opt"><input type="radio" name="gd-loai" value="THU" checked>Tiền thu (+)</label>
+            <label class="radio-opt"><input type="radio" name="gd-loai" value="CHI">Tiền chi (−)</label>
+          </div>
+          <p class="form-error hidden" data-field="loai_gd"></p>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="gd-tien">Số tiền (VNĐ) <span class="req">*</span></label>
+            <input class="form-input" type="number" id="gd-tien" min="1" step="1000" placeholder="VD: 250000">
+            <p class="form-error hidden" data-field="so_tien"></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="gd-hinhthuc">Hình thức</label>
+            <select class="form-select" id="gd-hinhthuc">
+              <option value="TIEN_MAT">Tiền mặt</option>
+              <option value="CHUYEN_KHOAN">Chuyển khoản</option>
+            </select>
+            <p class="form-error hidden" data-field="hinh_thuc"></p>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="gd-nguoi">Người thực hiện <span class="req">*</span></label>
+            <input class="form-input" id="gd-nguoi" placeholder="VD: Trưởng ban Tài chính">
+            <p class="form-error hidden" data-field="nguoi_thuc_hien"></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="gd-ngay">Ngày giao dịch</label>
+            <input class="form-input" type="datetime-local" id="gd-ngay">
+            <p class="form-hint">Bỏ trống sẽ lấy thời điểm hiện tại.</p>
+            <p class="form-error hidden" data-field="ngay_gd"></p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="gd-ghichu">Ghi chú</label>
+          <textarea class="form-textarea" id="gd-ghichu" rows="3" placeholder="Nội dung thu/chi, hóa đơn kèm theo..."></textarea>
+        </div>`,
+      footerHTML: `<button class="btn btn-ghost" data-close>Đóng</button>
+                   <button class="btn btn-primary" id="btn-submit-gd">${ic("check", 16)}Lưu vào sổ quỹ</button>`,
+      onMount(modal, close) {
+        modal.querySelector("[data-close]").addEventListener("click", close);
+        modal.querySelector("#btn-submit-gd").addEventListener("click", async () => {
+          clearFieldErrors(modal);
+          const so_tien = Number(modal.querySelector("#gd-tien").value);
+          const nguoi = modal.querySelector("#gd-nguoi").value.trim();
+          if (!so_tien || so_tien < 1) { Toast.warning("Số tiền phải là số dương."); return; }
+          if (!nguoi) { Toast.warning("Vui lòng nhập người thực hiện."); return; }
+          // datetime-local "YYYY-MM-DDTHH:MM" → thêm giây cho chuẩn ISO
+          let ngayGd = modal.querySelector("#gd-ngay").value;
+          if (ngayGd && ngayGd.length === 16) ngayGd += ":00";
+          const btn = modal.querySelector("#btn-submit-gd");
+          const undo = Utils.btnLoading(btn, "Đang lưu...");
+          try {
+            const created = await ApiClient.post("/funds/", {
+              loai_gd: modal.querySelector('input[name="gd-loai"]:checked').value,
+              so_tien,
+              nguoi_thuc_hien: nguoi,
+              hinh_thuc: modal.querySelector("#gd-hinhthuc").value,
+              ngay_gd: ngayGd || null,
+              ghi_chu: modal.querySelector("#gd-ghichu").value.trim(),
+            });
+            Toast.success(`Đã ghi sổ. Số dư mới: ${Utils.fmtVND(created?.so_du_sau)}`, "Ghi sổ thành công");
+            close();
+            loadStats();
+            loadTransactions();
+          } catch (err) {
+            showFieldErrors(modal, err.errors);
+            Toast.error(err.message);
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= KHÓA SỔ KỲ ================= */
+  async function loadLocks() {
+    const tbody = document.getElementById("locks-tbody");
+    tableSkeleton(tbody, 5, 3);
+    try {
+      const { items } = await ApiClient.getList("/funds/locks/");
+      if (!items.length) {
+        tbody.innerHTML = "";
+        Utils.empty(tbody, { icon: "lock", title: "Chưa khóa sổ kỳ nào", desc: "Khóa sổ để cố định số dư cuối kỳ, chống chỉnh sửa về sau." });
+        return;
+      }
+      tbody.innerHTML = items.map((l) => `
+        <tr>
+          <td>
+            <div class="bold small">${Utils.escapeHtml(l.ten_ky || "—")}</div>
+            ${l.ghi_chu ? `<div class="xs muted">${Utils.escapeHtml(l.ghi_chu)}</div>` : ""}
+          </td>
+          <td>${Utils.fmtDate(l.tu_ngay)}</td>
+          <td>${Utils.fmtDate(l.den_ngay)}</td>
+          <td class="small">${Utils.escapeHtml(l.locked_by || "—")}</td>
+          <td class="small">${Utils.fmtDateTime(l.locked_at)}</td>
+        </tr>`).join("");
+    } catch (err) {
+      tbody.innerHTML = "";
+      Utils.empty(tbody, { icon: "alert-triangle", title: "Không tải được kỳ khóa sổ", desc: err.message });
+    }
+  }
+
+  function openLockModal() {
+    openModal({
+      title: "Khóa sổ kỳ",
+      bodyHTML: `
+        <div class="form-group">
+          <label class="form-label" for="lk-ten">Tên kỳ <span class="req">*</span></label>
+          <input class="form-input" id="lk-ten" placeholder="VD: Kỳ tháng 10/2026">
+          <p class="form-error hidden" data-field="ten_ky"></p>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lk-tu">Từ ngày <span class="req">*</span></label>
+            <input class="form-input" type="date" id="lk-tu">
+            <p class="form-error hidden" data-field="tu_ngay"></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lk-den">Đến ngày <span class="req">*</span></label>
+            <input class="form-input" type="date" id="lk-den">
+            <p class="form-error hidden" data-field="den_ngay"></p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="lk-ghichu">Ghi chú</label>
+          <textarea class="form-textarea" id="lk-ghichu" rows="2" placeholder="Lý do khóa sổ, phạm vi..."></textarea>
+        </div>
+        <p class="form-hint">⚠️ Sau khi khóa, các giao dịch trong kỳ không thể sửa hay xóa nữa.</p>`,
+      footerHTML: `<button class="btn btn-ghost" data-close>Đóng</button>
+                   <button class="btn btn-primary" id="btn-submit-lock">${ic("lock", 16)}Khóa sổ</button>`,
+      onMount(modal, close) {
+        modal.querySelector("[data-close]").addEventListener("click", close);
+        modal.querySelector("#btn-submit-lock").addEventListener("click", async () => {
+          clearFieldErrors(modal);
+          const ten_ky = modal.querySelector("#lk-ten").value.trim();
+          const tu_ngay = modal.querySelector("#lk-tu").value;
+          const den_ngay = modal.querySelector("#lk-den").value;
+          if (!ten_ky || !tu_ngay || !den_ngay) {
+            Toast.warning("Vui lòng nhập đủ tên kỳ và khoảng thời gian.");
+            return;
+          }
+          const btn = modal.querySelector("#btn-submit-lock");
+          const undo = Utils.btnLoading(btn, "Đang khóa...");
+          try {
+            await ApiClient.post("/funds/lock-period/", {
+              ten_ky, tu_ngay, den_ngay,
+              ghi_chu: modal.querySelector("#lk-ghichu").value.trim(),
+            });
+            Toast.success(`Đã khóa sổ kỳ "${ten_ky}".`);
+            close();
+            loadLocks();
+          } catch (err) {
+            showFieldErrors(modal, err.errors);
+            Toast.error(err.message);
+          } finally {
+            undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ================= XUẤT EXCEL ================= */
+  async function exportExcel() {
+    const btn = document.getElementById("btn-export");
+    const undo = Utils.btnLoading(btn, "Đang xuất...");
+    try {
+      await ApiClient.download("/funds/export-excel/", "so_quy.xlsx");
+      Toast.success("Đã xuất sổ quỹ ra file Excel.");
+    } catch (err) {
+      Toast.error(err.message);
+    } finally {
+      undo();
+    }
+  }
+
+  /* Guard chạy xong mới khởi tạo state (CONTRACT §1) */
+  Auth.requireRole(["ADMIN", "BCN"]).then(init).catch(() => {});
+})();
+</script>
+</body>
+</html>

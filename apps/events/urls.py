@@ -11,14 +11,22 @@ from apps.events.views import (
     EventListCreateView,
     EventRegisterView,
     EventRegistrationListView,
+    EventTaskDetailView,
     EventTaskListCreateView,
+    MyTicketsView,
     TaskOrderView,
 )
 
 urlpatterns = [
     path("", EventListCreateView.as_view(), name="event_list"),
+    path("my-tickets/", MyTicketsView.as_view(), name="event_my_tickets"),
     path("<int:pk>/", EventDetailView.as_view(), name="event_detail"),
     path("<int:pk>/tasks/", EventTaskListCreateView.as_view(), name="event_tasks"),
+    path(
+        "<int:pk>/tasks/<int:task_id>/",
+        EventTaskDetailView.as_view(),
+        name="event_task_detail",
+    ),
     path("<int:pk>/tasks/topological-order/", TaskOrderView.as_view(), name="event_task_order"),
     path("<int:pk>/register/", EventRegisterView.as_view(), name="event_register"),
     path(

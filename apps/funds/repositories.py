@@ -14,6 +14,7 @@ from typing import Optional
 
 from django.db.models import QuerySet
 
+from apps.common.timeutils import local_day_range, local_range_inclusive
 from apps.funds.models import FundTransaction
 
 
@@ -109,16 +110,20 @@ class DjangoFundRepository(IFundRepository):
         if loai_gd:
             queryset = queryset.filter(loai_gd=loai_gd)
         if from_date:
-            queryset = queryset.filter(ngay_gd__date__gte=from_date)
+            start_dt, _ = local_range_inclusive(from_date, from_date)
+            queryset = queryset.filter(ngay_gd__gte=start_dt)
         if to_date:
-            queryset = queryset.filter(ngay_gd__date__lte=to_date)
+            _, end_dt = local_range_inclusive(to_date, to_date)
+            queryset = queryset.filter(ngay_gd__lt=end_dt)
         return queryset
 
     def count_transactions_on_date(self, loai_gd: str, ngay: date) -> int:
         """Số giao dịch cùng loại phát sinh trong ngày `ngay` (múi giờ địa phương)."""
+        day_start, day_end = local_day_range(ngay)
         return FundTransaction.objects.filter(
             loai_gd=loai_gd,
-            ngay_gd__date=ngay,
+            ngay_gd__gte=day_start,
+            ngay_gd__lt=day_end,
         ).count()
 
     def exists_ma_phieu(self, ma_phieu: str) -> bool:

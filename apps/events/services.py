@@ -300,6 +300,14 @@ class EventTaskService:
             raise NotFoundException("Không tìm thấy sự kiện.")
 
     @staticmethod
+    def get_task_or_404(task_id: int, event_id: Optional[int] = None) -> EventTask:
+        """Lấy task theo id (tuỳ chọn kiểm tra thuộc đúng sự kiện)."""
+        task = EventTaskService._get_task_or_404(task_id)
+        if event_id is not None and task.event_id != event_id:
+            raise NotFoundException("Task không thuộc sự kiện này.")
+        return task
+
+    @staticmethod
     def _get_task_or_404(task_id: int) -> EventTask:
         try:
             return EventTask.objects.select_related("event").get(pk=task_id)

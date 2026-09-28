@@ -29,6 +29,7 @@ from apps.common.exceptions import (
 )
 from apps.funds.models import FundPeriodLock, FundTransaction
 from apps.funds.repositories import IFundRepository, DjangoFundRepository
+from apps.common.timeutils import local_range_inclusive
 from core.algorithms.fund_invariants import FundInvariantsEngine
 
 logger = logging.getLogger(__name__)
@@ -296,9 +297,11 @@ class FundService:
                 ghi_chu=ghi_chu,
             )
             # Update hàng loạt 1 query — đóng băng lịch sử trong khoảng kỳ
+            # (range datetime di động đa CSDL — thay cho __date, xem timeutils)
+            start_dt, end_dt = local_range_inclusive(tu_ngay, den_ngay)
             FundTransaction.objects.filter(
-                ngay_gd__date__gte=tu_ngay,
-                ngay_gd__date__lte=den_ngay,
+                ngay_gd__gte=start_dt,
+                ngay_gd__lt=end_dt,
             ).update(is_locked=True)
 
         logger.info("Khóa sổ kỳ '%s' (%s → %s)", ten_ky, tu_ngay, den_ngay)

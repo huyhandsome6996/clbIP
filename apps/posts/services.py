@@ -22,6 +22,7 @@ from apps.common.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from apps.common.timeutils import local_day_range
 from apps.posts.models import CommunityPoll, FeedbackEntry, Post, PostAuditLog
 
 logger = logging.getLogger(__name__)
@@ -175,8 +176,10 @@ class FeedbackService:
         if not noi_dung:
             raise ValidationException("Nội dung góp ý không được để trống.")
 
-        today = timezone.localdate()
-        count_today = FeedbackEntry.objects.filter(sender=user, created_at__date=today).count()
+        day_start, day_end = local_day_range(timezone.localdate())
+        count_today = FeedbackEntry.objects.filter(
+            sender=user, created_at__gte=day_start, created_at__lt=day_end
+        ).count()
         if count_today >= cls.DAILY_LIMIT:
             raise ValidationException("Bạn đã gửi quá nhiều góp ý hôm nay. Hãy quay lại vào mai!")
 

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="member">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0B1020">
+  <title>Tài liệu — CLB IP ĐHSP Huế</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* Page-scoped: toolbar + thẻ tài liệu Notion-style (không đụng css dùng chung) */
+    .doc-toolbar { display: flex; gap: var(--s-3); align-items: flex-start; flex-wrap: wrap; }
+    .doc-toolbar .autocomplete { flex: 1; min-width: 200px; }
+    .doc-toolbar .form-select { width: 150px; flex: none; }
+    .doc-grid { display: grid; grid-template-columns: 1fr; gap: var(--s-3); }
+    @media (min-width: 520px) { .doc-grid { grid-template-columns: 1fr 1fr; } }
+    .doc-card { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); cursor: pointer;
+      transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+    .doc-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-glow); }
+    .doc-head { display: flex; align-items: flex-start; gap: var(--s-3); }
+    .doc-chip { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none;
+      color: var(--chip, var(--tx-muted)); background: color-mix(in srgb, var(--chip, var(--tx-muted)) 14%, transparent); }
+    .doc-chip svg { width: 19px; height: 19px; }
+    .doc-title { font-size: var(--text-base); font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; }
+    .doc-desc { font-size: var(--text-sm); color: var(--tx-secondary); line-height: 1.5; margin: 0;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .doc-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .doc-tag { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: var(--r-pill);
+      background: rgba(255,255,255,.06); border: 1px solid var(--border-color); color: var(--tx-secondary); }
+    .doc-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2);
+      border-top: 1px solid var(--border-color); padding-top: var(--s-3); flex-wrap: wrap; }
+    .doc-meta { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--tx-muted); flex-wrap: wrap; }
+    .doc-meta svg { width: 13px; height: 13px; }
+    .pdf-frame { width: 100%; height: min(70vh, 560px); border: 1px solid var(--border-color); border-radius: 12px; background: #fff; }
+  </style>
+</head>
+<body>
+  <div class="member-shell">
+    <header class="member-header">
+      <div class="flex items-center gap-3">
+        <span class="avatar" id="me-avatar"></span>
+        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
+      </div>
+      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
+    </header>
+
+    <main>
+      <h1 class="page-title">Kho tài liệu 📚</h1>
+      <p class="muted small mt-2">Tài liệu của CLB, tìm phát ra liền — tự động gợi ý siêu nhanh (Trie O(L))!</p>
+
+      <!-- TOOLBAR: searchbar + autocomplete + nhóm -->
+      <section class="glass card-pad mt-4">
+        <div class="doc-toolbar">
+          <div class="autocomplete">
+            <div class="searchbar" style="min-width:0">
+              <span id="search-icon"></span>
+              <input type="text" class="form-input" id="doc-q" autocomplete="off"
+                     placeholder="Tìm theo tên tài liệu, tag…" aria-label="Tìm tài liệu">
+            </div>
+            <div class="ac-list hidden" id="ac-list" role="listbox" aria-label="Gợi ý tài liệu"></div>
+          </div>
+          <select class="form-select" id="doc-nhom" aria-label="Nhóm tài liệu">
+            <option value="">Tất cả nhóm</option>
+            <option value="CHUYEN_MON">Chuyên môn</option>
+            <option value="NGHIEP_VU">Nghiệp vụ</option>
+            <option value="KY_NANG">Kỹ năng</option>
+          </select>
+        </div>
+        <div class="xs muted mt-2">💡 Gõ ít nhất 1 ký tự là có gợi ý ngay — click chọn là lọc luôn danh sách bên dưới!</div>
+      </section>
+
+      <!-- DANH SÁCH -->
+      <div class="doc-grid mt-4" id="doc-grid" aria-live="polite"></div>
+
+      <div class="pagination hidden" id="pager">
+        <span class="page-info" id="page-info"></span>
+        <div class="page-btns">
+          <button class="btn btn-outline btn-sm" id="btn-prev"></button>
+          <button class="btn btn-outline btn-sm" id="btn-next"></button>
+        </div>
+      </div>
+
+      <p class="xs muted text-center mt-6">Mẹo: tài liệu do chính thành viên chia sẻ — đóng góp 1 file là được +100 XP đó! 🚀</p>
+    </main>
+
+    <div style="height:8px"></div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/icons.js"></script>
+  <script src="/frontend/js/toast.js"></script>
+  <script src="/frontend/js/utils.js"></script>
+  <script src="/frontend/js/auth.js"></script>
+  <script src="/frontend/js/celebration.js"></script>
+  <script>
+    "use strict";
+    const esc = Utils.escapeHtml;
+
+    /* ---------- Nav member (CONTRACT §6) ---------- */
+    function renderMemberNav(active) {
+      const items = [
+        ["home", "home", "Nhà", "/frontend/member/home.html"],
+        ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
+        ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
+        ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
+        ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
+        ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
+      ];
+      document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
+        `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
+          ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
+      ).join("");
+      document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
+      document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+      const me = Auth.cachedUser();
+      const av = document.getElementById("me-avatar");
+      if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
+      const nm = document.getElementById("me-name");
+      if (nm && me) nm.textContent = me.ho_ten || me.email;
+      const lv = document.getElementById("me-level");
+      if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
+    }
+
+    /* ---------- Modal helper (CONTRACT §7) ---------- */
+    function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+      backdrop.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+          <div class="modal-head"><h3>${esc(title)}</h3>
+            <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
+          <div class="modal-body">${bodyHTML}</div>
+          ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
+        </div>`;
+      const close = () => backdrop.remove();
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+      backdrop.querySelector(".modal-close").addEventListener("click", close);
+      backdrop.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
+      document.body.appendChild(backdrop);
+      if (onMount) onMount(backdrop, close);
+      return { el: backdrop, close };
+    }
+
+    /* ---------- Mapping ---------- */
+    const NHOM_LABEL = { CHUYEN_MON: "Chuyên môn", NGHIEP_VU: "Nghiệp vụ", KY_NANG: "Kỹ năng" };
+    // Chip màu theo loại file — CHỈ dùng token màu có sẵn
+    const FILE_CHIP = {
+      pdf: "var(--c-danger)", ppt: "var(--c-warning)", pptx: "var(--c-warning)",
+      xlsx: "var(--c-success)", xls: "var(--c-success)",
+      png: "var(--c-violet)", jpg: "var(--c-violet)", jpeg: "var(--c-violet)",
+      docx: "var(--c-info)", doc: "var(--c-info)",
+    };
+
+    const state = { items: [], pagination: null, page: 1, search: "", nhom: "" };
+    const acState = { open: false };
+
+    function normFileType(doc) {
+      return String(doc.file_type || "").replace(".", "").toLowerCase();
+    }
+    function fmtSize(bytes) {
+      const b = Number(bytes) || 0;
+      if (b < 1024) return `${b} B`;
+      if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`;
+      return `${(b / 1048576).toFixed(1)} MB`;
+    }
+    function fileUrlName(doc) {
+      // Lấy filename từ file URL (backend trả URL tuyệt đối); fallback theo tiêu đề
+      try {
+        const u = new URL(doc.file, location.href);
+        const last = decodeURIComponent(u.pathname.split("/").pop() || "");
+        if (last) return last;
+      } catch (_) { /* bỏ qua */ }
+      return `${doc.tieu_de || "tai-lieu"}.${normFileType(doc) || "dat"}`;
+    }
+
+    /* ---------- TRIE AUTOCOMPLETE (debounce 300ms → /documents/search/) ---------- */
+    async function fetchSuggestions(q) {
+      const res = await ApiClient.get("/documents/search/", { q });
+      // Contract ghi MẢNG; thực tế backend trả {items, count} — xử lý cả hai
+      return Array.isArray(res) ? res : (res?.items || []);
+    }
+
+    function renderAcList(results, q) {
+      const box = document.getElementById("ac-list");
+      if (!q || q.length < 1) { hideAc(); return; }
+      if (!results.length) {
+        box.innerHTML = `<div class="ac-item" style="cursor:default">
+          ${Icons.render("search", 16)}<div><div class="ac-sub">Không thấy gợi ý nào cho “${esc(q)}”</div></div></div>`;
+        box.classList.remove("hidden");
+        acState.open = true;
+        return;
+      }
+      box.innerHTML = results.map((d) => `
+        <div class="ac-item" role="option" data-doc-id="${d.id}">
+          ${Icons.render("file-text", 16)}
+          <div style="min-width:0">
+            <div class="ac-title">${esc(d.tieu_de)}</div>
+            <div class="ac-sub">${esc(NHOM_LABEL[d.nhom] || d.nhom || "")}${d.uploaded_by_ho_ten ? " · " + esc(d.uploaded_by_ho_ten) : ""}</div>
+          </div>
+        </div>`).join("");
+      box.classList.remove("hidden");
+      acState.open = true;
+      Utils.qsa(".ac-item[data-doc-id]", box).forEach((el) => {
+        el.addEventListener("click", () => {
+          const doc = results.find((d) => String(d.id) === el.dataset.docId);
+          if (!doc) return;
+          const input = document.getElementById("doc-q");
+          input.value = doc.tieu_de;
+          hideAc();
+          state.search = doc.tieu_de;   // click gợi ý → điền input + lọc danh sách dưới
+          loadDocuments(1);
+        });
+      });
+    }
+    function hideAc() {
+      document.getElementById("ac-list").classList.add("hidden");
+      acState.open = false;
+    }
+
+    /* ---------- Danh sách tài liệu ---------- */
+    async function loadDocuments(page = 1) {
+      const grid = document.getElementById("doc-grid");
+      Utils.skeleton(grid, 4);
+      const params = { page };
+      if (state.search) params.search = state.search;
+      if (state.nhom) params.nhom = state.nhom;
+      try {
+        const { items, pagination } = await ApiClient.getList("/documents/", params);
+        state.items = items || [];
+        state.pagination = pagination;
+        state.page = pagination?.page || page;
+        renderGrid();
+      } catch (err) {
+        Toast.error(err.message);
+        Utils.empty(grid, { icon: "alert-triangle", title: "Không tải được tài liệu", desc: "Kiểm tra mạng rồi thử lại nha!" });
+      }
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("doc-grid");
+      if (!state.items.length) {
+        Utils.empty(grid, {
+          icon: "book-open",
+          title: "Chưa có tài liệu nào",
+          desc: state.search || state.nhom
+            ? "Không khớp kết quả nào — thử từ khóa khác hoặc đổi nhóm lọc nhé!"
+            : "Kho đang trống trơn — gõ từ khóa để tìm, hoặc đợi bạn khác chia sẻ đầu tiên!",
+        });
+      } else {
+        grid.innerHTML = state.items.map(docCard).join("");
+      }
+      renderPager();
+    }
+
+    function docCard(doc) {
+      const ft = normFileType(doc);
+      const chipColor = FILE_CHIP[ft] || "var(--tx-muted)";
+      const tags = String(doc.tags || "").split(",").map((t) => t.trim()).filter(Boolean);
+      const who = doc.uploaded_by_ho_ten || "Thành viên CLB";
+      return `
+      <article class="glass doc-card" data-doc-id="${doc.id}" tabindex="0" aria-label="Tài liệu ${esc(doc.tieu_de)}">
+        <div class="doc-head">
+          <span class="doc-chip" style="--chip:${chipColor}">${Icons.render("file-text", 19)}</span>
+          <div style="min-width:0">
+            <h3 class="doc-title">${esc(doc.tieu_de)}</h3>
+            <div class="xs muted mt-2">${esc(NHOM_LABEL[doc.nhom] || doc.nhom || "")}${ft ? " · " + esc(ft.toUpperCase()) : ""} · ${esc(fmtSize(doc.file_size))}</div>
+          </div>
+        </div>
+        ${doc.mo_ta ? `<p class="doc-desc">${esc(doc.mo_ta)}</p>` : ""}
+        ${tags.length ? `<div class="doc-tags">${tags.map((t) => `<span class="doc-tag">${esc(t)}</span>`).join("")}</div>` : ""}
+        <div class="doc-foot">
+          <span class="doc-meta">
+            ${Icons.render("user", 13)} ${esc(who)}
+            · ${esc(Utils.timeAgo(doc.created_at))}
+            · ${Icons.render("download", 13)} ${Utils.fmtNum(doc.luot_tai)} lượt tải
+          </span>
+          <button class="btn btn-outline btn-sm" data-act="download" aria-label="Tải ${esc(doc.tieu_de)}">${Icons.render("download", 15)} Tải</button>
+        </div>
+      </article>`;
+    }
+
+    function renderPager() {
+      const pager = document.getElementById("pager");
+      const tp = state.pagination?.total_pages || 1;
+      if (tp > 1) {
+        pager.classList.remove("hidden");
+        document.getElementById("page-info").textContent = `Trang ${state.page}/${tp} · ${Utils.fmtNum(state.pagination.total_items)} tài liệu`;
+      } else {
+        pager.classList.add("hidden");
+      }
+    }
+
+    /* ---------- Xem trước PDF / Tải xuống ---------- */
+    function onPreview(doc) {
+      const ft = normFileType(doc);
+      if (ft !== "pdf" || !doc.file) {
+        Toast.info("Chỉ hỗ trợ xem trước PDF — tải xuống để xem nhé! 📄");
+        return;
+      }
+      openModal({
+        title: doc.tieu_de,
+        bodyHTML: `
+          <iframe class="pdf-frame" src="${esc(doc.file)}" title="Xem trước ${esc(doc.tieu_de)}"></iframe>
+          <div class="xs muted text-center mt-2">Không hiện? Dùng nút Tải xuống bên dưới nha!</div>`,
+        footerHTML: `<button class="btn btn-primary" data-download-id="${doc.id}">${Icons.render("download", 16)} Tải xuống</button>`,
+        onMount(backdrop) {
+          const b = backdrop.querySelector("[data-download-id]");
+          b.addEventListener("click", () => onDownload(doc, b));
+        },
+      });
+    }
+
+    async function onDownload(doc, btn) {
+      const undo = Utils.btnLoading(btn, "Đang tải...");
+      try {
+        await ApiClient.download(`/documents/${doc.id}/download/`, fileUrlName(doc));
+        Toast.success(`Đang tải "${doc.tieu_de}"…`);
+      } catch (err) {
+        Toast.error(err.message);
+      } finally {
+        undo();
+      }
+    }
+
+    /* ---------- Khởi tạo ---------- */
+    async function init() {
+      document.getElementById("search-icon").outerHTML = Icons.render("search", 17);
+
+      const input = document.getElementById("doc-q");
+      const nhomSel = document.getElementById("doc-nhom");
+
+      // Trie autocomplete — debounce 300ms, chỉ hiện khi q >= 1 ký tự
+      const debouncedAc = Utils.debounce(async () => {
+        const q = input.value.trim();
+        if (!q) { hideAc(); if (state.search) { state.search = ""; loadDocuments(1); } return; }
+        try {
+          const results = await fetchSuggestions(q);
+          renderAcList(results, q);
+          if (q !== state.search) { state.search = q; loadDocuments(1); } // lọc live danh sách dưới
+        } catch (_) { hideAc(); }
+      }, 300);
+      input.addEventListener("input", debouncedAc);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          state.search = input.value.trim();
+          hideAc();
+          loadDocuments(1);
+        } else if (e.key === "Escape") { hideAc(); }
+      });
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".autocomplete")) hideAc();
+      });
+
+      nhomSel.addEventListener("change", () => {
+        state.nhom = nhomSel.value;
+        loadDocuments(1);
+      });
+
+      // Click thẻ → xem trước; nút Tải → download
+      document.getElementById("doc-grid").addEventListener("click", (e) => {
+        const dl = e.target.closest("[data-act='download']");
+        const card = e.target.closest("[data-doc-id]");
+        if (!card) return;
+        const doc = state.items.find((d) => String(d.id) === card.dataset.docId);
+        if (!doc) return;
+        if (dl) { onDownload(doc, dl); return; }
+        onPreview(doc);
+      });
+      document.getElementById("doc-grid").addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        const card = e.target.closest("[data-doc-id]");
+        if (!card) return;
+        const doc = state.items.find((d) => String(d.id) === card.dataset.docId);
+        if (doc) onPreview(doc);
+      });
+
+      document.getElementById("btn-prev").innerHTML = `${Icons.render("chevron-left", 15)} Trước`;
+      document.getElementById("btn-next").innerHTML = `Sau ${Icons.render("chevron-right", 15)}`;
+      document.getElementById("btn-prev").addEventListener("click", () => { if (state.page > 1) loadDocuments(state.page - 1); });
+      document.getElementById("btn-next").addEventListener("click", () => {
+        const tp = state.pagination?.total_pages || 1;
+        if (state.page < tp) loadDocuments(state.page + 1);
+      });
+
+      loadDocuments(1);
+    }
+
+    /* Guard chạy xong mới khởi tạo (CONTRACT §1) */
+    (async () => {
+      try { await Auth.requireRole(["MEMBER"]); } catch { return; }
+      renderMemberNav("documents");
+      init();
+    })();
+  </script>
+</body>
+</html>
