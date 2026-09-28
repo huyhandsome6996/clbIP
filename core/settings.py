@@ -111,23 +111,47 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 
 # ------------------------------------------------------------------
-# 3. DATABASE — PostgreSQL (Render) hoặc SQLite (local dev)
+# 3. DATABASE — Hỗ trợ MySQL (chính), PostgreSQL (Render) hoặc SQLite
 # ------------------------------------------------------------------
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
+
 _db_url = os.environ.get("DATABASE_URL", "").strip()
-if _db_url and not _db_url.startswith("file:"):  # Bỏ qua DATABASE_URL không phải DB thật
+_db_engine = os.environ.get("DB_ENGINE", "").lower()
+_mysql_name = os.environ.get("MYSQL_DATABASE", os.environ.get("MYSQL_NAME", "clb_ip_db"))
+
+if _db_url and not _db_url.startswith("file:"):
     DATABASES = {
         "default": dj_database_url.parse(
             _db_url,
             conn_max_age=600,
-            ssl_require=False,  # Render quản lý SSL qua sslmode trong URL
+            ssl_require=False,
         )
+    }
+elif _db_engine == "mysql" or os.environ.get("MYSQL_DATABASE") or os.environ.get("USE_MYSQL") == "1":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": _mysql_name,
+            "USER": os.environ.get("MYSQL_USER", "root"),
+            "PASSWORD": os.environ.get("MYSQL_PASSWORD", ""),
+            "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
+            "PORT": os.environ.get("MYSQL_PORT", "3306"),
+            "OPTIONS": {
+                "charset": "utf8mb4",
+                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
     }
 else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
-            "OPTIONS": {"timeout": 30},  # Tránh 'database is locked' khi test concurrency
+            "OPTIONS": {"timeout": 30},
         }
     }
 
