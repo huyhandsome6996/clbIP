@@ -144,6 +144,9 @@ class CloseSessionView(APIView):
 
     @extend_schema(
         summary="Đóng phiên điểm danh (BCN/ADMIN)",
+        # request=None: POST không nhận body (chỉ cần pk trên path) — tránh
+        # drf-spectacular đoán sai serializer cho APIView thuần.
+        request=None,
         responses=AttendanceSessionSerializer,
         tags=["Attendance"],
     )

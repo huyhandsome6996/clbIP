@@ -1,6 +1,9 @@
 """
 Serializers — Events: chỉ chuyển đổi dữ liệu (không chứa logic nghiệp vụ).
 """
+from typing import Optional
+
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.events.models import (
@@ -205,7 +208,8 @@ class EventTaskSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["event"]
 
-    def get_nguoi_phu_trach_ten(self, obj: EventTask):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_nguoi_phu_trach_ten(self, obj: EventTask) -> Optional[str]:
         return obj.nguoi_phu_trach.ho_ten if obj.nguoi_phu_trach_id else None
 
     def get_depends_on_detail(self, obj: EventTask) -> list[dict]:
@@ -264,5 +268,6 @@ class EventCommunicationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["event"]
 
-    def get_nguoi_phu_trach_ten(self, obj: EventCommunication):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_nguoi_phu_trach_ten(self, obj: EventCommunication) -> Optional[str]:
         return obj.nguoi_phu_trach.ho_ten if obj.nguoi_phu_trach_id else None

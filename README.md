@@ -162,10 +162,26 @@ Lộ trình khuyến nghị: chuyển refresh sang cookie HttpOnly SameSite=Lax 
 ```bash
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_demo          # dữ liệu demo
-python manage.py test               # 172 tests — 100% PASS
-python manage.py runserver          # http://localhost:8000/api/docs/
+python manage.py createcachetable   # bảng cache cho throttle/axes (DatabaseCache)
+python manage.py seed_demo --password=<mật-khẩu>   # dữ liệu demo (bị chặn nếu DJANGO_ENV=production)
+python manage.py test               # 215 tests — 100% PASS
+python manage.py runserver          # http://localhost:8000/ (frontend) · /api/docs/ (Swagger)
 ```
+
+### Biến môi trường bắt buộc (production)
+
+| Biến | Bắt buộc? | Ghi chú |
+|---|---|---|
+| `DJANGO_ENV=production` | ✅ | Bật HSTS/SSL redirect, chặn seed_demo, docs API chỉ ADMIN |
+| `SECRET_KEY` | ✅ | Thiếu hoặc là khóa dev (`django-insecure-*`) → **RuntimeError, deploy fail-fast** |
+| `DEBUG=False` | ✅ | Mặc định đã False khi thiếu — đừng bao giờ bật True ngoài dev |
+| `DATABASE_URL` | ✅ (Render) | PostgreSQL của Render (Blueprint inject tự động) |
+| `NUM_PROXIES=1` | Nên đặt | 1 reverse proxy Render — IP thật ở cuối `X-Forwarded-For` |
+| `CORS_ALLOWED_ORIGINS` | Nên đặt | Danh sách domain frontend, mặc định khớp render.yaml |
+| `ALLOWED_HOSTS` | Nên đặt | Mặc định `.onrender.com,localhost,127.0.0.1` |
+| `REDIS_URL` | Tuỳ chọn | Có → throttle/axes dùng Redis thay DatabaseCache |
+| `USE_S3=1` + `AWS_*` | Tuỳ chọn | Lưu file upload vào S3/R2 (đĩa Render tạm thời) |
+| `SEED_DEMO` + `DEMO_PASSWORD` | ❌ KHÔNG đặt | Chỉ dùng dev cục bộ — production bị chặn 3 tầng |
 
 ## ⚠️ Lưu ý production
 - **Free plan Render**: disk ephemeral — file tài liệu/ảnh upload sẽ mất khi restart/redeploy.

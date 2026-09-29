@@ -1,6 +1,6 @@
 """Health check endpoint — Render Health Check Path (/api/health/)."""
 from django.db import connection
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -13,7 +13,13 @@ class HealthCheckView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []  # Không cần JWT cho health check
 
-    @extend_schema(tags=["Health"], summary="Health check cho Render")
+    @extend_schema(
+        tags=["Health"],
+        summary="Health check cho Render",
+        responses=OpenApiResponse(
+            description="Envelope {success, data:{status, database}} — 200 healthy / 503 degraded",
+        ),
+    )
     def get(self, request):
         db_ok = True
         try:

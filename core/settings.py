@@ -450,6 +450,24 @@ SPECTACULAR_SETTINGS = {
         {"name": "Documents", "description": "Kho tài liệu + Trie autocomplete"},
         {"name": "Posts", "description": "Bảng tin, ghim bài, hòm thư góp ý ẩn danh"},
     ],
+    # Đặt tên tường minh cho các enum trùng tên trường "trang_thai" / "gioi_tinh"
+    # giữa nhiều model (chống cảnh báo collision của drf-spectacular).
+    # Dùng import-string tới chính TextChoices của model — luôn đồng bộ với source,
+    # được resolve khi sinh schema (an toàn vì settings load trước app registry).
+    "ENUM_NAME_OVERRIDES": {
+        # AttendanceSession.TrangThai: OPEN/CLOSED
+        "TrangThaiPhienDiemDanhEnum": "apps.attendance.models.AttendanceSession.TrangThai",
+        # AttendanceRecord.TrangThaiDiemDanh: CO_MAT/VANG/CO_PHEP/DI_MUON
+        "TrangThaiDiemDanhEnum": "apps.attendance.models.AttendanceRecord.TrangThaiDiemDanh",
+        # ActivityEvent.TrangThai: PLANNING/OPEN_REGISTRATION/IN_PROGRESS/COMPLETED/CANCELLED
+        "TrangThaiSuKienEnum": "apps.events.models.ActivityEvent.TrangThai",
+        # EventRegistration.TrangThai: REGISTERED/APPROVED/CHECKED_IN/CANCELLED
+        "TrangThaiVeEnum": "apps.events.models.EventRegistration.TrangThai",
+        # EventCommunication.TrangThai: PENDING/PUBLISHED
+        "TrangThaiTruyenThongEnum": "apps.events.models.EventCommunication.TrangThai",
+        # MemberProfile.GioiTinh: NAM/NU/KHAC (các ChoiceField tay đã dùng .choices)
+        "GioiTinhEnum": "apps.members.models.MemberProfile.GioiTinh",
+    },
 }
 
 # ------------------------------------------------------------------

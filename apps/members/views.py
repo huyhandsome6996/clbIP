@@ -117,6 +117,10 @@ class MemberDetailView(APIView):
     """GET: chi tiết (IsOwnerOrBCN). PUT/PATCH: cập nhật. DELETE: khóa tài khoản (BCN)."""
 
     permission_classes = [IsAuthenticated, IsOwnerOrBCN]
+    # Schema-only: các method tự instantiate serializer tường minh (không dùng
+    # self.get_serializer) — serializer_class chỉ để drf-spectacular không phải
+    # "đoán" response mặc định của PUT/PATCH/DELETE (đều trả MemberProfileListSerializer).
+    serializer_class = MemberProfileListSerializer
 
     def _get_object(self, pk: int):
         profile = MemberService._get_or_404(pk)  # noqa: SLF001 — controller dùng service helper
@@ -149,7 +153,11 @@ class MemberDetailView(APIView):
         )
         return ok(data=MemberProfileListSerializer(updated).data, message="Cập nhật thành công")
 
-    @extend_schema(tags=["Members"], summary="Khóa tài khoản thành viên (BCN)")
+    @extend_schema(
+        tags=["Members"],
+        summary="Khóa tài khoản thành viên (BCN)",
+        responses={200: MemberProfileListSerializer},
+    )
     def delete(self, request, pk: int) -> Response:
         profile = MemberService.lock_member(pk, request.user)
         return ok(data=MemberProfileListSerializer(profile).data, message="Đã khóa tài khoản thành viên")

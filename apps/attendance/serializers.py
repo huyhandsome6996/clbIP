@@ -5,6 +5,9 @@ LƯU Ý BẢO MẬT: CheckInSerializer là INPUT từ client — TUYỆT ĐỐI 
 bất kỳ trường XP nào (server-authoritative — Security Hardening §5.2).
 nonce_secret của phiên không bao giờ xuất hiện ở output.
 """
+from typing import Optional
+
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.attendance.models import AttendanceRecord, AttendanceSession
@@ -20,7 +23,8 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         model = AttendanceSession
         exclude = ["nonce_secret"]
 
-    def get_event_ten(self, obj: AttendanceSession):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_event_ten(self, obj: AttendanceSession) -> Optional[str]:
         return obj.event.ten_hoat_dong if obj.event_id else None
 
 

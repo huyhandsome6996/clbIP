@@ -58,7 +58,7 @@ class MemberCreateSerializer(serializers.Serializer):
     lop = serializers.CharField(max_length=50, required=False, allow_blank=True)
     sdt = serializers.CharField(max_length=15, required=False, allow_blank=True)
     gioi_tinh = serializers.ChoiceField(
-        choices=["NAM", "NU", "KHAC"], required=False, allow_blank=True
+        choices=MemberProfile.GioiTinh.choices, required=False, allow_blank=True
     )
     ngay_sinh = serializers.DateField(required=False, allow_null=True)
 
@@ -90,7 +90,7 @@ class MemberUpdateSerializer(serializers.Serializer):
     lop = serializers.CharField(max_length=50, required=False, allow_blank=True)
     sdt = serializers.CharField(max_length=15, required=False, allow_blank=True)
     gioi_tinh = serializers.ChoiceField(
-        choices=["NAM", "NU", "KHAC"], required=False, allow_blank=True
+        choices=MemberProfile.GioiTinh.choices, required=False, allow_blank=True
     )
     ngay_sinh = serializers.DateField(required=False, allow_null=True)
     trang_thai_hd = serializers.ChoiceField(

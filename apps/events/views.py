@@ -338,6 +338,9 @@ class EventRegisterView(APIView):
     @extend_schema(
         summary="Đăng ký vé sự kiện",
         description="Trả về mã vé điện tử (QR) khi sự kiện OPEN_REGISTRATION và còn chỗ.",
+        # request=None: POST không nhận body (chỉ cần pk trên path) — tránh
+        # drf-spectacular đoán sai serializer cho APIView thuần.
+        request=None,
         responses=EventRegistrationSerializer,
         tags=["Events"],
     )
@@ -362,6 +365,9 @@ class CancelRegistrationView(APIView):
 
     @extend_schema(
         summary="Hủy vé sự kiện của chính mình",
+        # request=None: POST không nhận body (chỉ cần pk trên path) — tránh
+        # drf-spectacular đoán sai serializer cho APIView thuần.
+        request=None,
         responses=EventRegistrationSerializer,
         tags=["Events"],
     )
