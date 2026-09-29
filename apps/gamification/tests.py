@@ -13,7 +13,11 @@ Bao phủ 7 trường hợp bắt buộc của đặc tả (Task 3-b):
 Môi trường: settings.TESTING=True → axes tắt; throttle vẫn bật nên
 `cache.clear()` trong setUp.
 """
+from unittest import mock
+
+from django.conf import settings
 from django.core.cache import cache
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 
@@ -444,3 +448,49 @@ class GamificationAPITests(APITestCase):
         self.assertEqual(quests["document_shared"], 1)
         self.assertEqual(quests["task_completed"], 0)
         self.assertIn("week_start", quests)
+
+
+class AwardXpBadgeEvaluateTests(TestCase):
+    """QA-Audit nhóm 3 — award_xp chỉ gọi BadgeService.evaluate_and_unlock 1 lần."""
+
+    def _make_member(self):
+        from apps.members.models import MemberProfile
+
+        user = User.objects.create_user(email="xpbconce@clbip.vn", password="TestPass123!")
+        return MemberProfile.objects.create(user=user, ho_ten="Thành Viên XP Once")
+
+    def test_luu_thanh_cong_chi_evaluate_1_lan(self) -> None:
+        """Luồng thành công (cộng XP) → evaluate_and_unlock đúng 1 lần, SAU khi cập nhật XP."""
+        member = self._make_member()
+        with mock.patch.object(
+            BadgeService, "evaluate_and_unlock", wraps=BadgeService.evaluate_and_unlock,
+        ) as spy:
+            result = GamificationService.award_xp(member, 50, "Test XP", source="BONUS")
+        self.assertEqual(result["awarded"], True)
+        self.assertEqual(spy.call_count, 1)
+
+    def test_dat_tran_cap_chi_evaluate_1_lan(self) -> None:
+        """Luồng đạt trần XP ngày → vẫn evaluate đúng 1 lần (không mất badge)."""
+        member = self._make_member()
+        with mock.patch.object(
+            GamificationService, "_xp_used_today", return_value=settings.CLB_SETTINGS["DAILY_XP_CAP"],
+        ):
+            with mock.patch.object(
+                BadgeService, "evaluate_and_unlock", wraps=BadgeService.evaluate_and_unlock,
+            ) as spy:
+                result = GamificationService.award_xp(member, 50, "Test XP", source="BONUS")
+        self.assertEqual(result["awarded"], False)
+        self.assertIn("trần", result["message"])
+        self.assertEqual(spy.call_count, 1)
+
+    def test_badge_van_duoc_mo_kho_sau_khi_sua(self) -> None:
+        """Sau sửa lỗi, badge vẫn mở khóa bình thường (không làm mất badge)."""
+        from apps.gamification.models import Badge, MemberBadge
+
+        member = self._make_member()
+        member.streak_count = 7
+        member.save(update_fields=["streak_count"])
+        GamificationService.award_xp(member, 10, "Trigger eval", source="BONUS")
+        badge = Badge.objects.filter(ma_badge="STREAK_7").first()
+        self.assertIsNotNone(badge)
+        self.assertTrue(MemberBadge.objects.filter(member=member, badge=badge).exists())

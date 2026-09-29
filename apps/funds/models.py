@@ -42,6 +42,16 @@ class FundTransaction(TimeStampedModel):
     is_locked: models.BooleanField = models.BooleanField(
         "Thuộc kỳ đã khóa sổ", default=False
     )
+    # Idempotency (QA-Audit nhóm 3): client gửi "Idempotency-Key" khi ghi sổ —
+    # trùng khóa → trả lại giao dịch cũ, KHÔNG ghi thêm (chống double-submit
+    # khi mạng chập chờn/nhấn nút 2 lần). Unique ở tầng DB làm backstop.
+    idempotency_key: models.CharField = models.CharField(
+        "Khóa chống ghi trùng",
+        max_length=64,
+        unique=True,  # unique index — không cần db_index riêng
+        null=True,    # nhiều NULL hợp lệ (giao dịch không dùng khóa)
+        blank=True,
+    )
 
     # Liên kết tùy chọn
     created_by: models.ForeignKey = models.ForeignKey(

@@ -59,6 +59,10 @@ class IFundRepository(ABC):
     def exists_ma_phieu(self, ma_phieu: str) -> bool:
         """Kiểm tra mã phiếu đã tồn tại trong DB hay chưa (chống trùng lặp)."""
 
+    @abstractmethod
+    def get_by_idempotency_key(self, key: str) -> Optional[FundTransaction]:
+        """Tra cứu giao dịch theo Idempotency-Key (None nếu chưa tồn tại)."""
+
 
 class DjangoFundRepository(IFundRepository):
     """Triển khai cụ thể bằng Django ORM cho `IFundRepository`."""
@@ -129,3 +133,7 @@ class DjangoFundRepository(IFundRepository):
     def exists_ma_phieu(self, ma_phieu: str) -> bool:
         """Mã phiếu đã tồn tại chưa — vòng lặp sinh mã sẽ tăng seq nếu trùng."""
         return FundTransaction.objects.filter(ma_phieu=ma_phieu).exists()
+
+    def get_by_idempotency_key(self, key: str) -> Optional[FundTransaction]:
+        """Tra cứu giao dịch theo Idempotency-Key (None nếu chưa tồn tại)."""
+        return FundTransaction.objects.filter(idempotency_key=key).first()

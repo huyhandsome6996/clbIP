@@ -274,7 +274,10 @@ class GamificationService:
             4. amount > 0 vượt phần dư cap → chỉ cộng phần còn được phép.
                amount < 0 (phạt) → cộng nguyên phần phạt.
             5. Ghi XpLedger + cập nhật xp_points / current_level.
-            6. BadgeService.evaluate_and_unlock → danh sách badge mới.
+            6. BadgeService.evaluate_and_unlock — CHÍNH XÁC 1 LẦN mỗi lượt GHI XP,
+               luôn SAU khi cập nhật XP (QA-Audit nhóm 3: bản cũ gọi 2 lần trong
+               luồng thành công → doubled query + badge stale). Luồng idempotent-
+               replay trả new_badges=[] và không đánh giá badge.
 
         Returns:
             {"awarded": bool, "xp_gained": int, "member_xp": int,
@@ -303,16 +306,16 @@ class GamificationService:
                     "message": "Đã thưởng trước đó",
                 }
 
-            new_badges = BadgeService.evaluate_and_unlock(member)
-
             # Bước 3+4 — Daily cap 300 XP/ngày
+            # (evaluate badge chạy ĐÚNG 1 LẦN tại mỗi điểm return — không gọi
+            # trước ở đầu luồng như bản cũ gây double-evaluate trong luồng thành công)
             if amount == 0:
                 return {
                     "awarded": False,
                     "xp_gained": 0,
                     "member_xp": member.xp_points,
                     "member_level": member.current_level,
-                    "new_badges": new_badges,
+                    "new_badges": BadgeService.evaluate_and_unlock(member),
                     "message": "Không có thay đổi XP.",
                 }
 
@@ -326,7 +329,7 @@ class GamificationService:
                         "xp_gained": 0,
                         "member_xp": member.xp_points,
                         "member_level": member.current_level,
-                        "new_badges": new_badges,
+                        "new_badges": BadgeService.evaluate_and_unlock(member),
                         "message": "Đã đạt trần XP ngày",
                     }
                 actual_amount: int = min(amount, remaining)

@@ -17,6 +17,7 @@ Môi trường: settings.TESTING=True → axes tắt; throttle vẫn bật (burs
 nên `cache.clear()` trong setUp để reset lịch sử throttle giữa các test.
 """
 from datetime import timedelta
+from unittest import mock
 from io import BytesIO
 from typing import Optional
 
@@ -25,6 +26,9 @@ from django.urls import reverse
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.test import APIClient, APITestCase
+from django.db import connection
+from django.test import TransactionTestCase
+from unittest import skipIf
 
 from apps.authentication.models import User
 from apps.common.exceptions import (
@@ -35,6 +39,8 @@ from apps.common.exceptions import (
 )
 from apps.funds.models import FundPeriodLock, FundTransaction
 from apps.funds.services import FundService, TransactionFactory
+from apps.members.models import MemberProfile
+from apps.funds.views import FundTransactionListCreateView
 from core.algorithms.fund_invariants import FundInvariantsEngine
 
 
@@ -358,3 +364,126 @@ class FundAPITests(APITestCase):
         items = resp.json()["data"]["items"]
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["ten_ky"], "Kỳ liệt kê")
+
+
+class FundIdempotencyTests(APITestCase):
+    """
+    QA-Audit nhóm 3 — Idempotency-Key chống ghi trùng sổ quỹ:
+    - Submit 2 lần cùng key → 1 giao dịch duy nhất, lần 2 trả HTTP 200 + phiếu cũ.
+    - Key khác/giống → hành vi đúng.
+    - Header "Idempotency-Key" và body field đều nhận.
+    """
+
+    def setUp(self) -> None:
+        cache.clear()
+        self.bcn = User.objects.create_user(
+            email="idem-bcn@clbip.test", password="TestPass123!", role="BCN",
+        )
+        MemberProfile.objects.create(user=self.bcn, ho_ten="Thủ Quỹ Idem")
+        self.client.force_authenticate(user=self.bcn)
+        self.url = reverse("fund_list")
+        self.payload = {
+            "loai_gd": "THU",
+            "so_tien": 500_000,
+            "nguoi_thuc_hien": "Nhà tài trợ XYZ",
+            "hinh_thuc": "CHUYEN_KHOAN",
+        }
+
+    def test_01_double_submit_cung_key_chi_tao_mot_giao_dich(self) -> None:
+        res1 = self.client.post(
+            self.url, {**self.payload, "idempotency_key": "hop-dong-abc-001"}, format="json",
+        )
+        self.assertEqual(res1.status_code, 201, res1.data)
+        res2 = self.client.post(
+            self.url, {**self.payload, "idempotency_key": "hop-dong-abc-001"}, format="json",
+        )
+        # Lần 2: HTTP 200 + trả lại giao dịch cũ (không phải 201)
+        self.assertEqual(res2.status_code, 200, res2.data)
+        self.assertIn("đã tồn tại", res2.data["message"])
+        self.assertEqual(
+            res1.data["data"]["ma_phieu"], res2.data["data"]["ma_phieu"],
+        )
+        self.assertEqual(FundTransaction.objects.count(), 1)
+
+    def test_02_header_idempotency_key_uu_tien(self) -> None:
+        res1 = self.client.post(
+            self.url, self.payload, format="json", HTTP_IDEMPOTENCY_KEY="header-key-42",
+        )
+        self.assertEqual(res1.status_code, 201)
+        # Gửi lại cùng header (body có key khác) — header thắng
+        res2 = self.client.post(
+            self.url, {**self.payload, "idempotency_key": "body-key-khac"},
+            format="json", HTTP_IDEMPOTENCY_KEY="header-key-42",
+        )
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(FundTransaction.objects.count(), 1)
+
+    def test_03_khong_key_ghi_binh_thuong(self) -> None:
+        res1 = self.client.post(self.url, self.payload, format="json")
+        res2 = self.client.post(self.url, self.payload, format="json")
+        self.assertEqual(res1.status_code, 201)
+        self.assertEqual(res2.status_code, 201)
+        self.assertEqual(FundTransaction.objects.count(), 2)
+
+    def test_04_key_qua_dai_400(self) -> None:
+        res = self.client.post(
+            self.url, self.payload, format="json",
+            HTTP_IDEMPOTENCY_KEY="x" * 65,
+        )
+        self.assertEqual(res.status_code, 400)
+
+
+class FundIdempotencyRaceTests(TransactionTestCase):
+    """
+    Race test (QA-Audit nhóm 3): N thread POST song song cùng Idempotency-Key
+    → CHÍNH XÁC 1 giao dịch được ghi (kiểm tra trong atomic sau select_for_update).
+    Dùng TransactionTestCase vì TestCase bọc transaction — thread không thấy data.
+    """
+
+    @mock.patch.object(FundTransactionListCreateView, "throttle_classes", [])
+    @skipIf(
+        connection.vendor == "sqlite",
+        "SQLite khóa toàn bảng khi 2 connection cùng ghi — race test chỉ chạy "
+        "đúng ý trên MySQL/PostgreSQL (CSDL chính của dự án là MySQL).",
+    )
+    def test_04_thread_song_song_cung_key(self) -> None:
+        """4 thread song song cùng Idempotency-Key → đúng 1 giao dịch (201), 3 replay (200)."""
+        from threading import Barrier, Thread
+
+        bcn = User.objects.create_user(
+            email="race-bcn@clbip.test", password="TestPass123!", role="BCN",
+        )
+        MemberProfile.objects.create(user=bcn, ho_ten="Thủ Quỹ Race")
+        barrier = Barrier(4)
+        results: list = []
+
+        def post_once() -> None:
+            # Thread riêng → client riêng (force_authenticate gắn vào client)
+            client = APIClient()
+            client.force_authenticate(user=bcn)
+            barrier.wait(timeout=10)  # đồng loạt bấm cùng lúc
+            res = client.post(
+                reverse("fund_list"),
+                {
+                    "loai_gd": "THU", "so_tien": 250_000,
+                    "nguoi_thuc_hien": "Race Test",
+                    "idempotency_key": "race-key-độc-nhất",
+                },
+                format="json",
+            )
+            results.append(res.status_code)
+
+        threads = [Thread(target=post_once) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+
+        # Chỉ 1 giao dịch ghi thành công với key này
+        self.assertEqual(
+            FundTransaction.objects.filter(idempotency_key="race-key-độc-nhất").count(), 1,
+        )
+        # Mỗi thread nhận đúng 1 kết quả: 201 (người thắng) hoặc 200 (replay)
+        self.assertEqual(len(results), 4)
+        self.assertTrue(all(code in (200, 201) for code in results), results)
+        self.assertEqual(results.count(201), 1)

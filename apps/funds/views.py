@@ -11,7 +11,7 @@ với `core.response.paginated_payload` (data.items + data.pagination) — do he
 trong core hiện kỳ vọng object có `.page.*` không khớp với Django `Page`
 (latent bug, ngoài phạm vi được phép sửa của app này). Không đụng core/.
 """
-from typing import Any
+from typing import Any, Optional
 
 from django.core.paginator import Page
 from django.http import HttpResponse
@@ -20,6 +20,7 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.common.exceptions import ValidationException
 from apps.funds.services import FundService
 from apps.funds.serializers import (
     FundPeriodLockSerializer,
@@ -137,17 +138,39 @@ class FundTransactionListCreateView(generics.ListCreateAPIView):
         return self.create(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs) -> Response:
-        """Validate payload → perform_create (Service) → envelope 201."""
+        """Validate payload → Service → envelope 201 (mới) / 200 (idempotent replay).
+
+        QA-Audit nhóm 3: nhận Idempotency-Key từ header (ưu tiên) hoặc trường
+        body — client retry/submit 2 lần vẫn chỉ tạo MỘT giao dịch.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = self.perform_create(serializer)
+        validated: dict = serializer.validated_data
+
+        # Header "Idempotency-Key" ưu tiên hơn trường body (chuẩn phổ biến)
+        idem_key = (request.headers.get("Idempotency-Key") or "").strip()
+        if len(idem_key) > 64:
+            raise ValidationException(
+                "Header Idempotency-Key không được vượt quá 64 ký tự.",
+                errors={"idempotency_key": "Tối đa 64 ký tự."},
+            )
+        if not idem_key:
+            idem_key = (validated.get("idempotency_key") or "").strip() or None
+
+        instance, replayed = self.perform_create(serializer, idem_key)
         output = FundTransactionSerializer(instance, context=self.get_serializer_context())
+        if replayed:
+            # HTTP 200 — trả lại giao dịch cũ, KHÔNG ghi thêm (theo audit)
+            return ok(
+                data=output.data,
+                message=f"Giao dịch đã tồn tại (Idempotency-Key) — trả lại phiếu {instance.ma_phieu}.",
+            )
         return created(data=output.data, message="Lập phiếu thành công")
 
-    def perform_create(self, serializer) -> Any:
+    def perform_create(self, serializer, idempotency_key: Optional[str] = None) -> Any:
         """Ủy quyền ghi sổ cho Service — view không chứa business logic."""
         validated: dict = serializer.validated_data
-        return FundService.execute_transaction(
+        return FundService.execute_transaction_idempotent(
             loai_gd=validated["loai_gd"],
             so_tien=validated["so_tien"],
             nguoi_thuc_hien=validated["nguoi_thuc_hien"],
@@ -156,6 +179,7 @@ class FundTransactionListCreateView(generics.ListCreateAPIView):
             ghi_chu=validated.get("ghi_chu", ""),
             created_by=self.request.user,
             event=validated.get("event"),
+            idempotency_key=idempotency_key,
         )
 
 

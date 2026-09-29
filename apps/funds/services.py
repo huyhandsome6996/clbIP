@@ -154,12 +154,16 @@ class FundService:
         ghi_chu: str = "",
         created_by: Optional[object] = None,
         event: Optional[object] = None,
+        idempotency_key: Optional[str] = None,
     ) -> FundTransaction:
         """
         Ghi một phiếu thu/chi vào sổ quỹ — nguyên tố (atomic) & chống double-spending.
 
-        Quy trình 6 bước (tất cả trong 1 DB transaction):
+        Quy trình 7 bước (tất cả trong 1 DB transaction):
             1. Khóa bi bản ghi số dư gần nhất (`select_for_update`) → số dư hiện tại.
+            1.5. Idempotency: nếu `idempotency_key` đã tồn tại (kiểm tra SAU khi
+               giữ khóa bi — hai request song song cùng key tuần tự hóa ở bước 1)
+               → trả lại giao dịch cũ, KHÔNG ghi thêm (QA-Audit nhóm 3).
             2. Kiểm tra khóa sổ kỳ: ngày giao dịch rơi vào kỳ đã khóa → chặn (409).
             3. `FundInvariantsEngine.validate_new_transaction` kiểm chứng bất biến:
                so_tien > 0, loại hợp lệ, CHI không làm số dư âm (I3).
@@ -176,15 +180,97 @@ class FundService:
             ghi_chu: nội dung ghi chú.
             created_by: User tạo phiếu (BCN đang đăng nhập).
             event: ActivityEvent liên quan (tùy chọn).
+            idempotency_key: khóa chống ghi trùng (tùy chọn — dùng khi client
+                gửi header `Idempotency-Key`).
 
         Returns:
-            FundTransaction vừa tạo (có ma_phieu + so_du_sau).
+            FundTransaction vừa tạo, hoặc bản ghi CŨ khi idempotency replay
+            (có ma_phieu + so_du_sau).
 
         Raises:
             ValidationException: loai_gd/so_tien không hợp lệ (400).
             PeriodLockedException: ngày giao dịch thuộc kỳ đã khóa sổ (409).
             InsufficientFundException: khoản chi vượt số dư (400).
         """
+        tx, _replayed = cls._execute_locked(
+            loai_gd=loai_gd,
+            so_tien=so_tien,
+            nguoi_thuc_hien=nguoi_thuc_hien,
+            hinh_thuc=hinh_thuc,
+            ngay_gd=ngay_gd,
+            ghi_chu=ghi_chu,
+            created_by=created_by,
+            event=event,
+            idempotency_key=idempotency_key,
+        )
+        return tx
+
+    @classmethod
+    def execute_transaction_idempotent(
+        cls,
+        loai_gd: str,
+        so_tien: int,
+        nguoi_thuc_hien: str,
+        hinh_thuc: str = FundTransaction.HinhThuc.TIEN_MAT,
+        ngay_gd: Optional[object] = None,
+        ghi_chu: str = "",
+        created_by: Optional[object] = None,
+        event: Optional[object] = None,
+        idempotency_key: Optional[str] = None,
+    ) -> "tuple[FundTransaction, bool]":
+        """
+        Ghi sổ có kiểm tra Idempotency-Key — trả về (giao dịch, có_phải_replay).
+
+        View dùng cờ `replayed` để quyết định HTTP: 201 (ghi mới) hay 200
+        (trả lại kết quả cũ — KHÔNG ghi thêm). Không có key → luôn ghi mới.
+
+        Phòng hờ empty-ledger (QA-Audit nhóm 3): khi sổ quỹ TRỐNG, khóa bi ở
+        bước 1 không khóa được dòng nào → 2 request song song cùng key có thể
+        cùng qua bước kiểm tra và request sau đụng UNIQUE constraint. Trường
+        hợp hiếm này được chuyển thành replay graceful (200) thay vì 500.
+        """
+        from django.db import IntegrityError  # noqa: PLC0415 — import cục bộ phòng hờ
+
+        try:
+            return cls._execute_locked(
+                loai_gd=loai_gd,
+                so_tien=so_tien,
+                nguoi_thuc_hien=nguoi_thuc_hien,
+                hinh_thuc=hinh_thuc,
+                ngay_gd=ngay_gd,
+                ghi_chu=ghi_chu,
+                created_by=created_by,
+                event=event,
+                idempotency_key=idempotency_key,
+            )
+        except IntegrityError:
+            if not idempotency_key:
+                raise
+            # Atomic đã rollback → tra cứu lại bản ghi request kia đã commit
+            existing = cls._repo().get_by_idempotency_key(idempotency_key)
+            if existing is not None:
+                logger.info(
+                    "Idempotency replay (UNIQUE backstop): key=%s → %s.",
+                    idempotency_key, existing.ma_phieu,
+                )
+                return existing, True
+            raise
+
+    @classmethod
+    def _execute_locked(
+        cls,
+        *,
+        loai_gd: str,
+        so_tien: int,
+        nguoi_thuc_hien: str,
+        hinh_thuc: str = FundTransaction.HinhThuc.TIEN_MAT,
+        ngay_gd: Optional[object] = None,
+        ghi_chu: str = "",
+        created_by: Optional[object] = None,
+        event: Optional[object] = None,
+        idempotency_key: Optional[str] = None,
+    ) -> "tuple[FundTransaction, bool]":
+        """Lõi ghi sổ dùng chung cho execute_transaction / execute_transaction_idempotent."""
         if ngay_gd is None:
             ngay_gd = timezone.now()
         if timezone.is_naive(ngay_gd):
@@ -202,6 +288,19 @@ class FundService:
             # Bước 1 — PESSIMISTIC LOCK: mọi writer cùng chờ nhau ở đây
             last = repo.get_last_transaction_for_update()
             current_balance: int = last.so_du_sau if last else 0
+
+            # Bước 1.5 — IDEMPOTENCY (QA-Audit nhóm 3): kiểm tra SAU KHI giữ
+            # khóa bi sổ. Hai request song song cùng key tuần tự hóa ở bước 1:
+            # request sau thấy bản ghi request trước → trả lại kết quả cũ.
+            # (Chỉ kiểm ở đây mới chống được race — kiểm trước atomic là vô ích.)
+            if idempotency_key:
+                existing = repo.get_by_idempotency_key(idempotency_key)
+                if existing is not None:
+                    logger.info(
+                        "Idempotency replay: key=%s → trả lại %s, không ghi thêm.",
+                        idempotency_key, existing.ma_phieu,
+                    )
+                    return existing, True
 
             # Bước 2 — khóa sổ kỳ: chặn mọi giao dịch phát sinh trong kỳ đã đóng
             if repo.exists_locked_period_containing(ngay_dia_phuong):
@@ -233,12 +332,13 @@ class FundService:
                 ghi_chu=ghi_chu,
                 created_by=created_by,
                 event=event,
+                idempotency_key=idempotency_key,
             )
             logger.info(
                 "Ghi sổ quỹ %s (%s %sđ) — số dư mới: %sđ",
                 ma_phieu, loai_gd, f"{so_tien:,}", f"{new_balance:,}",
             )
-            return tx
+            return tx, False
 
     @classmethod
     def _generate_ma_phieu(

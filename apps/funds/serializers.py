@@ -78,6 +78,16 @@ class FundTransactionCreateSerializer(serializers.ModelSerializer):
         help_text="ID sự kiện liên quan (tùy chọn).",
     )
 
+    # QA-Audit nhóm 3: chống double-submit — client có thể gửi khóa trong body
+    # (ưu tiên header "Idempotency-Key" nếu có cả hai)
+    idempotency_key = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        max_length=64,
+        help_text="Khóa chống ghi trùng (tùy chọn, tối đa 64 ký tự).",
+    )
+
     class Meta:
         model = FundTransaction
         fields = [
@@ -88,6 +98,7 @@ class FundTransactionCreateSerializer(serializers.ModelSerializer):
             "ngay_gd",
             "ghi_chu",
             "event",
+            "idempotency_key",
         ]
 
 
