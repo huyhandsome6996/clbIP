@@ -26,13 +26,42 @@ DJANGO_ENV=production DEBUG=False SECRET_KEY=xxx python check_deploy.py
 # → 33 PASS = Sẵn sàng deploy
 ```
 
+## 🔒 Triển khai an toàn (bắt buộc đọc)
+
+Hệ thống **chặn cứng** việc tạo tài khoản demo trên môi trường thật:
+
+| Hàng chặn | Hành vi |
+|---|---|
+| `build.sh` | Chỉ chạy `seed_demo` khi **đủ 2 điều kiện**: `SEED_DEMO=1` **và** `DJANGO_ENV != production` |
+| `Procfile` (`release:`) | Chỉ chạy `migrate` — không seed |
+| `seed_demo` | Tự raise `CommandError` khi `DJANGO_ENV=production` (phòng thủ tầng cuối nếu ai đó gọi tay) |
+
+**Mật khẩu demo** không còn hardcode trong mã nguồn: lấy từ tham số `--password`
+hoặc biến môi trường `DEMO_PASSWORD`; nếu thiếu, lệnh sẽ sinh mật khẩu ngẫu nhiên
+và chỉ in một lần ra console.
+
+**Việc con người PHẢI làm sau khi nhận bàn giao production** (không thể tự động hóa):
+1. **Đổi hoặc xóa ngay** các tài khoản demo đã tồn tại trong DB production từ các
+   lần deploy cũ (admin@clbip.vn, bcn@clbip.vn, 22a401101@... — mật khẩu cũ
+   `CLBIP@2026` đã từng công khai trong repo). Trên Render: `render shell` →
+   `python manage.py shell` → đổi `password`/`is_active=False`, hoặc xóa hẳn.
+2. Đặt biến môi trường trên Render: `DJANGO_ENV=production`, `DEBUG=False`,
+   `SECRET_KEY` (generateValue), `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`,
+   `NUM_PROXIES=1`, `SEED_DEMO` (để trống/không đặt).
+3. Kiểm tra lại domain CORS trùng với domain frontend thật đang dùng.
+
+---
+
 ## 🔑 Tài khoản demo (tự sinh bởi `seed_demo`)
 
-| Vai trò | Email | Mật khẩu |
-|---|---|---|
-| ADMIN | `admin@clbip.vn` | `CLBIP@2026` |
-| BCN (Chủ nhiệm) | `bcn@clbip.vn` | `CLBIP@2026` |
-| MEMBER | `22a401101@student.hueuni.edu.vn` | `CLBIP@2026` |
+Mật khẩu do bạn chọn qua `--password` / biến môi trường `DEMO_PASSWORD`
+(không còn mật khẩu chung hardcode trong mã nguồn):
+
+| Vai trò | Email |
+|---|---|
+| ADMIN | `admin@clbip.vn` |
+| BCN (Chủ nhiệm) | `bcn@clbip.vn` |
+| MEMBER | `22a401101@student.hueuni.edu.vn` |
 
 > Demo gồm: 19 thành viên, sổ quỹ 2.750.000₫, 2 sự kiện (1 mở đăng ký), phiên điểm danh GPS đang mở, bảng tin, poll, 5 huy hiệu.
 
@@ -165,7 +194,7 @@ http://127.0.0.1:8000/frontend/admin/*.html     → phân hệ Ban chủ nhiệm
 http://127.0.0.1:8000/frontend/member/*.html    → phân hệ Thành viên (Cyber-Glass)
 ```
 
-**Tài khoản demo** (mật khẩu chung `CLBIP@2026`):
+**Tài khoản demo**: chạy `python manage.py seed_demo --password=<mật-khẩu-của-bạn>` (hoặc đặt `DEMO_PASSWORD`); trang đăng nhập không còn chip điền nhanh tự động:
 | Vai trò | Email |
 |---|---|
 | Quản trị | admin@clbip.vn |

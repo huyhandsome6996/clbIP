@@ -95,28 +95,6 @@
     .alert-box svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
     .alert-error { background: var(--c-danger-soft); color: #991B1B; }
     .alert-info  { background: var(--c-info-soft);    color: #075985; }
-    .demo-accounts {
-      margin-top: var(--s-6);
-      padding-top: var(--s-5);
-      border-top: 1px dashed var(--border-strong);
-    }
-    .demo-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
-    .demo-chip {
-      border: 1px solid var(--border-strong);
-      background: rgba(255, 255, 255, 0.04);
-      border-radius: var(--r-pill);
-      padding: 6px 14px;
-      font-size: var(--text-xs);
-      font-weight: 600;
-      color: var(--tx-secondary);
-      cursor: pointer;
-      transition: all var(--dur-fast) var(--ease-out);
-    }
-    .demo-chip:hover {
-      border-color: var(--c-indigo);
-      color: #C7D2FE;
-      background: var(--c-accent-soft);
-    }
     @media (max-width: 900px) {
       .login-shell { grid-template-columns: 1fr; }
       .login-brand { padding: var(--s-10) var(--s-6) var(--s-8); }
@@ -191,16 +169,6 @@
             Đăng nhập
           </button>
         </form>
-
-        <div class="demo-accounts">
-          <p class="xs muted bold" style="letter-spacing:.06em; text-transform:uppercase;">Tài khoản demo</p>
-          <div class="demo-chips">
-            <button type="button" class="demo-chip" data-email="admin@clbip.vn">👑 Quản trị</button>
-            <button type="button" class="demo-chip" data-email="bcn@clbip.vn">🛡️ Ban chủ nhiệm</button>
-            <button type="button" class="demo-chip" data-email="22a401101@student.hueuni.edu.vn">🎓 Thành viên</button>
-          </div>
-          <p class="xs muted mt-2">Mật khẩu chung: <span class="mono">CLBIP@2026</span></p>
-        </div>
       </div>
     </section>
   </main>
@@ -252,17 +220,6 @@
         pwEl.type = show ? "text" : "password";
         document.getElementById("toggle-pw-icon").innerHTML = Icons.render(show ? "eye-off" : "eye", 18);
         pwEl.focus();
-      });
-
-      // Chip demo: điền nhanh email + mật khẩu chung
-      Utils.qsa(".demo-chip").forEach((chip) => {
-        chip.addEventListener("click", () => {
-          emailEl.value = chip.dataset.email;
-          pwEl.value = "CLBIP@2026";
-          hideAlert();
-          setFieldError("email", "");
-          setFieldError("password", "");
-        });
       });
 
       form.addEventListener("submit", async (e) => {

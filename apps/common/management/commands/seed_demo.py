@@ -11,17 +11,22 @@ Tạo dữ liệu demo idempotent (chạy lại không nhân đôi) cho môi tr�
 
 Chạy: python manage.py seed_demo
 """
+import os
 import random
+import secrets
 from datetime import timedelta
 from typing import Any
 
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from apps.authentication.models import User
 from apps.members.models import BoardMember, MemberProfile
 
-DEFAULT_PASSWORD = "CLBIP@2026"
+# Không hardcode mật khẩu demo công khai: mật khẩu lấy từ tham số --password
+# hoặc biến môi trường DEMO_PASSWORD; nếu thiếu sẽ sinh ngẫu nhiên và in 1 lần.
+DEFAULT_PASSWORD = None
 
 BCN_DATA = [
     ("bcn@clbip.vn", "Lê Văn Chủ Nhiệm", "22A401001", "CHU_NHIEM", "HOC_THUAT"),
@@ -49,15 +54,46 @@ MEMBER_NAMES = [
 
 
 class Command(BaseCommand):
-    help = "Tạo dữ liệu demo cho hệ thống CLB IP (idempotent)."
+    help = (
+        "Tạo dữ liệu demo cho hệ thống CLB IP (idempotent). "
+        "BỊ CHẶN khi DJANGO_ENV=production."
+    )
 
     def add_arguments(self, parser: Any) -> None:
-        parser.add_argument("--password", type=str, default=DEFAULT_PASSWORD,
-                            help="Mật khẩu cho các tài khoản demo (mặc định CLBIP@2026)")
+        parser.add_argument(
+            "--password", type=str, default=None,
+            help=(
+                "Mật khẩu cho các tài khoản demo. Mặc định lấy từ biến môi "
+                "trường DEMO_PASSWORD; nếu thiếu sẽ sinh mật khẩu ngẫu nhiên."
+            ),
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
-        password: str = options["password"]
+        # -------------------------------------------------------------
+        # Chốt an toàn P0: không bao giờ tạo tài khoản demo trên production.
+        # Tài khoản demo dùng mật khẩu công khai → nếu lọt vào DB thật sẽ
+        # trở thành cửa hậu cho mọi người (chống lặp lại sự cố QA-Audit P0).
+        # -------------------------------------------------------------
+        if getattr(settings, "DJANGO_ENV", "development") == "production":
+            raise CommandError(
+                "seed_demo BỊ CHẶN trên production (DJANGO_ENV=production). "
+                "Hệ thống thật phải tạo tài khoản qua admin/sổ tay nội bộ, "
+                "không dùng dữ liệu demo."
+            )
+
+        password: str = (
+            options.get("password")
+            or os.environ.get("DEMO_PASSWORD", "")
+            or secrets.token_urlsafe(12)
+        )
+        generated = options.get("password") is None and not os.environ.get("DEMO_PASSWORD")
+
         self.stdout.write(self.style.MIGRATE_HEADING("=== SEED DEMO DATA — CLB IP ĐHSP Huế 2.0 ==="))
+        if generated:
+            self.stdout.write(self.style.WARNING(
+                "⚠ Không có --password hay DEMO_PASSWORD — đã sinh mật khẩu ngẫu nhiên "
+                "(chỉ hiển thị một lần bên dưới)."
+            ))
 
         # ---------------------------------------------------------------
         # 1. ADMIN + BCN
