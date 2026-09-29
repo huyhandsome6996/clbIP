@@ -221,19 +221,17 @@ class MemberService:
         if not q:
             return []
 
-        from core.algorithms.trie_search import PrefixSearchTrie
+        from apps.members.search_index import get_trie  # noqa: PLC0415
 
-        repo = cls._repo()
-        trie = PrefixSearchTrie()
-        for profile in repo.iter_search_index_profiles():
-            mssv = profile.user.mssv or ""
-            words = {profile.ho_ten, mssv}
-            trie.insert_multi([w for w in words if w], profile.pk)
-
+        # Trie cache theo process (QA-Audit nhóm 5) — tra cứu O(L), tự dựng lại
+        # lười khi có tín hiệu post_save/post_delete (signals trong apps.py).
+        # Ngưỡng "1 ký tự" như cũ: tiền tố rỗng trả toàn bộ ID (hành vi cũ).
+        trie = get_trie()
         matched_ids = trie.search_prefix(q)
         if not matched_ids:
             return []
 
+        repo = cls._repo()
         return list(
             repo.get_by_ids_ordered_by_xp(matched_ids, only_active=only_active)[:limit]
         )

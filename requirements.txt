@@ -12,6 +12,7 @@ psycopg2-binary==2.9.10
 pymysql==1.2.3
 cryptography==50.0.1
 django-ipware==7.0.1
+django-storages[s3]==1.14.6  # S3/R2 storage khi USE_S3=1 (đĩa Render tạm thời)
 # (tùy chọn production) redis==5.x — chỉ cần khi đặt REDIS_URL cho CACHES
 python-dotenv==1.2.3
 gunicorn==23.0.0

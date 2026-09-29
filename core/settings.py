@@ -412,8 +412,12 @@ USE_TZ = True
 # ------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# QA-Audit nhóm 5: đĩa Render là tạm thời — production nên đặt USE_S3=1
+# (+ các biến AWS_*) để file upload lưu vào S3/R2; dev fallback FileSystemStorage.
+from core.storage_resolver import resolve_default_storage  # noqa: E402
+
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "default": resolve_default_storage(os.environ),
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },

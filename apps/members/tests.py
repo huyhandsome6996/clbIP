@@ -371,3 +371,44 @@ class MemberSearchPIITests(TestCase):
         self.client.force_authenticate(user=self.bcn)
         res = self.client.get("/api/v1/members/board/")
         self.assertIn("member_mssv", res.data["data"]["items"][0])
+
+
+class MemberTrieCacheTests(TestCase):
+    """
+    QA-Audit nhóm 5 — Trie tìm kiếm member cache theo process:
+    - Dùng lại instance giữa các lần tra cứu (không dựng lại mỗi request).
+    - Tín hiệu post_save/post_delete (tạo/sửa/xóa MemberProfile, User mssv)
+      vô hiệu hóa → lần tra cứu kế tiếp dựng lại với dữ liệu mới.
+    """
+
+    def test_trie_duoc_dung_lai_giua_cac_lan_goi(self) -> None:
+        from apps.members import search_index
+
+        search_index.invalidate()  # reset trạng thái module (cô lập giữa test)
+        t1 = search_index.get_trie()
+        t2 = search_index.get_trie()
+        self.assertIs(t1, t2)
+
+    def test_tao_member_moi_vao_trie_sau_invalidate(self) -> None:
+        from apps.members import search_index
+
+        search_index.invalidate()
+        old_trie = search_index.get_trie()
+        # Tạo member → post_save signal tự gọi invalidate
+        make_user("trie-moi@clbip.vn", role="MEMBER", ho_ten="Triệu Test Mới")
+        new_trie = search_index.get_trie()
+        self.assertIsNot(old_trie, new_trie)
+        # Tìm được thành viên mới qua tiền tố (không dấu)
+        matched = new_trie.search_prefix("trieu test")
+        self.assertGreaterEqual(len(matched), 1)
+
+    def test_search_service_dung_trie_cache(self) -> None:
+        """Service trả kết quả đúng khi dùng Trie cache (không regression)."""
+        from apps.members import search_index
+        from apps.members.services import MemberService
+
+        search_index.invalidate()
+        # "Thành Viên PII" (setUp của class khác) không tồn tại ở đây — tự tạo
+        make_user("trie-svc@clbip.vn", role="MEMBER", ho_ten="Thanh Vien Trie")
+        results = MemberService.search_profiles("thanh vien trie", limit=5)
+        self.assertGreaterEqual(len(results), 1)

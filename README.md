@@ -168,7 +168,21 @@ python manage.py runserver          # http://localhost:8000/api/docs/
 ```
 
 ## ⚠️ Lưu ý production
-- **Free plan Render**: disk ephemeral — file tài liệu/ảnh upload sẽ mất khi restart. Production thực tế nên gắn S3/Cloudinary (`django-storages`).
+- **Free plan Render**: disk ephemeral — file tài liệu/ảnh upload sẽ mất khi restart/redeploy.
+  **Giải pháp (QA-Audit nhóm 5)**: đặt `USE_S3=1` + các biến `AWS_*` trên Render để lưu
+  upload vào S3/Cloudflare R2/MinIO qua `django-storages` (đã có sẵn trong requirements):
+
+  | Biến môi trường | Ý nghĩa |
+  |---|---|
+  | `USE_S3=1` | Bật S3 storage (bỏ qua → FileSystemStorage cho dev) |
+  | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Khóa truy cập |
+  | `AWS_STORAGE_BUCKET_NAME` | Tên bucket |
+  | `AWS_S3_ENDPOINT_URL` | Endpoint R2/MinIO (S3 chính hãng bỏ trống) |
+  | `AWS_S3_REGION_NAME` | Region (R2 dùng `auto`) |
+  | `AWS_S3_CUSTOM_DOMAIN` | (tuỳ chọn) domain CDN/frontend của bucket |
+
+  Bucket nên để **private** — tải file luôn đi qua `/documents/{id}/download/` (có auth
+  + phạm vi BCN_ONLY), không expose trực tiếp URL đĩa/bucket.
 - Postgres free tier tự suspend sau 90 ngày không hoạt động — dùng `render shell` hoặc curl health check định kỳ.
 - Đổi mật khẩu các tài khoản demo ngay sau khi nhận bàn giao.
 

@@ -126,3 +126,34 @@ class CSPHeaderTests(TestCase):
         csp = res.headers["Content-Security-Policy"]
         for directive in ("default-src 'self'", "object-src 'none'", "frame-ancestors 'none'"):
             self.assertIn(directive, csp)
+
+
+class StorageResolverTests(TestCase):
+    """QA-Audit nhóm 5 — chọn storage theo biến môi trường (pure function)."""
+
+    def test_mac_dinh_filesystem(self):
+        from core.storage_resolver import resolve_default_storage
+
+        cfg = resolve_default_storage({})
+        self.assertEqual(cfg["BACKEND"], "django.core.files.storage.FileSystemStorage")
+
+    def test_use_s3_tao_cau_hinh_s3(self):
+        from core.storage_resolver import resolve_default_storage
+
+        cfg = resolve_default_storage({
+            "USE_S3": "1",
+            "AWS_ACCESS_KEY_ID": "k",
+            "AWS_SECRET_ACCESS_KEY": "s",
+            "AWS_STORAGE_BUCKET_NAME": "clbip-media",
+            "AWS_S3_ENDPOINT_URL": "https://abc.r2.cloudflarestorage.com",
+        })
+        self.assertEqual(cfg["BACKEND"], "storages.backends.s3.S3Storage")
+        self.assertEqual(cfg["OPTIONS"]["bucket_name"], "clbip-media")
+        self.assertFalse(cfg["OPTIONS"]["file_overwrite"])
+
+    def test_use_s3_thieu_gia_tri_khong_crash(self):
+        from core.storage_resolver import resolve_default_storage
+
+        cfg = resolve_default_storage({"USE_S3": "1"})
+        self.assertEqual(cfg["BACKEND"], "storages.backends.s3.S3Storage")
+        self.assertEqual(cfg["OPTIONS"]["bucket_name"], "")

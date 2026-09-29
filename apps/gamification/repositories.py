@@ -42,6 +42,23 @@ class IGamificationRepository(ABC):
         """Thành viên ACTIVE kèm user, sắp theo XP giảm dần rồi họ tên (bảng vàng)."""
 
     @abstractmethod
+    def iter_leaderboard_rows(self):
+        """Duyệt nhẹ (id, xp, ho_ten, avatar) của thành viên ACTIVE — KHÔNG order_by.
+
+        QA-Audit nhóm 5: leaderboard dùng Min-Heap tự xếp O(N log K), việc
+        order_by toàn bảng ở DB là lãng phí; values_list tránh dựng model instance.
+        """
+
+    @abstractmethod
+    def count_active_profiles(self) -> int:
+        """Tổng số thành viên ACTIVE (total_members cho leaderboard)."""
+
+    @abstractmethod
+    def count_active_profiles_with_xp_greater_than(self, xp: int) -> int:
+        """Số thành viên ACTIVE có XP cao hơn `xp` — tính rank cá nhân bằng DB
+        Count thay vì quét O(N) Python (QA-Audit nhóm 5)."""
+
+    @abstractmethod
     def lock_member_profile(self, pk: int) -> MemberProfile:
         """Lấy hồ sơ theo pk VỚI KHÓA BI (select_for_update) — chống race cộng XP."""
 
@@ -125,6 +142,26 @@ class DjangoGamificationRepository(IGamificationRepository):
 
     def get_active_profiles_ordered(self) -> QuerySet[MemberProfile]:
         """ACTIVE + select_related user + thứ tự XP giảm dần, họ tên tăng dần."""
+
+    def iter_leaderboard_rows(self):
+        return (
+            MemberProfile.objects.filter(
+                trang_thai_hd=MemberProfile.TrangThai.ACTIVE
+            )
+            .values_list("id", "xp_points", "ho_ten", "avatar")
+            .iterator()
+        )
+
+    def count_active_profiles(self) -> int:
+        return MemberProfile.objects.filter(
+            trang_thai_hd=MemberProfile.TrangThai.ACTIVE
+        ).count()
+
+    def count_active_profiles_with_xp_greater_than(self, xp: int) -> int:
+        return MemberProfile.objects.filter(
+            trang_thai_hd=MemberProfile.TrangThai.ACTIVE,
+            xp_points__gt=xp,
+        ).count()
         return (
             MemberProfile.objects.filter(
                 trang_thai_hd=MemberProfile.TrangThai.ACTIVE,

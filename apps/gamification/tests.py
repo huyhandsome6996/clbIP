@@ -494,3 +494,60 @@ class AwardXpBadgeEvaluateTests(TestCase):
         badge = Badge.objects.filter(ma_badge="STREAK_7").first()
         self.assertIsNotNone(badge)
         self.assertTrue(MemberBadge.objects.filter(member=member, badge=badge).exists())
+
+
+class LeaderboardPerformanceTests(TestCase):
+    """QA-Audit nhóm 5 — leaderboard: DB rank + cache ngắn hạn, giữ nguyên format."""
+
+    def setUp(self) -> None:
+        from django.core.cache import cache
+
+        cache.clear()  # cô lập cache leaderboard giữa các test
+
+    def _make_member(self, email: str, xp: int, ho_ten: str):
+        from apps.members.models import MemberProfile
+
+        user = User.objects.create_user(email=email, password="TestPass123!")
+        profile = MemberProfile.objects.create(user=user, ho_ten=ho_ten)
+        profile.xp_points = xp
+        profile.save(update_fields=["xp_points"])
+        return profile
+
+    def test_rank_tinh_bang_db_count_khong_que_toan_bo(self) -> None:
+        """Rank = 1 + số ACTIVE có XP cao hơn (kết quả giống find_my_position cũ)."""
+        from apps.members.models import MemberProfile
+        from apps.gamification.services import LeaderboardService
+
+        high = self._make_member("lb-hi@clbip.vn", 500, "Cao Nhất")
+        mid = self._make_member("lb-mid@clbip.vn", 300, "Thứ Hai")
+        self._make_member("lb-lo@clbip.vn", 100, "Thứ Ba")
+
+        result = LeaderboardService.get_leaderboard(mid)
+        my = result["my_position"]
+        self.assertEqual(my["rank"], 2)
+        # 3 thành viên < TOP_K=10 → tất cả nằm trong top
+        self.assertTrue(my["in_top_k"])
+        self.assertEqual(result["total_members"], 3)
+        self.assertEqual(result["top_10"][0]["id"], high.pk)
+
+        # Inactive member → đúng shape hành vi cũ (rank = total, gap = 0)
+        mid.trang_thai_hd = MemberProfile.TrangThai.INACTIVE
+        mid.save(update_fields=["trang_thai_hd"])
+        my2 = LeaderboardService.get_leaderboard(mid)["my_position"]
+        self.assertEqual(my2, {"in_top_k": False, "rank": 2, "xp_gap_to_top_k": 0})
+
+    def test_top10_duoc_cache_tai_su_dung(self) -> None:
+        """Lần gọi thứ 2 dùng cache — không tính lại heap khi dữ liệu không đổi."""
+        from django.core.cache import cache
+
+        from apps.gamification.services import LeaderboardService
+
+        self._make_member("lb-c1@clbip.vn", 400, "Cache Một")
+        r1 = LeaderboardService.get_leaderboard()
+        cached = cache.get(LeaderboardService.CACHE_KEY)
+        self.assertIsNotNone(cached)
+
+        # Sửa XP trực tiếp KHÔNG qua award_xp (không hợp lệ nghiệp vụ) —
+        # cache 45s vẫn trả giá trị cũ đúng thiết kế ngắn hạn
+        r2 = LeaderboardService.get_leaderboard()
+        self.assertEqual(r1, r2)

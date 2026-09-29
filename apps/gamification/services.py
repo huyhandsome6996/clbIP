@@ -467,36 +467,78 @@ class LeaderboardService:
         """Factory method cho repository — cho phép DI khi unit test."""
         return cls._repository_class()
 
+    # Cache ngắn hạn cho Top 10 (QA-Audit nhóm 5): bộ chia sẻ sử dụng cache
+    # dùng chung (DatabaseCache/Redis) — các worker gunicorn nhìn thấy cùng
+    # bảng vàng, tránh tính lại heap O(N log K) mỗi request.
+    CACHE_KEY: Final[str] = "clbip:leaderboard:top10"
+    CACHE_TTL_SECONDS: Final[int] = 45
+
     @classmethod
     def get_leaderboard(cls, member_profile: Optional[MemberProfile] = None) -> dict:
         """
         Lấy Top 10 + vị trí cá nhân (nếu truyền `member_profile`).
 
-        Args:
-            member_profile: hồ sơ của user hiện tại (có thể None).
+        Hiệu năng (QA-Audit nhóm 5):
+            - Top 10: Min-Heap O(N log K) trên iterator `values_list` nhẹ
+              (không order_by toàn bảng, không dựng model instance).
+            - Rank cá nhân: 1 câu SQL Count thay vì quét O(N) Python.
+            - Top 10 + tổng số được cache 45s (cache dùng chung giữa worker).
 
-        Returns:
-            {"top_10": [...], "my_position": {...}|None, "total_members": int}
+        Định dạng trả về GIỮ NGUYÊN: {"top_10", "my_position", "total_members"}.
         """
-        members: list[dict[str, Any]] = [
-            {
-                "id": profile.pk,
-                "xp": profile.xp_points,
-                "name": profile.ho_ten,
-                "avatar": profile.avatar or "",
-            }
-            for profile in cls._repo().get_active_profiles_ordered()
-        ]
+        from django.core.cache import cache  # noqa: PLC0415
 
-        engine = LeaderboardEngine(top_k=cls.TOP_K)
-        top_10 = engine.compute_top_k(members)
+        repo = cls._repo()
+
+        cached = cache.get(cls.CACHE_KEY)
+        if cached is None:
+            engine = LeaderboardEngine(top_k=cls.TOP_K)
+            members_iter = (
+                {"id": row[0], "xp": row[1], "name": row[2] or "", "avatar": row[3] or ""}
+                for row in repo.iter_leaderboard_rows()
+            )
+            top_10 = engine.compute_top_k(members_iter)
+            total_members = repo.count_active_profiles()
+            cached = {"top_10": top_10, "total_members": total_members}
+            cache.set(cls.CACHE_KEY, cached, cls.CACHE_TTL_SECONDS)
+
+        top_10: list[dict[str, Any]] = cached["top_10"]
+        total_members: int = cached["total_members"]
 
         my_position: Optional[dict] = None
         if member_profile is not None:
-            my_position = engine.find_my_position(member_profile.pk, members)
+            my_position = cls._compute_my_position(repo, member_profile, top_10, total_members)
 
         return {
             "top_10": top_10,
             "my_position": my_position,
-            "total_members": len(members),
+            "total_members": total_members,
         }
+
+    @staticmethod
+    def _compute_my_position(repo, member_profile: MemberProfile, top_10: list, total_members: int) -> dict:
+        """
+        Vị trí cá nhân — semantics GIỐNG HỆT LeaderboardEngine.find_my_position cũ:
+            rank = 1 + số thành viên ACTIVE có XP cao hơn (Count bằng SQL);
+            in_top_k = id nằm trong top_10;
+            xp_gap_to_top_k = max(xp ngưỡng top K − xp mình + 1, 0) khi ngoài top.
+        """
+        from apps.members.models import MemberProfile as _MP  # noqa: PLC0415
+
+        threshold_xp: int = top_10[-1]["xp"] if top_10 else 0
+        in_top = any(entry["id"] == member_profile.pk for entry in top_10)
+
+        # Thành viên không ACTIVE không nằm trong danh sách xét hạng —
+        # rank = số thành viên ACTIVE hiện tại (khớp hành vi cũ: total của
+        # danh sách active lúc gọi), gap = 0
+        if getattr(member_profile, "trang_thai_hd", "") != _MP.TrangThai.ACTIVE:
+            return {
+                "in_top_k": False,
+                "rank": repo.count_active_profiles(),
+                "xp_gap_to_top_k": 0,
+            }
+
+        higher = repo.count_active_profiles_with_xp_greater_than(member_profile.xp_points)
+        rank = higher + 1
+        gap = max(threshold_xp - member_profile.xp_points + 1, 0) if not in_top else 0
+        return {"in_top_k": in_top, "rank": rank, "xp_gap_to_top_k": gap}

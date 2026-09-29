@@ -300,24 +300,23 @@ class DocumentService:
         if not q:
             return []
 
-        from core.algorithms.trie_search import PrefixSearchTrie  # noqa: PLC0415
+        from apps.documents.search_index import (  # noqa: PLC0415
+            SCOPE_FULL,
+            SCOPE_PUBLIC,
+            get_trie,
+        )
 
-        # Chỉ index những tài liệu người tìm được phép thấy — không lộ ID
-        scope_filter: Optional[dict] = None
-        if user is not None and not getattr(user, "is_bcn", False):
-            scope_filter = {"pham_vi": Document.PhamVi.PUBLIC_MEMBER}
-
-        repo = cls._repo()
-        trie = PrefixSearchTrie()
-        for doc in repo.iter_indexable_documents(scope_filter):
-            aliases: List[str] = [doc.tieu_de, *doc.tieu_de.split()]
-            aliases += [tag.strip() for tag in (doc.tags or "").split(",") if tag.strip()]
-            trie.insert_multi(aliases, doc.pk)
+        # Trie cache theo process (QA-Audit nhóm 5): 2 vùng theo phạm vi —
+        # MEMBER chỉ tra cứu trie PUBLIC (tài liệu BCN_ONLY không bao giờ vào
+        # index → không lộ), BCN/ADMIN tra cứu trie FULL. Invalidation qua
+        # signals post_save/post_delete trong apps.py, dựng lại lười.
+        is_board = user is not None and getattr(user, "is_bcn", False)
+        trie = get_trie(SCOPE_FULL if is_board else SCOPE_PUBLIC)
 
         matched_ids: Iterable[int] = trie.search_prefix(q)
         if not matched_ids:
             return []
-        return repo.get_by_ids_ordered(matched_ids, limit)
+        return cls._repo().get_by_ids_ordered(matched_ids, limit)
 
     # ==================================================================
     # Đếm lượt tải — atomic chống race condition
