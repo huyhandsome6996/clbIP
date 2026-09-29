@@ -414,7 +414,7 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 # QA-Audit nhóm 5: đĩa Render là tạm thời — production nên đặt USE_S3=1
 # (+ các biến AWS_*) để file upload lưu vào S3/R2; dev fallback FileSystemStorage.
-from core.storage_resolver import resolve_default_storage  # noqa: E402
+from core.storage_resolver import is_persistent_media_storage, resolve_default_storage  # noqa: E402
 
 STORAGES = {
     "default": resolve_default_storage(os.environ),
@@ -422,6 +422,16 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
+
+# QA-Audit đợt 2 (P2-3): media storage có bền vững qua restart không?
+# Service upload tài liệu dùng cờ này để FAIL LOUD khi production vẫn lưu
+# đĩa tạm (file sẽ mất khi restart) — xem apps/documents/services.py.
+MEDIA_STORAGE_PERSISTENT = is_persistent_media_storage(os.environ)
+
+# Cờ chấp nhận RỦI RO: demo/pilot chạy production mà chưa có S3/R2 — upload
+# vẫn nhận nhưng sẽ MẤT khi restart (bật rõ ràng bằng biến môi trường, không
+# bao giờ là mặc định). Khi cờ bật, service chỉ log WARNING thay vì chặn.
+ALLOW_EPHEMERAL_UPLOADS = os.environ.get("ALLOW_EPHEMERAL_UPLOADS", "").strip() == "1"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

@@ -573,3 +573,60 @@ class SearchIndexTrieCacheTests(TestCase):
         # datetime.max (9999-12-31) = never-expire; nếu incr làm mất TTL thì
         # expires sẽ là now + 300s (năm hiện tại)
         self.assertEqual(getattr(row[0], "year", None), 9999)
+
+
+class PersistentStorageGuardTests(ThrottleFreeMixin, APITestCase):
+    """
+    QA-Audit đợt 2 (P2-3) — FAIL LOUD khi production lưu upload vào đĩa tạm:
+        - production + FileSystemStorage → 400 kèm hướng dẫn S3.
+        - production + ALLOW_EPHEMERAL_UPLOADS=1 → 201 (demo/pilot chấp nhận rủi ro).
+        - production + MEDIA_STORAGE_PERSISTENT=True (S3) → 201.
+        - development → không bao giờ chặn.
+    """
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.member = User.objects.create_user(
+            username="storage-guard", email="guard@clbip.test", password="TestPass123!",
+            role=User.Role.MEMBER, mssv="22A4010201",
+        )
+        MemberProfile.objects.create(user=cls.member, ho_ten="Guard Lưu Trữ")
+        cls.upload_url = reverse("document_list")
+
+    def _upload(self):
+        self.client.force_authenticate(user=self.member)
+        return self.client.post(
+            self.upload_url,
+            {"file": make_pdf_file("tai-lieu.pdf"), "tieu_de": "Tài liệu lưu trữ", "nhom": "CHUYEN_MON"},
+            format="multipart",
+        )
+
+    def test_production_ephemeral_bi_chan_400(self) -> None:
+        with override_settings(
+            DJANGO_ENV="production", MEDIA_STORAGE_PERSISTENT=False, ALLOW_EPHEMERAL_UPLOADS=False
+        ):
+            resp = self._upload()
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("lưu trữ bền vững", resp.data["message"])
+        self.assertFalse(Document.objects.filter(tieu_de="Tài liệu lưu trữ").exists())
+
+    def test_production_allow_ephemeral_thi_201(self) -> None:
+        with override_settings(
+            DJANGO_ENV="production", MEDIA_STORAGE_PERSISTENT=False, ALLOW_EPHEMERAL_UPLOADS=True
+        ):
+            resp = self._upload()
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+    def test_production_co_s3_thi_201(self) -> None:
+        with override_settings(
+            DJANGO_ENV="production", MEDIA_STORAGE_PERSISTENT=True, ALLOW_EPHEMERAL_UPLOADS=False
+        ):
+            resp = self._upload()
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+    def test_development_khong_bao_gio_chan(self) -> None:
+        with override_settings(
+            DJANGO_ENV="development", MEDIA_STORAGE_PERSISTENT=False, ALLOW_EPHEMERAL_UPLOADS=False
+        ):
+            resp = self._upload()
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)

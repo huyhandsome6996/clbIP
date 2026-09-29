@@ -12,8 +12,27 @@ Hàm này chọn storage cho STORAGES["default"] theo biến môi trường:
 
 Hàm thuần (pure function trên dict env) để unit-test được mà không cần
 re-import settings.
+
+QA-Audit đợt 2 (P2-3): thêm `is_persistent_media_storage()` — dùng ở
+settings tính cờ `MEDIA_STORAGE_PERSISTENT`; service upload tài liệu dùng
+cờ này để FAIL LOUD (400 kèm hướng dẫn) khi production vẫn lưu đĩa tạm,
+thay vì im lặng nhận file rồi mất khi restart.
 """
 from typing import Mapping
+
+
+def is_persistent_media_storage(env: Mapping[str, str]) -> bool:
+    """Media storage có BỀN VỮNG qua restart/redeploy không?
+
+    Bền vững khi:
+        - `USE_S3=1` (S3/R2/MinIO — nằm ngoài đĩa service), hoặc
+        - `MEDIA_ROOT_PERSISTENT=1` (người vận hành TỰ khẳng định đã mount
+          persistent disk Render vào MEDIA_ROOT — Render mount vào
+          /var/data nên phải trỏ MEDIA_ROOT theo).
+    """
+    if env.get("USE_S3", "").strip() == "1":
+        return True
+    return env.get("MEDIA_ROOT_PERSISTENT", "").strip() == "1"
 
 
 def resolve_default_storage(env: Mapping[str, str]) -> dict:

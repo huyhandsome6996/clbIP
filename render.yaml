@@ -12,7 +12,7 @@ services:
     startCommand: "gunicorn core.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 30"
     healthCheckPath: /api/health/
     envVars:
-      # Phiên bản Python đã kiểm thử đầy đủ (215 tests pass trên 3.12.x)
+      # Phiên bản Python đã kiểm thử đầy đủ (227 tests pass trên 3.12.x)
       - key: PYTHON_VERSION
         value: "3.12.14"
       - key: DJANGO_SETTINGS_MODULE
@@ -41,6 +41,31 @@ services:
         fromDatabase:
           name: clbip-postgres
           property: connectionString
+      # ---------------------------------------------------------------
+      # File upload bền vững (QA-Audit P2-3): đĩa Render là TẠM THỜI —
+      # tài liệu/ảnh upload MẤT khi restart. Production bắt buộc 1 trong 2:
+      #   (a) Đặt USE_S3=1 + AWS_* bên dưới (S3/Cloudflare R2 — khuyến nghị);
+      #   (b) Đặt ALLOW_EPHEMERAL_UPLOADS=1 nếu chấp nhận MẤT file khi
+      #       restart (chỉ demo/pilot).
+      # Không cấu hình gì → upload tài liệu bị chặn 400 kèm hướng dẫn
+      # (fail loud — không im lặng nhận file rồi mất).
+      # ⚠️ Giá trị thật đặt trong Render Dashboard sau khi Apply Blueprint
+      # (sync: false — KHÔNG bao giờ ghi secret trong blueprint).
+      # ---------------------------------------------------------------
+      - key: USE_S3
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false   # R2/MinIO: https://<account>.r2.cloudflarestorage.com
+      - key: AWS_S3_REGION_NAME
+        sync: false   # R2: auto
+      - key: ALLOW_EPHEMERAL_UPLOADS
+        sync: false   # chỉ đặt "1" khi chấp nhận mất file demo
 
 databases:
   - name: clbip-postgres

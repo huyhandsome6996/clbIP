@@ -180,12 +180,13 @@ python manage.py runserver          # http://localhost:8000/ (frontend) · /api/
 | `CORS_ALLOWED_ORIGINS` | Nên đặt | Danh sách domain frontend, mặc định khớp render.yaml |
 | `ALLOWED_HOSTS` | Nên đặt | Mặc định `.onrender.com,localhost,127.0.0.1` |
 | `REDIS_URL` | Tuỳ chọn | Có → throttle/axes dùng Redis thay DatabaseCache |
-| `USE_S3=1` + `AWS_*` | Tuỳ chọn | Lưu file upload vào S3/R2 (đĩa Render tạm thời) |
+| `USE_S3=1` + `AWS_*` | Tuỳ chọn (KHUYẾN NGHỊ production) | Lưu file upload vào S3/R2 — đĩa Render tạm thời, không cấu hình thì upload bị chặn (xem dưới) |
+| `ALLOW_EPHEMERAL_UPLOADS=1` | ❌ Chỉ demo/pilot | Chấp nhận rủi ro: upload vẫn nhận nhưng MẤT khi restart |
 | `SEED_DEMO` + `DEMO_PASSWORD` | ❌ KHÔNG đặt | Chỉ dùng dev cục bộ — production bị chặn 3 tầng |
 
 ## ⚠️ Lưu ý production
 - **Free plan Render**: disk ephemeral — file tài liệu/ảnh upload sẽ mất khi restart/redeploy.
-  **Giải pháp (QA-Audit nhóm 5)**: đặt `USE_S3=1` + các biến `AWS_*` trên Render để lưu
+  **Giải pháp (QA-Audit nhóm 5 + đợt 2)**: đặt `USE_S3=1` + các biến `AWS_*` trên Render để lưu
   upload vào S3/Cloudflare R2/MinIO qua `django-storages` (đã có sẵn trong requirements):
 
   | Biến môi trường | Ý nghĩa |
@@ -199,6 +200,14 @@ python manage.py runserver          # http://localhost:8000/ (frontend) · /api/
 
   Bucket nên để **private** — tải file luôn đi qua `/documents/{id}/download/` (có auth
   + phạm vi BCN_ONLY), không expose trực tiếp URL đĩa/bucket.
+
+  **Fail loud (QA-Audit đợt 2)**: nếu production KHÔNG cấu hình storage bền vững
+  (`USE_S3=1` hoặc `MEDIA_ROOT_PERSISTENT=1`) thì upload tài liệu bị chặn `400`
+  kèm hướng dẫn — không im lặng nhận file rồi mất. Demo/pilot muốn giữ hành vi
+  cũ thì đặt rõ ràng `ALLOW_EPHEMERAL_UPLOADS=1` (log WARNING mỗi lần upload).
+  `render.yaml` đã khai sẵn các biến này dạng `sync: false` — giá trị thật đặt
+  trong Render Dashboard sau khi Apply Blueprint (secret không bao giờ nằm trong
+  blueprint).
 - Postgres free tier tự suspend sau 90 ngày không hoạt động — dùng `render shell` hoặc curl health check định kỳ.
 - Đổi mật khẩu các tài khoản demo ngay sau khi nhận bàn giao.
 

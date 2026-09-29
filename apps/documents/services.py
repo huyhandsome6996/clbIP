@@ -21,7 +21,12 @@ from typing import ClassVar, Iterable, List, Optional
 
 from django.conf import settings
 
-from apps.common.exceptions import FileValidationException, ForbiddenException, NotFoundException
+from apps.common.exceptions import (
+    FileValidationException,
+    ForbiddenException,
+    NotFoundException,
+    ValidationException,
+)
 from apps.documents.models import Document
 from apps.documents.repositories import IDocumentRepository, DjangoDocumentRepository
 
@@ -141,6 +146,41 @@ class DocumentService:
     # CRUD qua Service
     # ==================================================================
     @classmethod
+    def _assert_persistent_storage(cls) -> None:
+        """
+        FAIL LOUD khi production vẫn lưu upload vào đĩa TẠM (QA-Audit P2-3).
+
+        Đĩa Render là ephemeral — file nhận về rồi sẽ MẤT khi restart/redeploy.
+        Chặn rõ ràng ngay từ request upload (400 kèm hướng dẫn cấu hình) thay
+        vì im lặng nhận file rồi mất.
+
+        Bỏ chặn khi (2 cách, theo thứ tự ưu tiên):
+            - `MEDIA_STORAGE_PERSISTENT=True` (đã cấu hình USE_S3=1 hoặc
+              MEDIA_ROOT_PERSISTENT=1 — xem core/storage_resolver.py), hoặc
+            - `ALLOW_EPHEMERAL_UPLOADS=1` — cờ chấp nhận rủi ro cho demo/pilot:
+              chỉ log WARNING, upload vẫn nhận (mất khi restart là biết trước).
+        """
+        from django.conf import settings  # noqa: PLC0415
+
+        if getattr(settings, "MEDIA_STORAGE_PERSISTENT", True):
+            return  # S3/R2 hoặc đĩa bền vững — mọi thứ ổn
+        if settings.DJANGO_ENV != "production":
+            return  # dev cục bộ vẫn dùng đĩa cục bộ như thường lệ
+        if getattr(settings, "ALLOW_EPHEMERAL_UPLOADS", False):
+            logger.warning(
+                "UPLOAD SẼ MẤT KHI RESTART: production đang lưu file vào đĩa "
+                "tạm theo cờ ALLOW_EPHEMERAL_UPLOADS=1 — chỉ dùng cho demo/pilot."
+            )
+            return
+        raise ValidationException(
+            "Máy chủ chưa cấu hình nơi lưu trữ bền vững (S3/R2) — file upload "
+            "sẽ mất khi restart nên tạm chặn. Quản trị viên cần đặt USE_S3=1 + "
+            "các biến AWS_* (hoặc ALLOW_EPHEMERAL_UPLOADS=1 nếu chấp nhận rủi ro "
+            "cho demo), xem README mục 'Lưu ý production'.",
+            errors={"storage": "ephemeral_media_root_in_production"},
+        )
+
+    @classmethod
     def create_document(cls, user, uploaded_file, data: dict) -> Document:
         """
         Tạo tài liệu mới: validate 4 tầng → đặt tên UUID → lưu DB → thưởng XP.
@@ -153,6 +193,9 @@ class DocumentService:
         Returns:
             Instance Document đã lưu.
         """
+        # Chặn sớm lỗi cấu hình storage (trước cả validate file — đây là lỗi
+        # hệ thống, không phải lỗi dữ liệu người dùng)
+        cls._assert_persistent_storage()
         ext: str = cls.validate_file(uploaded_file)
 
         # Phạm vi truy cập (QA-Audit 2d): thành viên thường chỉ được chia sẻ
