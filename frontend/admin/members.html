@@ -444,8 +444,8 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="add-pass">Mật khẩu</label>
-            <input class="form-input" type="text" id="add-pass" placeholder="Để trống → CLBIP@2026">
-            <p class="form-hint">Để trống sẽ dùng mật khẩu mặc định CLBIP@2026.</p>
+            <input class="form-input" type="text" id="add-pass" placeholder="Để trống → sinh mật khẩu ngẫu nhiên">
+            <p class="form-hint">Để trống sẽ sinh mật khẩu ngẫu nhiên (hiển thị một lần sau khi tạo).</p>
             <p class="form-error hidden" data-field="password"></p>
           </div>
         </div>
@@ -864,9 +864,11 @@
             const res = await ApiClient.post("/members/import-excel/", fd);
             const created = res?.created ?? 0;
             const errors = res?.errors || [];
+            const passwords = res?.passwords || [];
             resultBox.innerHTML = `
               <div class="import-result mt-4">
                 <div class="bold">Kết quả nhập: <span class="xp-badge">${Utils.fmtNum(created)}</span> thành viên mới.</div>
+                ${passwords.length ? `<div class="mt-2 xs muted">Mật khẩu khởi tạo ngẫu nhiên (gửi cho từng thành viên qua kênh riêng — chỉ hiển thị lần này):</div><ul class="mb-0" style="padding-left:18px">${passwords.map((p2) => `<li class="mono xs">${Utils.escapeHtml(p2.email)} → ${Utils.escapeHtml(p2.password)}</li>`).join("")}</ul>` : ""}
                 ${errors.length
                   ? `<div class="mt-2">${Utils.fmtNum(errors.length)} dòng lỗi:<ul class="mb-0" style="padding-left:18px">${errors.map((e) => `<li class="err-line">${Utils.escapeHtml(typeof e === "string" ? e : JSON.stringify(e))}</li>`).join("")}</ul></div>`
                   : '<div class="mt-2 small muted">Không có dòng lỗi nào.</div>'}

@@ -412,3 +412,29 @@ class MemberTrieCacheTests(TestCase):
         make_user("trie-svc@clbip.vn", role="MEMBER", ho_ten="Thanh Vien Trie")
         results = MemberService.search_profiles("thanh vien trie", limit=5)
         self.assertGreaterEqual(len(results), 1)
+
+
+class MemberPasswordPolicyTests(TestCase):
+    """QA-Audit P0/DoD — không còn mật khẩu mặc định công khai khi BCN tạo member."""
+
+    def setUp(self) -> None:
+        self.client = APIClient()
+        self.bcn = make_user("pwd-bcn@clbip.vn", role="BCN", ho_ten="BCN Mật Khẩu")
+
+    def test_tao_member_khong_password_nhan_mat_khau_ngau_nhien(self) -> None:
+        """"""
+        self.client.force_authenticate(user=self.bcn)
+        res = self.client.post(
+            "/api/v1/members/",
+            {"email": "ngau-nhien@clbip.vn", "mssv": "22A401777", "ho_ten": "Mật Khẩu Ngẫu Nhiên"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertIn("Mật khẩu khởi tạo", res.data["message"])
+        self.assertNotIn("CLBIP@2026", res.data["message"])
+        # Mật khẩu in ra phải dùng được để đăng nhập (không phải mặc định công khai)
+        password = res.data["message"].split("Mật khẩu khởi tạo: ")[1].split(" ")[0]
+        login = self.client.post(
+            "/api/v1/auth/token/", {"email": "ngau-nhien@clbip.vn", "password": password}, format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)

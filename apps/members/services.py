@@ -21,6 +21,7 @@ from apps.common.exceptions import (
     ValidationException,
 )
 from apps.members.models import MemberProfile
+from django.utils.crypto import get_random_string
 from apps.members.repositories import (
     DjangoMemberRepository,
     IMemberRepository,
@@ -69,7 +70,9 @@ class MemberService:
         if mssv and cls._repo().exists_user_by_mssv(mssv):
             raise DuplicateDataException(f"MSSV {mssv} đã tồn tại.")
 
-        password: str = data.get("password") or "CLBIP@2026"
+        # QA-Audit P0/DoD: không dùng mật khẩu mặc định công khai — BCN truyền
+        # mật khẩu rõ, hoặc hệ thống sinh ngẫu nhiên (view sẽ hiển thị 1 lần)
+        password: str = data.get("password") or get_random_string(14)
 
         return cls._repo().create_user_with_profile(
             email=email,
@@ -257,6 +260,7 @@ class MemberService:
         sheet = workbook.active
         created_count = 0
         errors: list = []
+        generated_passwords: list = []  # (QA-Audit P0) BCN cần mật khẩu để gửi cho thành viên
         seen_emails: set = set()
         seen_mssvs: set = set()
 
@@ -287,6 +291,7 @@ class MemberService:
                 continue
 
             try:
+                row_password = get_random_string(14)
                 cls.create_member(
                     {
                         "ho_ten": ho_ten,
@@ -294,9 +299,12 @@ class MemberService:
                         "mssv": mssv,
                         "lop": lop,
                         "sdt": sdt,
-                        "password": "CLBIP@2026",
+                        "password": row_password,
                     },
                     actor,
+                )
+                generated_passwords.append(
+                    {"email": email, "mssv": mssv, "password": row_password}
                 )
                 seen_emails.add(email)
                 seen_mssvs.add(mssv)
@@ -304,7 +312,12 @@ class MemberService:
             except Exception as exc:  # noqa: BLE001 — ghi nhận lỗi từng dòng
                 errors.append({"row": idx, "ho_ten": str(ho_ten), "error": str(exc)})
 
-        return {"created": created_count, "errors": errors}
+        return {
+            "created": created_count,
+            "errors": errors,
+            # Mật khẩu khởi tạo ngẫu nhiên — hiển thị cho BCN đúng một lần
+            "passwords": generated_passwords,
+        }
 
     @classmethod
     def export_excel(cls) -> bytes:

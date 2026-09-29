@@ -53,7 +53,7 @@ class MemberCreateSerializer(serializers.Serializer):
     ho_ten = serializers.CharField(max_length=150)
     password = serializers.CharField(
         write_only=True, required=False, allow_blank=True,
-        help_text="Để trống sẽ dùng mật khẩu mặc định CLBIP@2026",
+        help_text="Để trống hệ thống sẽ sinh mật khẩu ngẫu nhiên (hiển thị một lần sau khi tạo)",
     )
     lop = serializers.CharField(max_length=50, required=False, allow_blank=True)
     sdt = serializers.CharField(max_length=15, required=False, allow_blank=True)

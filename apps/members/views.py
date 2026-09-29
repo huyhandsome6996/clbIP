@@ -6,6 +6,7 @@ Phân quyền chống IDOR: thành viên thường CHỈ xem/sửa dữ liệu c
 from typing import Any
 
 from django.http import HttpResponse
+from django.utils.crypto import get_random_string
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -103,10 +104,16 @@ class MemberListCreateView(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs) -> Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        profile = MemberService.create_member(serializer.validated_data, request.user)
+        # QA-Audit P0/DoD: mật khẩu trống → sinh ngẫu nhiên và hiển thị ĐÚNG 1
+        # lần trong message (BCN gửi cho thành viên qua kênh riêng) — không còn
+        # mật khẩu mặc định công khai CLBIP@2026
+        password = serializer.validated_data.get("password") or get_random_string(14)
+        profile = MemberService.create_member(
+            {**serializer.validated_data, "password": password}, request.user
+        )
         return created(
             data=MemberProfileListSerializer(profile).data,
-            message="Thêm thành viên thành công. Mật khẩu mặc định: CLBIP@2026",
+            message=f"Thêm thành viên thành công. Mật khẩu khởi tạo: {password} (chỉ hiển thị một lần)",
         )
 
 
