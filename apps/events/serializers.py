@@ -110,6 +110,15 @@ class ActivityEventDetailSerializer(serializers.ModelSerializer):
             trang_thai=EventRegistration.TrangThai.CANCELLED
         ).count()
 
+    def to_representation(self, instance):
+        """QA-Audit 2a: email người tạo là PII — chỉ BCN/ADMIN được xem.
+        Thành viên thường nhận chi tiết sự kiện mà không có trường này."""
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if request is not None and not getattr(request.user, "is_bcn", False):
+            data.pop("created_by_email", None)
+        return data
+
 
 class ActivityEventCreateUpdateSerializer(serializers.ModelSerializer):
     """

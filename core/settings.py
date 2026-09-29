@@ -45,15 +45,31 @@ _load_env_file()
 TESTING = "test" in sys.argv
 
 # ------------------------------------------------------------------
-# 1. CORE SECURITY SETTINGS
+# 1. CORE SECURITY SETTINGS — Fail-Fast Config (QA-Audit 2c)
 # ------------------------------------------------------------------
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY",
-    "django-insecure-local-dev-key-thay-doi-khi-deploy-render",
-)
-
-DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+# DEBUG mặc định False: quên đặt biến môi trường trên Render sẽ KHÔNG được
+# phép rơi về DEBUG=True (rò rỉ settings/stacktrace ra Internet).
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 DJANGO_ENV = os.environ.get("DJANGO_ENV", "development")  # 'production' trên Render
+
+# SECRET_KEY: production BẮT BUỘC có khóa thật — chặn deploy khi thiếu hoặc
+# đang dùng khóa dev sinh mặc định (tiền tố "django-insecure").
+_secret_key_env = os.environ.get("SECRET_KEY", "")
+if DJANGO_ENV == "production":
+    if not _secret_key_env:
+        raise RuntimeError(
+            "SECRET_KEY bắt buộc phải có khi DJANGO_ENV=production. "
+            "Đặt biến môi trường SECRET_KEY (Render: generateValue=true)."
+        )
+    if _secret_key_env.startswith("django-insecure"):
+        raise RuntimeError(
+            'SECRET_KEY đang là khóa dev (tiền tố "django-insecure") — '
+            "tuyệt đối không dùng trên production."
+        )
+    SECRET_KEY = _secret_key_env
+else:
+    # Chỉ development/test mới được dùng khóa dev mặc định
+    SECRET_KEY = _secret_key_env or "django-insecure-local-dev-key-thay-doi-khi-deploy-render"
 
 ALLOWED_HOSTS: list[str] = [
     h.strip()
@@ -112,6 +128,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.ContentSecurityPolicyMiddleware",  # Backstop chống XSS (QA-Audit 2f)
     "axes.middleware.AxesMiddleware",  # Chặn brute-force ở tầng middleware
 ]
 
@@ -204,6 +221,49 @@ else:
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ------------------------------------------------------------------
+# 3.5 PROXY & CACHE DÙNG CHUNG (QA-Audit 2b)
+# ------------------------------------------------------------------
+# Render đặt 1 reverse-proxy phía trước → IP client thật là phần tử CUỐI của
+# X-Forwarded-For (client có thể tự thêm phần tử đầu để giả mạo). DRF throttle
+# và django-axes dựa vào con số này để nhận diện đúng IP — cấu hình sai thì
+# attacker có thể né rate-limit bằng header giả.
+_num_proxies_env = os.environ.get("NUM_PROXIES", "").strip()
+try:
+    NUM_PROXIES: int = int(_num_proxies_env) if _num_proxies_env else (
+        1 if DJANGO_ENV == "production" else 0
+    )
+except ValueError as _exc:
+    raise RuntimeError(
+        f'NUM_PROXIES phải là số nguyên >= 0 (đang đặt "{_num_proxies_env}"). '
+        "Ví dụ: NUM_PROXIES=1 khi chạy sau 1 reverse proxy (Render)."
+    ) from _exc
+
+# Cache dùng chung giữa các worker gunicorn cho DRF throttle: bộ đếm
+# rate-limit PHẢI dùng chung — LocMemCache mặc định tách rời theo worker →
+# attacker né throttle bằng cách trúng nhiều worker khác nhau. (django-axes
+# 7 mặc định đã lưu attempt vào DB, không phụ thuộc cache này.)
+_redis_url = os.environ.get("REDIS_URL", "").strip()
+if _redis_url:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+            "KEY_PREFIX": "clbip",
+            "TIMEOUT": 300,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache_table",  # tạo bằng createcachetable (build.sh)
+            "KEY_PREFIX": "clbip",
+            "TIMEOUT": 300,
+            "OPTIONS": {"MAX_ENTRIES": 100_000},
+        }
+    }
+
+# ------------------------------------------------------------------
 # 4. AUTHENTICATION — Custom User (đăng nhập bằng Email) + Argon2
 # ------------------------------------------------------------------
 AUTH_USER_MODEL = "authentication.User"
@@ -237,6 +297,17 @@ AXES_RESET_ON_SUCCESS = True
 AXES_ENABLED = not TESTING  # Tắt khi chạy unittest để không phá vỡ test suite
 AXES_VERBOSE = True
 AXES_LOCKOUT_CALLABLE = "apps.common.axes_callbacks.axes_lockout_response"
+# Nhận diện IP thật sau reverse proxy Render cho django-axes (django-ipware).
+# Ngữ nghĩa KHÁC DRF NUM_PROXIES — đã kiểm chứng thực nghiệm với ipware 7.0.1:
+#   proxy_order="right-most" + proxy_count=1 + XFF="giả, IP-thật"
+#   → trả về IP-THẬT (trusted) — đúng mô hình Render (proxy ghi phần tử cuối).
+#   (right-most + count=None và left-most + count=1 đều trả về IP GIẢ của client!)
+AXES_IPWARE_PROXY_ORDER = "right-most"
+AXES_IPWARE_PROXY_COUNT = NUM_PROXIES  # số proxy phía trước (Render = 1)
+AXES_IPWARE_META_PRECEDENCE_ORDER = ("HTTP_X_FORWARDED_FOR", "REMOTE_ADDR")
+# Form đăng nhập gửi trường "email" (không phải "username") — nếu không chỉ
+# định, axes đọc rỗng → khóa chỉ theo IP, mất khóa theo cặp (tài khoản, IP)
+AXES_USERNAME_FORM_FIELD = "email"
 
 # ------------------------------------------------------------------
 # 5. DJANGO REST FRAMEWORK + THROTTLING ĐA TẦNG (Chống DoS/DDoS)
@@ -258,6 +329,10 @@ REST_FRAMEWORK = {
         "apps.common.throttles.BurstRateThrottle",
         "apps.common.throttles.SustainedRateThrottle",
     ],
+    # Nhận diện IP sau reverse proxy (Render) — xem §3.5. Đặt TRONG dict để
+    # SimpleRateThrottle.get_ident() đọc đúng địa chỉ client thật, chống giả
+    # mạo X-Forwarded-For để né throttle đăng nhập.
+    "NUM_PROXIES": NUM_PROXIES,
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/minute",        # Khách vãng lai: 60 req/phút
         "user": "300/minute",       # Người dùng: 300 req/phút
@@ -266,6 +341,7 @@ REST_FRAMEWORK = {
         "auth_login": "5/minute",   # Đăng nhập: 5 lần/phút (chống dò mật khẩu)
         "checkin": "3/minute",      # Điểm danh GPS: 3 lần/phút
         "feedback": "2/minute",     # Góp ý/Poll: 2 lần/phút (chống spam)
+        "doc_upload": "5/minute",   # Upload tài liệu: 5 lần/phút (chống lấp kho) — throttle class đã có sẵn trong apps/common/throttles.py
     },
 }
 
@@ -293,7 +369,10 @@ CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.environ.get(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,https://clbip-hue.onrender.com",
+        # Mặc định khớp render.yaml + domain backend thật. LƯU Ý: khi deploy
+        # Blueprint, env var trong render.yaml sẽ override giá trị mặc định này.
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "https://clbip-frontend.onrender.com,https://clbip-backend.onrender.com",
     ).split(",")
     if o.strip()
 ]
@@ -302,7 +381,7 @@ CORS_ALLOW_CREDENTIALS = True
 # ------------------------------------------------------------------
 # 8. SECURITY HEADERS (Production Hardening)
 # ------------------------------------------------------------------
-SECURE_BROWSER_XSS_FILTER = True
+# (SECURE_BROWSER_XSS_FILTER đã bị Django loại bỏ từ bản 4.0 — không còn tác dụng)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"  # Chống Clickjacking
 SECURE_REFERRER_POLICY = "same-origin"

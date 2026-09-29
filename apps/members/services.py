@@ -208,12 +208,16 @@ class MemberService:
     # TRIE SEARCH (DSA 3)
     # ------------------------------------------------------------------
     @staticmethod
-    def search_profiles(q: str, limit: int = 20) -> list:
+    def search_profiles(q: str, limit: int = 20, only_active: bool = False) -> list:
         """
         Tìm kiếm tức thời O(L) bằng PrefixSearchTrie.
 
         Index: MSSV + họ tên (tự động bỏ dấu). Trả tối đa `limit` profile,
         sắp theo XP giảm dần.
+
+        Args:
+            only_active: True → chỉ trả thành viên đang hoạt động (dùng cho
+                thành viên thường, QA-Audit 2a — không lộ danh sách cán bộ ẩn).
         """
         q = (q or "").strip()
         if not q:
@@ -239,6 +243,10 @@ class MemberService:
             .filter(pk__in=matched_ids)
             .order_by("-xp_points")
         )
+        if only_active:
+            profiles = profiles.filter(
+                trang_thai_hd=MemberProfile.TrangThai.ACTIVE
+            )
         return list(profiles[:limit])
 
     # ------------------------------------------------------------------

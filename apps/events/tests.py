@@ -15,8 +15,9 @@ from rest_framework.test import APIClient
 
 from apps.authentication.models import User
 from apps.events.models import ActivityEvent, EventRegistration, EventTask
-from apps.events.services import EventTaskService
+from apps.events.services import EventService, EventTaskService
 from apps.members.models import MemberProfile
+from rest_framework import status
 
 EVENTS_URL = "/api/v1/events/"
 
@@ -328,3 +329,39 @@ class EventBudgetAndRegistrationListTests(EventTestBase):
         r_bcn = self.client.get(f"{EVENTS_URL}{event.id}/registrations/")
         self.assertEqual(r_bcn.status_code, 200)
         self.assertIn("items", r_bcn.data["data"])
+
+
+class EventDetailPIITests(TestCase):
+    """QA-Audit 2a — chi tiết sự kiện với MEMBER không chứa created_by_email."""
+
+    def setUp(self) -> None:
+        from rest_framework.test import APIClient
+
+        self.client = APIClient()
+        self.bcn = User.objects.create_user(email="evpiibcn@clbip.vn", password="TestPass123!", role="BCN")
+        MemberProfile.objects.create(user=self.bcn, ho_ten="BCN Sự Kiện")
+        self.member = User.objects.create_user(email="evpiimem@clbip.vn", password="TestPass123!", role="MEMBER")
+        MemberProfile.objects.create(user=self.member, ho_ten="Thành Viên Sự Kiện")
+        self.event = EventService.create_event(
+            {
+                "ten_hoat_dong": "Sự kiện PII",
+                "loai_hd": "WORKSHOP",
+                "thoi_gian_bat_dau": timezone.now() + timedelta(days=5),
+                "thoi_gian_ket_thuc": timezone.now() + timedelta(days=5, hours=3),
+                "dia_diem": "Phòng 101",
+                "so_luong_toi_da": 30,
+            },
+            actor=self.bcn,
+        )
+
+    def test_member_detail_khong_co_created_by_email(self) -> None:
+        self.client.force_authenticate(user=self.member)
+        res = self.client.get(f"/api/v1/events/{self.event.pk}/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertNotIn("created_by_email", res.data["data"])
+
+    def test_bcn_detail_van_co_created_by_email(self) -> None:
+        self.client.force_authenticate(user=self.bcn)
+        res = self.client.get(f"/api/v1/events/{self.event.pk}/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["data"].get("created_by_email"), self.bcn.email)

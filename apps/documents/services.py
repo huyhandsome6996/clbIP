@@ -136,16 +136,25 @@ class DocumentService:
         Args:
             user: Người chia sẻ (đã đăng nhập).
             uploaded_file: Tệp upload.
-            data: dict gồm tieu_de, nhom, tags, mo_ta (đã qua serializer validate).
+            data: dict gồm tieu_de, nhom, tags, mo_ta, pham_vi (đã qua serializer validate).
 
         Returns:
             Instance Document đã lưu.
         """
         ext: str = cls.validate_file(uploaded_file)
 
+        # Phạm vi truy cập (QA-Audit 2d): thành viên thường chỉ được chia sẻ
+        # tài liệu công khai — yêu cầu BCN_ONLY từ MEMBER bị ép về PUBLIC_MEMBER.
+        pham_vi = data.get("pham_vi") or Document.PhamVi.PUBLIC_MEMBER
+        if pham_vi not in Document.PhamVi.values:
+            pham_vi = Document.PhamVi.PUBLIC_MEMBER
+        if pham_vi == Document.PhamVi.BCN_ONLY and not getattr(user, "is_bcn", False):
+            pham_vi = Document.PhamVi.PUBLIC_MEMBER
+
         doc = Document(
             tieu_de=data.get("tieu_de", "").strip(),
             nhom=data.get("nhom", Document.Nhom.CHUYEN_MON),
+            pham_vi=pham_vi,
             tags=(data.get("tags", "") or "").strip(),
             mo_ta=(data.get("mo_ta", "") or "").strip(),
             file=uploaded_file,
@@ -221,10 +230,28 @@ class DocumentService:
         logger.info("Đã xóa tài liệu #%s bởi %s", doc_id, getattr(actor, "email", "?"))
 
     # ==================================================================
+    # Phạm vi truy cập (QA-Audit 2d)
+    # ==================================================================
+    @staticmethod
+    def visible_documents(user):
+        """Queryset tài liệu theo phạm vi: MEMBER chỉ thấy PUBLIC_MEMBER."""
+        qs = Document.objects.all()
+        if not getattr(user, "is_bcn", False):
+            qs = qs.filter(pham_vi=Document.PhamVi.PUBLIC_MEMBER)
+        return qs
+
+    @staticmethod
+    def can_view(doc: Document, user) -> bool:
+        """Quyền xem/tải một tài liệu cụ thể: BCN_ONLY chỉ dành cho BCN/ADMIN."""
+        if doc.pham_vi == Document.PhamVi.BCN_ONLY:
+            return getattr(user, "is_bcn", False)
+        return True
+
+    # ==================================================================
     # DSA 3 — Trie Prefix Search (O(L))
     # ==================================================================
     @classmethod
-    def search(cls, q: str, limit: int = 20) -> List[Document]:
+    def search(cls, q: str, limit: int = 20, user=None) -> List[Document]:
         """
         Tìm kiếm tức thời tiêu đề/tags qua Prefix Trie — O(L) mỗi truy vấn.
 
@@ -235,6 +262,8 @@ class DocumentService:
         Args:
             q: Từ khóa tìm kiếm (tiền tố).
             limit: Số kết quả tối đa.
+            user: Người tìm (QA-Audit 2d) — MEMBER chỉ tìm được trong phạm vi
+                PUBLIC_MEMBER, tài liệu BCN_ONLY không xuất hiện kể cả khi khớp.
 
         Returns:
             Danh sách Document (mới nhất trước). q rỗng → [].
@@ -245,8 +274,13 @@ class DocumentService:
 
         from core.algorithms.trie_search import PrefixSearchTrie  # noqa: PLC0415
 
+        # Chỉ index những tài liệu người tìm được phép thấy — không lộ ID
+        queryset = Document.objects.all()
+        if user is not None and not getattr(user, "is_bcn", False):
+            queryset = queryset.filter(pham_vi=Document.PhamVi.PUBLIC_MEMBER)
+
         trie = PrefixSearchTrie()
-        for doc in Document.objects.only("id", "tieu_de", "tags").iterator():
+        for doc in queryset.only("id", "tieu_de", "tags").iterator():
             aliases: List[str] = [doc.tieu_de, *doc.tieu_de.split()]
             aliases += [tag.strip() for tag in (doc.tags or "").split(",") if tag.strip()]
             trie.insert_multi(aliases, doc.pk)

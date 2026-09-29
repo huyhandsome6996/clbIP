@@ -128,15 +128,34 @@ apps/
 |---|---|
 | **SQL Injection** | 100% ORM parameterized; whitelist `order_by`/filter mọi endpoint |
 | **DoS/DDoS** | DRF Throttle đa tầng: anon 60/m, user 300/m, burst 10/s, auth 5/m, checkin 3/m, feedback 2/m; pagination bắt buộc; payload limit 5MB; Gunicorn timeout 30s |
+| **Nhận diện IP sau proxy** | `NUM_PROXIES=1` (env, mặc định 1 khi production) cho DRF throttle + `AXES_IPWARE_PROXY_COUNT` cho django-axes — IP thật là phần tử cuối của `X-Forwarded-For`, client không thể giả mạo để né rate-limit |
+| **Cache dùng chung** | Throttle + axes dùng `DatabaseCache` (hoặc Redis khi có `REDIS_URL`) — bộ đếm dùng chung giữa các worker gunicorn, không né khóa bằng cách trúng worker khác. Dev cần chạy `python manage.py createcachetable` một lần |
 | **Brute-force** | django-axes: khóa 5 lần sai / 15 phút (username+IP) |
 | **JWT** | Access 30 phút, refresh 7 ngày, rotation + blacklist sau rotation |
+| **PII (QA-Audit 2a)** | Thành viên thường KHÔNG nhận email/sdt/mssv của người khác qua `/members/search/` (chỉ tên/lớp/XP, chỉ thấy thành viên ACTIVE), `/members/board/` (ẩn MSSV cán bộ), `/documents/` (uploaded_by là tên), `/posts/` (tên hiển thị), chi tiết sự kiện (ẩn created_by_email). BCN/ADMIN giữ nguyên đầy đủ |
+| **Tài liệu nội bộ (2d)** | `Document.pham_vi`: `PUBLIC_MEMBER` / `BCN_ONLY` — kiểm tra ở list, detail, search VÀ download; thành viên không thấy tài liệu BCN_ONLY (trả 404, không hé lộ sự tồn tại) |
+| **API docs (2e)** | `/api/schema/`, `/api/docs/` chỉ ADMIN khi production (404 với người khác) |
 | **Fake GPS** | `GPSAntiCheatEngine`: mock location, accuracy >100m, timestamp skew >60s (replay), nonce HMAC xoay 60s, device fingerprint (1 thiết bị/1 MSSV), teleportation >100 km/h, Haversine radius |
 | **XP Cheat** | Server-Authoritative (client không gửi xp được), idempotency key, trần 300 XP/ngày |
 | **Race Condition** | `transaction.atomic()` + `select_for_update()` cho quỹ, vé sự kiện, poll vote |
 | **IDOR/BOLA** | `IsOwnerOrBCN` trên mọi object-level access |
 | **File Upload** | Whitelist đuôi → size ≤15MB → magic bytes (pure-python) → UUID rename |
-| **XSS** | bleach sanitize toàn bộ nội dung bài đăng |
+| **XSS** | bleach sanitize toàn bộ nội dung bài đăng; `Utils.escapeHtml` mọi dữ liệu động ở frontend; **CSP header** (middleware `core/middleware.py`) làm lớp backstop |
+| **Fail-fast config (2c)** | `DEBUG` mặc định False; production BẮT BUỘC `SECRET_KEY` thật (RuntimeError khi thiếu hoặc tiền tố `django-insecure`); đã bỏ `SECURE_BROWSER_XSS_FILTER` (Django loại bỏ từ 4.0) |
 | **Headers** | HSTS 1 năm, X-Frame-Options DENY, nosniff, SSL redirect, CORS whitelist |
+
+### Ghi chú rủi ro: refresh token trong localStorage
+
+Frontend thuần (không build-step) lưu JWT trong `localStorage` (`clbip_access_token`,
+`clbip_refresh_token`) — đây là điểm yếu XSS đã biết. **Quyết định của bản này**: giữ
+localStorage (chuyển sang cookie HttpOnly đòi hỏi đổi toàn bộ `api.js`, CSRF flow và
+FRONTEND_CONTRACT — ngoài phạm vi), bù lại:
+1. CSP nghiêm ngặt chặn script/iframe ngoại vi kể cả khi lọt XSS;
+2. Access token ngắn hạn 30 phút + refresh rotation + blacklist sau rotation;
+3. Mọi dữ liệu động qua `escapeHtml`/`textContent` (đã audit toàn bộ 14 trang).
+
+Lộ trình khuyến nghị: chuyển refresh sang cookie HttpOnly SameSite=Lax trong phiên bản sau.
+
 
 ## 🧪 Chạy tests & dev local
 

@@ -75,3 +75,54 @@ class SeedDemoIdempotencyTests(TestCase):
         import io
 
         return io.StringIO()
+
+
+class ApiDocsProductionGuardTests(TestCase):
+    """QA-Audit 2e — tài liệu API chỉ dành cho ADMIN khi production."""
+
+    def _make_admin(self):
+        user = User.objects.create_user(email="docsadmin@clbip.vn", password="DocsPass123!", role="ADMIN")
+        user.is_staff = True
+        user.is_superuser = True
+        user.save(update_fields=["is_staff", "is_superuser"])
+        return user
+
+    @override_settings(DJANGO_ENV="production")
+    def test_khach_khong_thay_docs_tren_production(self) -> None:
+        """/api/schema/ và /api/docs/ → 404 với khách (ẩn sự tồn tại)."""
+        self.assertEqual(self.client.get("/api/schema/").status_code, 404)
+        self.assertEqual(self.client.get("/api/docs/").status_code, 404)
+
+    @override_settings(DJANGO_ENV="production")
+    def test_member_khong_thay_docs_tren_production(self) -> None:
+        from rest_framework.test import APIClient
+
+        member = User.objects.create_user(email="docsmem@clbip.vn", password="DocsPass123!", role="MEMBER")
+        client = APIClient()
+        client.force_authenticate(user=member)
+        self.assertEqual(client.get("/api/schema/").status_code, 404)
+        self.assertEqual(client.get("/api/docs/").status_code, 404)
+
+    @override_settings(DJANGO_ENV="production")
+    def test_admin_van_xem_duoc_schema(self) -> None:
+        from rest_framework.test import APIClient
+
+        admin = self._make_admin()
+        client = APIClient()
+        client.force_authenticate(user=admin)
+        self.assertEqual(client.get("/api/schema/").status_code, 200)
+
+    def test_docs_mo_tren_development(self) -> None:
+        """Dev vẫn mở tự do cho tiện ích phát triển."""
+        self.assertEqual(self.client.get("/api/schema/").status_code, 200)
+
+
+class CSPHeaderTests(TestCase):
+    """QA-Audit 2f — mọi response phải mang Content-Security-Policy."""
+
+    def test_response_co_header_csp(self) -> None:
+        res = self.client.get("/api/health/")
+        self.assertIn("Content-Security-Policy", res.headers)
+        csp = res.headers["Content-Security-Policy"]
+        for directive in ("default-src 'self'", "object-src 'none'", "frame-ancestors 'none'"):
+            self.assertIn(directive, csp)

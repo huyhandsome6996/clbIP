@@ -24,6 +24,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
     throttle_classes = [AuthLoginRateThrottle]
+    # BẮT BUỘC: ScopedRateThrottle đọc scope từ VIEW — thiếu dòng này thì
+    # rate 5/phút bị ÂM THẦM VÔ HIỆU (phát hiện khi test QA-Audit 2b)
+    throttle_scope = "auth_login"
 
     @extend_schema(
         tags=["Authentication"],

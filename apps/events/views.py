@@ -123,7 +123,8 @@ class EventListCreateView(APIView):
         serializer = ActivityEventCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         event = EventService.create_event(serializer.validated_data, actor=request.user)
-        data = ActivityEventDetailSerializer(event).data
+        # context request BẮT BUỘC — serializer lọc PII (created_by_email) theo vai trò
+        data = ActivityEventDetailSerializer(event, context={"request": request}).data
         return Response(
             {"success": True, "data": data, "message": "Tạo sự kiện thành công", "errors": None},
             status=status.HTTP_201_CREATED,
@@ -147,7 +148,7 @@ class EventDetailView(APIView):
         return Response(
             {
                 "success": True,
-                "data": ActivityEventDetailSerializer(event).data,
+                "data": ActivityEventDetailSerializer(event, context={"request": request}).data,
                 "message": "Lấy chi tiết sự kiện thành công",
                 "errors": None,
             }
@@ -180,7 +181,7 @@ class EventDetailView(APIView):
         return Response(
             {
                 "success": True,
-                "data": ActivityEventDetailSerializer(event).data,
+                "data": ActivityEventDetailSerializer(event, context={"request": request}).data,
                 "message": "Cập nhật sự kiện thành công",
                 "errors": None,
             }

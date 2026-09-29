@@ -22,6 +22,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "id",
             "tieu_de",
             "nhom",
+            "pham_vi",
             "tags",
             "mo_ta",
             "file",
@@ -35,9 +36,16 @@ class DocumentSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_uploaded_by_email(self, obj: Document) -> str:
-        """Email người chia sẻ (an toàn khi uploaded_by bị SET_NULL)."""
+        """Email người chia sẻ (QA-Audit 2a): email là PII — chỉ BCN/ADMIN
+        thấy; thành viên thường nhận tên hiển thị thay thế (giữ shape string)."""
         owner = obj.uploaded_by
-        return owner.email if owner else ""
+        if not owner:
+            return ""
+        request = self.context.get("request")
+        if request is not None and not getattr(request.user, "is_bcn", False):
+            profile = getattr(owner, "member_profile", None)
+            return profile.ho_ten if profile else ""
+        return owner.email
 
     def get_uploaded_by_ho_ten(self, obj: Document) -> str:
         """Họ tên hiển thị qua MemberProfile nếu có, ngược lại rỗng."""
@@ -53,9 +61,11 @@ class DocumentCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Document
-        fields = ["file", "tieu_de", "nhom", "tags", "mo_ta"]
+        fields = ["file", "tieu_de", "nhom", "pham_vi", "tags", "mo_ta"]
         extra_kwargs = {
             "tieu_de": {"required": True, "allow_blank": False, "max_length": 255},
             "tags": {"required": False, "allow_blank": True},
             "mo_ta": {"required": False, "allow_blank": True},
+            # pham_vi optional — service ép PUBLIC_MEMBER nếu uploader là MEMBER
+            "pham_vi": {"required": False},
         }

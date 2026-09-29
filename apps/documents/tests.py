@@ -325,3 +325,116 @@ class DocumentServiceUnitTests(APITestCase):
         with self.assertRaises(FileValidationException) as ctx:
             DocumentService.validate_file(FakeBigFile())
         self.assertIn("15MB", str(ctx.exception.message))
+
+
+@TEST_MEDIA_ROOT
+class DocumentPhamViScopeTests(ThrottleFreeMixin, APITestCase):
+    """
+    QA-Audit 2d — phạm vi truy cập tài liệu (pham_vi):
+    - MEMBER không thấy/tải/search được tài liệu BCN_ONLY (404 — không hé lộ).
+    - BCN thấy đầy đủ.
+    - MEMBER upload kèm pham_vi=BCN_ONLY bị ép về PUBLIC_MEMBER.
+    """
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.member = User.objects.create_user(
+            email="pv-member@clbip.test", password="TestPass123!", role=User.Role.MEMBER,
+        )
+        MemberProfile.objects.create(user=cls.member, ho_ten="Thành Viên Phạm Vi")
+        cls.bcn = User.objects.create_user(
+            email="pv-bcn@clbip.test", password="TestPass123!", role=User.Role.BCN,
+        )
+        MemberProfile.objects.create(user=cls.bcn, ho_ten="BCN Phạm Vi")
+
+    def _upload(self, as_user, pham_vi=None) -> Document:
+        """Helper: upload 1 tài liệu PDF và trả về instance."""
+        self.client.force_authenticate(user=as_user)
+        payload = {
+            "file": make_pdf_file("tai-lieu-pham-vi.pdf"),
+            "tieu_de": f"TaiLieuPV-{pham_vi or 'pub'}-{Document.objects.count()}",
+            "nhom": "CHUYEN_MON",
+        }
+        if pham_vi:
+            payload["pham_vi"] = pham_vi
+        resp = self.client.post(reverse("document_list"), payload, format="multipart")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        return Document.objects.get(pk=resp.data["data"]["id"])
+
+    def _make_bcn_only(self, owner) -> Document:
+        """Tạo trực tiếp tài liệu BCN_ONLY trong DB (không qua API)."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        doc = Document(
+            tieu_de="Noi-Bo-BCN-Quan-Tri", nhom="NGHIEP_VU",
+            pham_vi=Document.PhamVi.BCN_ONLY, tags="noibo", file=SimpleUploadedFile("x.pdf", PDF_BYTES),
+        )
+        doc.uploaded_by = owner
+        doc.save()
+        return doc
+
+    def test_01_member_khong_thay_bcn_only_trong_danh_sach(self) -> None:
+        secret = self._make_bcn_only(self.bcn)
+        self._upload(self.bcn)  # 1 tài liệu công khai
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.get(reverse("document_list"))
+        items = resp.data["data"]["items"]
+        self.assertTrue(all(d["pham_vi"] != "BCN_ONLY" for d in items))
+        self.assertFalse(any(d["id"] == secret.pk for d in items))
+
+    def test_02_bcn_thay_bcn_only(self) -> None:
+        secret = self._make_bcn_only(self.bcn)
+        self.client.force_authenticate(user=self.bcn)
+        resp = self.client.get(reverse("document_list"))
+        self.assertTrue(any(d["id"] == secret.pk for d in resp.data["data"]["items"]))
+
+    def test_03_member_chi_tiet_bcn_only_404(self) -> None:
+        secret = self._make_bcn_only(self.bcn)
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.get(f"/api/v1/documents/{secret.pk}/")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        # BCN xem được
+        self.client.force_authenticate(user=self.bcn)
+        resp2 = self.client.get(f"/api/v1/documents/{secret.pk}/")
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+
+    def test_04_member_khong_tai_duoc_bcn_only(self) -> None:
+        """Test bắt buộc của audit: MEMBER tải BCN_ONLY → bị chặn, luot_tai không đổi."""
+        secret = self._make_bcn_only(self.bcn)
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.get(f"/api/v1/documents/{secret.pk}/download/")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        secret.refresh_from_db()
+        self.assertEqual(secret.luot_tai, 0)
+
+    def test_05_member_khong_search_thay_bcn_only(self) -> None:
+        secret = self._make_bcn_only(self.bcn)
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.get("/api/v1/documents/search/", {"q": "Noi-Bo"})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["data"]["items"], [])
+        # BCN tìm thấy
+        self.client.force_authenticate(user=self.bcn)
+        resp2 = self.client.get("/api/v1/documents/search/", {"q": "Noi-Bo"})
+        self.assertGreaterEqual(len(resp2.data["data"]["items"]), 1)
+
+    def test_06_member_upload_khong_dat_duoc_bcn_only(self) -> None:
+        doc = self._upload(self.member, pham_vi="BCN_ONLY")
+        doc.refresh_from_db()
+        self.assertEqual(doc.pham_vi, Document.PhamVi.PUBLIC_MEMBER)
+
+    def test_07_bcn_upload_dat_duoc_bcn_only(self) -> None:
+        doc = self._upload(self.bcn, pham_vi="BCN_ONLY")
+        doc.refresh_from_db()
+        self.assertEqual(doc.pham_vi, Document.PhamVi.BCN_ONLY)
+
+    def test_08_member_khong_nhan_email_nguoi_upload(self) -> None:
+        """QA-Audit 2a: uploaded_by với MEMBER là tên hiển thị, không phải email."""
+        doc = self._upload(self.bcn)
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.get(f"/api/v1/documents/{doc.pk}/")
+        self.assertEqual(resp.data["data"]["uploaded_by"], "BCN Phạm Vi")
+        # BCN vẫn xem được email
+        self.client.force_authenticate(user=self.bcn)
+        resp2 = self.client.get(f"/api/v1/documents/{doc.pk}/")
+        self.assertEqual(resp2.data["data"]["uploaded_by"], self.bcn.email)

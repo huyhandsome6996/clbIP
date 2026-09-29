@@ -6,13 +6,43 @@ Frontend tĩnh: /frontend/ (login.html, admin/*, member/*).
 """
 from django.conf import settings
 from django.contrib import admin
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.urls import include, path, re_path
 from django.views.static import serve as static_serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 # Thư mục giao diện tĩnh (HTML/CSS/JS thuần, nằm cạnh manage.py)
 FRONTEND_DIR = settings.BASE_DIR / "frontend"
+
+
+class _AdminOnlySchemaMixin:
+    """
+    QA-Audit 2e: ở production, tài liệu API (Swagger/schema) chỉ dành cho ADMIN.
+    Sơ đồ API mô tả toàn bộ bề mặt tấn công — không công khai cho Internet.
+    Trả 404 (không 403) để không hé lộ sự tồn tại của endpoint; môi trường dev
+    vẫn mở tự do cho tiện ích phát triển.
+
+    Ghi đè initial() (chạy SAU khi DRF đã dựng request + xác thực JWT) thay vì
+    dispatch() — vì ở dispatch() request.user vẫn là AnonymousUser với JWT.
+    """
+
+    def initial(self, request, *args, **kwargs):
+        if getattr(settings, "DJANGO_ENV", "") == "production":
+            user = request.user
+            is_admin = user.is_authenticated and (
+                user.is_superuser or getattr(user, "role", "") == "ADMIN"
+            )
+            if not is_admin:
+                raise Http404("Trang không tồn tại.")
+        super().initial(request, *args, **kwargs)
+
+
+class SchemaView(_AdminOnlySchemaMixin, SpectacularAPIView):
+    """Raw OpenAPI schema — chỉ ADMIN khi production."""
+
+
+class SwaggerView(_AdminOnlySchemaMixin, SpectacularSwaggerView):
+    """Swagger UI — chỉ ADMIN khi production."""
 
 
 def frontend_serve(request, path):
@@ -35,13 +65,9 @@ urlpatterns = [
     # ---------- Django Admin ----------
     path("admin/", admin.site.urls),
 
-    # ---------- OpenAPI 3.0 / Swagger UI ----------
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path(
-        "api/docs/",
-        SpectacularSwaggerView.as_view(url_name="schema"),
-        name="swagger-ui",
-    ),
+    # ---------- OpenAPI 3.0 / Swagger UI (chỉ ADMIN khi production) ----------
+    path("api/schema/", SchemaView.as_view(), name="schema"),
+    path("api/docs/", SwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 
     # ---------- API v1 (module urls do từng app khai báo) ----------
     path("api/v1/auth/", include("apps.authentication.urls")),
@@ -54,3 +80,12 @@ urlpatterns = [
     path("api/v1/", include("apps.posts.urls")),  # posts/, feedback/, polls/
     path("api/", include("apps.common.urls")),    # health check
 ]
+
+# Phục vụ file /media/ CHỈ khi dev (quy ước Django): preview PDF frontend
+# cần URL file tồn tại. Production KHÔNG phục vụ media qua Django — tải file
+# luôn đi qua /documents/{id}/download/ (có auth + phạm vi BCN_ONLY, QA-Audit
+# 2d); file lưu trữ xa sẽ chuyển sang S3/R2 (xem Nhóm 5 — performance/storage).
+if settings.DEBUG:
+    from django.conf.urls.static import static as static_media
+
+    urlpatterns += static_media(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

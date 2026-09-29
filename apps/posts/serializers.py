@@ -30,7 +30,8 @@ class PostAuditLogSerializer(serializers.ModelSerializer):
 
 
 class PostListSerializer(serializers.ModelSerializer):
-    """Bài đăng trong feed — created_by hiển thị email người đăng."""
+    """Bài đăng trong feed — created_by hiển thị TÊN người đăng (QA-Audit 2a:
+    không lộ email cá nhân của chủ bài cho người đọc trong feed)."""
 
     created_by = serializers.SerializerMethodField()
 
@@ -41,7 +42,16 @@ class PostListSerializer(serializers.ModelSerializer):
 
     def get_created_by(self, obj: Post) -> str:
         owner = obj.created_by
-        return owner.email if owner else ""
+        if owner is None:
+            return ""
+        # Ưu tiên tên hiển thị từ hồ sơ thành viên; email chỉ là fallback
+        # (vd: tài khoản hệ thống chưa có profile) — vẫn là một chuỗi hiển thị,
+        # giữ nguyên shape hợp đồng frontend.
+        try:
+            ho_ten = owner.member_profile.ho_ten
+        except Exception:  # noqa: BLE001 — profile không tồn tại (SET_NULL/ơ lại)
+            ho_ten = ""
+        return ho_ten or owner.email
 
 
 class PostDetailSerializer(PostListSerializer):

@@ -302,3 +302,72 @@ class Profile360DataTests(TestCase):
         )
         self.assertEqual(res_post2.status_code, status.HTTP_201_CREATED)
         self.assertTrue(BoardMember.objects.filter(member=self.member.member_profile).exists())
+
+
+class MemberSearchPIITests(TestCase):
+    """
+    QA-Audit 2a — chống rò rỉ PII qua tìm kiếm thành viên:
+    - MEMBER thường: chỉ nhận trường công khai (id/ho_ten/lop/avatar/level/xp),
+      KHÔNG có email/sdt/mssv; chỉ thấy thành viên đang HOẠT ĐỘNG.
+    - BCN/ADMIN: nhận serializer đầy đủ phục vụ quản lý.
+    """
+
+    def setUp(self) -> None:
+        self.client = APIClient()
+        self.bcn = make_user("piibcn@clbip.vn", role="BCN", ho_ten="Chủ Nhiệm Test")
+        self.member = make_user("piimember@clbip.vn", role="MEMBER", ho_ten="Thành Viên PII")
+        self.other = make_user("piiother@clbip.vn", role="MEMBER", ho_ten="Nguyễn Bình Yên")
+
+    def test_member_search_khong_chua_pii(self) -> None:
+        """MEMBER search → items không có email/sdt/mssv."""
+        self.client.force_authenticate(user=self.member)
+        res = self.client.get("/api/v1/members/search/", {"q": "nguyen"})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        items = res.data["data"]["items"]
+        self.assertGreaterEqual(len(items), 1)
+        for field in ("email", "sdt", "mssv"):
+            self.assertNotIn(field, items[0])
+        for field in ("id", "ho_ten", "lop", "xp_points", "current_level"):
+            self.assertIn(field, items[0])
+
+    def test_member_search_chi_thay_thanh_vien_active(self) -> None:
+        """MEMBER không thấy thành viên INACTIVE; BCN vẫn thấy."""
+        profile = MemberProfile.objects.get(user__email="piiother@clbip.vn")
+        profile.trang_thai_hd = MemberProfile.TrangThai.INACTIVE
+        profile.save(update_fields=["trang_thai_hd"])
+
+        self.client.force_authenticate(user=self.member)
+        res = self.client.get("/api/v1/members/search/", {"q": "nguyen"})
+        self.assertEqual(res.data["data"]["items"], [])
+
+        self.client.force_authenticate(user=self.bcn)
+        res = self.client.get("/api/v1/members/search/", {"q": "nguyen"})
+        self.assertGreaterEqual(len(res.data["data"]["items"]), 1)
+
+    def test_bcn_search_nhan_serializer_day_du(self) -> None:
+        """BCN search → có email (mssv có thể None nếu không đặt)."""
+        self.client.force_authenticate(user=self.bcn)
+        res = self.client.get("/api/v1/members/search/", {"q": "nguyen"})
+        items = res.data["data"]["items"]
+        self.assertGreaterEqual(len(items), 1)
+        self.assertIn("email", items[0])
+        self.assertIn("mssv", items[0])
+
+    def test_board_list_member_khong_nhan_mssv(self) -> None:
+        """GET /members/board/ với MEMBER → không lộ member_mssv (PII cán bộ)."""
+        from apps.members.models import BoardMember
+
+        BoardMember.objects.create(
+            member=MemberProfile.objects.get(user=self.bcn),
+            nhiem_ky="2025-2026", chuc_vu="CHU_NHIEM", ban_phu_trach="HOC_THUAT",
+        )
+        self.client.force_authenticate(user=self.member)
+        res = self.client.get("/api/v1/members/board/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        items = res.data["data"]["items"]
+        self.assertGreaterEqual(len(items), 1)
+        self.assertNotIn("member_mssv", items[0])
+
+        self.client.force_authenticate(user=self.bcn)
+        res = self.client.get("/api/v1/members/board/")
+        self.assertIn("member_mssv", res.data["data"]["items"][0])

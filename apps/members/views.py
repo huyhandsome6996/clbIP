@@ -14,10 +14,12 @@ from rest_framework.views import APIView
 
 from apps.common.exceptions import ForbiddenException
 from apps.members.serializers import (
+    BoardMemberPublicSerializer,
     BoardMemberSerializer,
     MemberCreateSerializer,
     MemberExcelImportSerializer,
     MemberProfileListSerializer,
+    MemberSearchSerializer,
     MemberUpdateSerializer,
 )
 from apps.members.services import MemberService
@@ -191,8 +193,14 @@ class MemberSearchView(APIView):
     )
     def get(self, request) -> Response:
         q = request.query_params.get("q", "")
-        profiles = MemberService.search_profiles(q, limit=20)
-        data = MemberProfileListSerializer(profiles, many=True).data
+        # Phân quyền theo vai trò (QA-Audit 2a — chống PII leak):
+        # - BCN/ADMIN: serializer đầy đủ (email/sdt/mssv) phục vụ quản lý.
+        # - Thành viên thường: chỉ nhận trường công khai (tên/lớp/cấp độ/XP)
+        #   và chỉ thấy thành viên ĐANG HOẠT ĐỘNG.
+        is_board = request.user.is_bcn
+        profiles = MemberService.search_profiles(q, limit=20, only_active=not is_board)
+        serializer_cls = MemberProfileListSerializer if is_board else MemberSearchSerializer
+        data = serializer_cls(profiles, many=True).data
         return ok(data={"items": data, "count": len(data)}, message="Kết quả tìm kiếm")
 
 
@@ -264,7 +272,9 @@ class BoardMemberListCreateView(generics.ListCreateAPIView):
     )
     def get(self, request, *args, **kwargs) -> Response:
         queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
+        # QA-Audit 2a: thành viên thường không nhận MSSV của cán bộ (PII)
+        serializer_cls = BoardMemberSerializer if request.user.is_bcn else BoardMemberPublicSerializer
+        serializer = serializer_cls(queryset, many=True)
         return ok(data={"items": serializer.data, "pagination": None}, message="Cơ cấu BCN")
 
     @extend_schema(tags=["Members"], summary="Bổ nhiệm thành viên BCN", request=BoardMemberSerializer)

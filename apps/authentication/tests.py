@@ -4,11 +4,15 @@ Login JWT (email), RBAC roles, /me/ endpoint, brute-force lockout (axes).
 """
 from typing import Any
 
+from unittest import mock
+
+from django.conf import settings
 from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.authentication.models import User
+from apps.authentication.views import CustomTokenObtainPairView
 from apps.members.models import MemberProfile
 
 
@@ -122,8 +126,10 @@ class BruteForceLockoutTests(TestCase):
     """Test khóa tài khoản brute-force (django-axes) — enable cho class này."""
 
     @override_settings(AXES_ENABLED=True)
+    @mock.patch.object(CustomTokenObtainPairView, "throttle_classes", [])
     def test_account_lockout_after_5_failures(self) -> None:
-        """Sai mật khẩu 5 lần → lần 6 đăng nhập ĐÚNG cũng bị chặn 403."""
+        """Sai mật khẩu 5 lần → lần 6 đăng nhập ĐÚNG cũng bị chặn (axes lockout).
+        Tắt DRF throttle để cô lập hành vi axes (throttle 5/phút chặn trước axes)."""
         User.objects.create_user(email="lock@clbip.vn", password="CorrectPass123!")
         client = APIClient()
         for _ in range(5):
@@ -143,3 +149,101 @@ class BruteForceLockoutTests(TestCase):
             res.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED)
         )
         self.assertFalse(res.data["success"])
+
+
+class ThrottleProxyIPTests(TestCase):
+    """
+    QA-Audit 2b — throttle phải khóa theo IP client thật sau reverse proxy:
+    - NUM_PROXIES=0 (dev): X-Forwarded-For bị bỏ qua hoàn toàn → giả mạo vô ích.
+    - NUM_PROXIES=1 (production): chỉ phần tử CUỐI của XFF (do proxy Render ghi)
+      được dùng — phần tử đầu do client gửi là rác giả mạo, không tạo bucket riêng.
+    """
+
+    def setUp(self) -> None:
+        from django.core.cache import cache
+
+        cache.clear()
+
+    @override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "NUM_PROXIES": 1})
+    def test_xff_gia_khong_ne_duoc_throttle_dang_nhap(self) -> None:
+        """Mô phỏng Render: XFF='giả, IP-thật' — đổi phần tử giả vẫn bị khóa theo IP thật."""
+        User.objects.create_user(email="xff@clbip.vn", password="XffPass123!")
+        client = APIClient()
+        for i in range(5):
+            res = client.post(
+                "/api/v1/auth/token/",
+                {"email": "xff@clbip.vn", "password": "SaiRoi123!"},
+                format="json",
+                REMOTE_ADDR="10.0.0.1",  # IP của reverse proxy
+                HTTP_X_FORWARDED_FOR=f"10.9.9.{i}, 203.0.113.77",
+            )
+            self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        # Lần 6: throttle chặn (429) dù đổi tiếp phần tử giả mạo phía trước
+        res = client.post(
+            "/api/v1/auth/token/",
+            {"email": "xff@clbip.vn", "password": "SaiRoi123!"},
+            format="json",
+            REMOTE_ADDR="10.0.0.1",
+            HTTP_X_FORWARDED_FOR="10.9.9.99, 203.0.113.77",
+        )
+        self.assertEqual(res.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    @override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "NUM_PROXIES": 0})
+    def test_xff_bi_bo_qua_khi_num_proxies_bang_0(self) -> None:
+        """Dev không qua proxy (NUM_PROXIES=0): ident = REMOTE_ADDR — XFF giả vô nghĩa."""
+        User.objects.create_user(email="xff0@clbip.vn", password="XffPass123!")
+        client = APIClient()
+        for i in range(5):
+            res = client.post(
+                "/api/v1/auth/token/",
+                {"email": "xff0@clbip.vn", "password": "SaiRoi123!"},
+                format="json",
+                REMOTE_ADDR="203.0.113.88",
+                HTTP_X_FORWARDED_FOR=f"10.6.6.{i}",
+            )
+            self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        res = client.post(
+            "/api/v1/auth/token/",
+            {"email": "xff0@clbip.vn", "password": "SaiRoi123!"},
+            format="json",
+            REMOTE_ADDR="203.0.113.88",
+            HTTP_X_FORWARDED_FOR="10.6.6.200",
+        )
+        self.assertEqual(res.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+
+class AxesProxyLockoutTests(TestCase):
+    """QA-Audit 2b — axes khóa đúng theo IP thật khi đứng sau 1 proxy."""
+
+    @override_settings(AXES_ENABLED=True, AXES_IPWARE_PROXY_COUNT=1)
+    @mock.patch.object(CustomTokenObtainPairView, "throttle_classes", [])
+    def test_axes_khoa_theo_ip_that_du_xff_gia(self) -> None:
+        """5 sai với XFF giả → khóa theo cặp (username, IP thật cuối XFF)."""
+        User.objects.create_user(email="axespx@clbip.vn", password="AxesPass123!")
+        client = APIClient()
+        for i in range(5):
+            res = client.post(
+                "/api/v1/auth/token/",
+                {"email": "axespx@clbip.vn", "password": "SaiQua123!"},
+                format="json",
+                REMOTE_ADDR="10.0.0.1",
+                HTTP_X_FORWARDED_FOR=f"66.66.66.{i}, 198.51.100.10",
+            )
+            self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        # Lần 6: mật khẩu ĐÚNG nhưng đã bị khóa theo (username, 198.51.100.10)
+        res = client.post(
+            "/api/v1/auth/token/",
+            {"email": "axespx@clbip.vn", "password": "AxesPass123!"},
+            format="json",
+            REMOTE_ADDR="10.0.0.1",
+            HTTP_X_FORWARDED_FOR="66.66.66.123, 198.51.100.10",
+        )
+        self.assertIn(res.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_401_UNAUTHORIZED))
+        self.assertFalse(res.data["success"])
+        # Chứng minh axes nhận diện đúng IP THẬT (phần tử cuối XFF do proxy ghi),
+        # không phải phần tử giả đầu tiên hay IP proxy — cốt lõi của QA-Audit 2b
+        from axes.models import AccessAttempt
+
+        attempt = AccessAttempt.objects.filter(username="axespx@clbip.vn").first()
+        self.assertIsNotNone(attempt)
+        self.assertEqual(attempt.ip_address, "198.51.100.10")

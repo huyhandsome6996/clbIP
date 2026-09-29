@@ -89,7 +89,10 @@ class DocumentListCreateView(EnvelopeListMixin, generics.ListCreateAPIView):
 
     def get_queryset(self) -> QuerySet:
         """Queryset có tối ưu join + filter/sort whitelist từ query params."""
-        queryset = Document.objects.select_related("uploaded_by__member_profile").all()
+        # QA-Audit 2d: thành viên thường chỉ thấy tài liệu PUBLIC_MEMBER
+        queryset = DocumentService.visible_documents(self.request.user).select_related(
+            "uploaded_by__member_profile"
+        )
 
         nhom = self.request.query_params.get("nhom")
         if nhom in Document.Nhom.values:  # whitelist nhóm
@@ -182,8 +185,12 @@ class DocumentDetailView(generics.RetrieveDestroyAPIView):
         responses={200: DocumentSerializer, 404: OpenApiResponse(description="Không tìm thấy")},
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
-        """Chi tiết tài liệu — envelope."""
+        """Chi tiết tài liệu — envelope (kiểm tra phạm vi theo vai trò)."""
         doc = self.get_object()
+        # QA-Audit 2d: BCN_ONLY không tồn tại với thành viên thường (404 —
+        # không hé lộ sự tồn tại của tài liệu nội bộ)
+        if not DocumentService.can_view(doc, request.user):
+            raise NotFoundException("Không tìm thấy tài liệu yêu cầu.")
         return ok(
             self.get_serializer(doc).data,
             message="Lấy chi tiết tài liệu thành công",
@@ -201,6 +208,10 @@ class DocumentDetailView(generics.RetrieveDestroyAPIView):
     def delete(self, request: Request, *args, **kwargs) -> Response:
         """Xóa qua Service (kiểm quyền actor + dọn file vật lý) → envelope."""
         doc = self.get_object()
+        # QA-Audit 2d: nhất quán với GET — BCN_ONLY với thành viên thường trả
+        # 404 thay vì 403 (không hé lộ sự tồn tại của tài liệu nội bộ)
+        if not DocumentService.can_view(doc, request.user):
+            raise NotFoundException("Không tìm thấy tài liệu yêu cầu.")
         DocumentService.delete_document(doc, request.user)
         return ok(None, message="Đã xóa tài liệu")
 
@@ -229,9 +240,9 @@ class DocumentSearchView(generics.GenericAPIView):
         responses={200: DocumentSerializer(many=True)},
     )
     def get(self, request: Request) -> Response:
-        """Gọi DocumentService.search → envelope data={items, count}."""
+        """Gọi DocumentService.search (chỉ index tài liệu trong phạm vi) → envelope data={items, count}."""
         q = request.query_params.get("q", "")
-        docs = DocumentService.search(q, limit=20)
+        docs = DocumentService.search(q, limit=20, user=request.user)
         return ok(
             {
                 "items": self.get_serializer(docs, many=True).data,
@@ -264,8 +275,12 @@ class DocumentDownloadView(generics.GenericAPIView):
         },
     )
     def get(self, request: Request, pk: int) -> Response:
-        """Tăng luot_tai → mở file → FileResponse attachment."""
+        """Tăng luot_tai → mở file → FileResponse attachment (kiểm phạm vi trước)."""
         doc = DocumentService.get_or_404(pk)
+        # QA-Audit 2d: chặn tải tài liệu BCN_ONLY bởi thành viên thường —
+        # kiểm tra ở đây chứ không chỉ ở list (download là lỗ hổng bị bỏ sót phổ biến)
+        if not DocumentService.can_view(doc, request.user):
+            raise NotFoundException("Không tìm thấy tài liệu yêu cầu.")
         DocumentService.increment_download(doc)
 
         ext = doc.file_ext or f".{doc.file_type}"

@@ -30,6 +30,21 @@ class MemberProfileListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class MemberSearchSerializer(serializers.ModelSerializer):
+    """
+    Kết quả tìm kiếm cho THÀNH VIÊN thường (QA-Audit 2a — chống PII leak).
+
+    Chỉ gồm các trường "công khai" trong nội bộ CLB: tên, lớp, avatar, cấp độ
+    và XP (dùng cho leaderboard/autocomplete). KHÔNG có email/sdt/mssv — đó là
+    dữ liệu cá nhân, chỉ BCN/ADMIN (phục vụ quản lý) mới được xem đầy đủ.
+    """
+
+    class Meta:
+        model = MemberProfile
+        fields = ["id", "ho_ten", "lop", "avatar", "current_level", "xp_points"]
+        read_only_fields = fields
+
+
 class MemberCreateSerializer(serializers.Serializer):
     """POST /members/ — tạo thành viên (BCN)."""
 
@@ -121,6 +136,25 @@ class BoardMemberSerializer(serializers.ModelSerializer):
                 "Thành viên này đã có chức vụ trong nhiệm kỳ đã chọn."
             )
         return value
+
+
+class BoardMemberPublicSerializer(serializers.ModelSerializer):
+    """
+    Sơ đồ BCN cho THÀNH VIÊN thường (QA-Audit 2a): ẩn MSSV của cán bộ —
+    thành viên chỉ cần biết ai giữ chức vụ nào để liên hệ công việc.
+    """
+
+    member_ho_ten = serializers.CharField(source="member.ho_ten", read_only=True)
+    chuc_vu_display = serializers.CharField(source="get_chuc_vu_display", read_only=True)
+    ban_phu_trach_display = serializers.CharField(source="get_ban_phu_trach_display", read_only=True)
+
+    class Meta:
+        model = BoardMember
+        fields = [
+            "id", "member_ho_ten", "nhiem_ky",
+            "chuc_vu", "chuc_vu_display", "ban_phu_trach", "ban_phu_trach_display",
+        ]
+        read_only_fields = fields
 
 
 class MemberExcelImportSerializer(serializers.Serializer):

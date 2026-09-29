@@ -11,6 +11,8 @@ dj-database-url==2.2.0
 psycopg2-binary==2.9.10
 pymysql==1.2.3
 cryptography==50.0.1
+django-ipware==7.0.1
+# (tùy chọn production) redis==5.x — chỉ cần khi đặt REDIS_URL cho CACHES
 python-dotenv==1.2.3
 gunicorn==23.0.0
 whitenoise==6.9.0

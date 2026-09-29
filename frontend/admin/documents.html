@@ -180,6 +180,11 @@
     const [tone, label] = NHOM[code] || ["neutral", code || "—"];
     return Utils.badge(label, tone);
   }
+  /** Badge phạm vi truy cập (QA-Audit 2d) — BCN_ONLY nổi bật vàng */
+  function phamViBadge(code) {
+    if (code === "BCN_ONLY") return Utils.badge("🔒 Chỉ BCN", "warning");
+    return Utils.badge("Công khai", "success");
+  }
   function fileTypeBadge(code) {
     const [tone, label] = FILE_TYPES[String(code || "").toLowerCase()] || ["neutral", (code || "?").toUpperCase()];
     return Utils.badge(label, tone);
@@ -233,7 +238,7 @@
         ${d.mo_ta ? `<div class="doc-desc">${Utils.escapeHtml(d.mo_ta)}</div>` : ""}
         ${tags.length ? `<div>${tags.map((t) => `<span class="tag-chip">${Utils.escapeHtml(t)}</span>`).join("")}</div>` : ""}
       </td>
-      <td>${nhomBadge(d.nhom)}</td>
+      <td>${nhomBadge(d.nhom)} ${phamViBadge(d.pham_vi)}</td>
       <td>
         ${fileTypeBadge(d.file_type)}
         <span class="ft-size">${fmtSize(d.file_size)}</span>
@@ -477,6 +482,14 @@
             </div>
           </div>
           <div class="form-group">
+            <label class="form-label" for="up-pham-vi">Phạm vi truy cập</label>
+            <select class="form-select" id="up-pham-vi">
+              <option value="PUBLIC_MEMBER">Toàn bộ thành viên</option>
+              <option value="BCN_ONLY">Chỉ Ban chủ nhiệm (ẩn với thành viên)</option>
+            </select>
+            <p class="xs muted mt-1">Tài liệu "Chỉ BCN" sẽ không xuất hiện trong danh sách, tìm kiếm hay tải về phía thành viên thường.</p>
+          </div>
+          <div class="form-group">
             <label class="form-label" for="up-mota">Mô tả</label>
             <textarea class="form-textarea" id="up-mota" rows="2" placeholder="Mô tả ngắn về nội dung tài liệu..."></textarea>
           </div>
@@ -530,6 +543,7 @@
           fd.append("file", file);
           fd.append("tieu_de", tieuDe);
           fd.append("nhom", backdrop.querySelector("#up-nhom").value);
+          fd.append("pham_vi", backdrop.querySelector("#up-pham-vi").value);
           const tags = backdrop.querySelector("#up-tags").value.trim();
           if (tags) fd.append("tags", tags);
           const moTa = backdrop.querySelector("#up-mota").value.trim();

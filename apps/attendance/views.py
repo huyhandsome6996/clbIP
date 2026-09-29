@@ -206,6 +206,8 @@ class CheckInView(APIView):
 
     permission_classes = [IsAuthenticated]
     throttle_classes = [CheckInRateThrottle]
+    # ScopedRateThrottle đọc scope từ VIEW — thiếu thì rate 3/phút vô hiệu
+    throttle_scope = "checkin"
 
     @extend_schema(
         summary="Check-in điểm danh GPS",

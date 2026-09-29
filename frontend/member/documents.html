@@ -297,23 +297,51 @@
     }
 
     /* ---------- Xem trước PDF / Tải xuống ---------- */
-    function onPreview(doc) {
+    async function onPreview(doc) {
       const ft = normFileType(doc);
       if (ft !== "pdf" || !doc.file) {
         Toast.info("Chỉ hỗ trợ xem trước PDF — tải xuống để xem nhé! 📄");
         return;
       }
-      openModal({
-        title: doc.tieu_de,
-        bodyHTML: `
-          <iframe class="pdf-frame" src="${esc(doc.file)}" title="Xem trước ${esc(doc.tieu_de)}"></iframe>
-          <div class="xs muted text-center mt-2">Không hiện? Dùng nút Tải xuống bên dưới nha!</div>`,
-        footerHTML: `<button class="btn btn-primary" data-download-id="${doc.id}">${Icons.render("download", 16)} Tải xuống</button>`,
-        onMount(backdrop) {
-          const b = backdrop.querySelector("[data-download-id]");
-          b.addEventListener("click", () => onDownload(doc, b));
-        },
-      });
+      // Backend đặt X-Frame-Options: DENY → iframe trỏ thẳng /media/ bị chặn.
+      // Phải fetch blob kèm Bearer rồi nhúng blob URL (blob không chịu XFO).
+      let blobUrl = null;
+      try {
+        // Chuẩn hóa URL file (relative /media/... → tuyệt đối cùng origin)
+        const raw = String(doc.file || "");
+        const fileUrlAbs = /^https?:\/\//i.test(raw)
+          ? raw
+          : location.origin + (raw.startsWith("/") ? "" : "/") + raw;
+        const res = await fetch(fileUrlAbs, {
+          headers: { Authorization: `Bearer ${ApiClient.getAccessToken()}` },
+        });
+        if (!res.ok) throw new Error(`Không xem trước được tài liệu (HTTP ${res.status}).`);
+        const blob = await res.blob();
+        if (blob.size === 0) throw new Error("Tệp rỗng hoặc không truy cập được.");
+        blobUrl = URL.createObjectURL(blob);
+        openModal({
+          title: doc.tieu_de,
+          bodyHTML: `
+            <iframe class="pdf-frame" src="${blobUrl}" title="Xem trước ${esc(doc.tieu_de)}"></iframe>
+            <div class="xs muted text-center mt-2">Không hiện? Dùng nút Tải xuống bên dưới nha!</div>`,
+          footerHTML: `<button class="btn btn-primary" data-download-id="${doc.id}">${Icons.render("download", 16)} Tải xuống</button>`,
+          onMount(backdrop, close) {
+            const b = backdrop.querySelector("[data-download-id]");
+            b.addEventListener("click", () => onDownload(doc, b));
+            // Dọn blob URL khi modal đóng — tránh rò rỉ bộ nhớ
+            const obs = new MutationObserver(() => {
+              if (!document.body.contains(backdrop)) {
+                if (blobUrl) URL.revokeObjectURL(blobUrl);
+                obs.disconnect();
+              }
+            });
+            obs.observe(document.body, { childList: true, subtree: true });
+            void close;
+          },
+        });
+      } catch (err) {
+        Toast.error(err.message || "Không xem trước được tài liệu.");
+      }
     }
 
     async function onDownload(doc, btn) {

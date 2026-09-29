@@ -15,9 +15,24 @@ class Document(TimeStampedModel):
         NGHIEP_VU = "NGHIEP_VU", "Nghiệp vụ"
         KY_NANG = "KY_NANG", "Kỹ năng"
 
+    class PhamVi(models.TextChoices):
+        """Phạm vi truy cập tài liệu (QA-Audit 2d): phân quyền xem/tải."""
+
+        PUBLIC_MEMBER = "PUBLIC_MEMBER", "Toàn bộ thành viên"
+        BCN_ONLY = "BCN_ONLY", "Chỉ Ban chủ nhiệm"
+
     tieu_de: models.CharField = models.CharField("Tiêu đề tài liệu", max_length=255)
     nhom: models.CharField = models.CharField(
         "Nhóm tài liệu", max_length=15, choices=Nhom.choices, db_index=True
+    )
+    # Phạm vi truy cập: BCN_ONLY chỉ BCN/ADMIN xem/thải được (chống lộ tài liệu
+    # nội bộ quản lý cho thành viên thường — kiểm tra ở list/detail/search/download)
+    pham_vi: models.CharField = models.CharField(
+        "Phạm vi truy cập",
+        max_length=20,
+        choices=PhamVi.choices,
+        default=PhamVi.PUBLIC_MEMBER,
+        db_index=True,
     )
     # Tag chủ đề phân tách bằng dấu phẩy: "C++, Web, Đề thi"
     tags: models.CharField = models.CharField("Tags chủ đề", max_length=255, blank=True, default="")

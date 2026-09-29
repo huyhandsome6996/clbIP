@@ -344,3 +344,21 @@ class PollTests(PostBaseTests):
         resp = self._vote(self.member, 0)
         self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("đã đóng", resp.data["message"])
+
+
+class PostAuthorDisplayNameTests(APITestCase):
+    """QA-Audit 2a — feed hiển thị TÊN người đăng, không lộ email (PII)."""
+
+    def test_feed_hien_ten_khong_lo_email(self) -> None:
+        from apps.authentication.models import User
+        from apps.members.models import MemberProfile
+
+        bcn = User.objects.create_user(email="poster2@clbip.vn", password="TestPass123!", role="BCN")
+        MemberProfile.objects.create(user=bcn, ho_ten="Lê Văn Chủ Nhiệm")
+        Post.objects.create(tieu_de="Thong bao", noi_dung="<p>Noi dung</p>", created_by=bcn)
+
+        self.client.force_authenticate(user=bcn)
+        res = self.client.get("/api/v1/posts/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        item = res.data["data"]["items"][0]
+        self.assertEqual(item["created_by"], "Lê Văn Chủ Nhiệm")
