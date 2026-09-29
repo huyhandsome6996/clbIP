@@ -294,6 +294,147 @@ class EventTaskDagTests(EventTestBase):
 
 
 # ----------------------------------------------------------------------
+# QA-Audit P1-1: Phân quyền task + ràng buộc DAG khi hoàn thành
+# ----------------------------------------------------------------------
+class EventTaskAuthorizationAndDagTests(EventTestBase):
+    """
+    PATCH /events/<id>/tasks/<task_id>/ phải:
+      - 403 với member KHÔNG phải người phụ trách (chống IDOR/BOLA).
+      - 200 cho BCN và cho chính người phụ trách.
+      - 400 khi còn task tiên quyết chưa hoàn thành (DAG).
+      - XP cộng ĐÚNG 1 LẦN dù complete lặp lại (idempotency_key task_<id>).
+    """
+
+    def _make_task(self, event, ten_task: str, assignee=None, depends_on=None):
+        """Tạo task trực tiếp qua ORM (assignee = MemberProfile)."""
+        task = EventTask.objects.create(
+            event=event, ten_task=ten_task, nguoi_phu_trach=assignee
+        )
+        if depends_on:
+            task.depends_on.set(depends_on)
+        return task
+
+    def test_member_not_assignee_complete_forbidden(self) -> None:
+        """MEMBER khác tích hoàn thành task của người khác → 403 (IDOR)."""
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        _, other_profile = self._make_member(2)
+        task = self._make_task(event, "Task của thành viên 2", assignee=other_profile)
+
+        self.client.force_authenticate(self.member)  # không phải người phụ trách
+        response = self.client.patch(
+            f"{EVENTS_URL}{event.id}/tasks/{task.id}/", {"is_completed": True}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("người phụ trách", response.data["message"])
+        task.refresh_from_db()
+        self.assertFalse(task.is_completed)  # dữ liệu không đổi
+
+    def test_member_not_assignee_reopen_forbidden(self) -> None:
+        """MEMBER khác mở lại task đã hoàn thành của người khác → 403."""
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        _, other_profile = self._make_member(3)
+        task = self._make_task(event, "Task đã xong", assignee=other_profile, )
+        task.is_completed = True
+        task.save(update_fields=["is_completed"])
+
+        self.client.force_authenticate(self.member)
+        response = self.client.patch(
+            f"{EVENTS_URL}{event.id}/tasks/{task.id}/", {"is_completed": False}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 403)
+        task.refresh_from_db()
+        self.assertTrue(task.is_completed)  # vẫn nguyên trạng thái
+
+    def test_assignee_blocked_while_dependency_incomplete(self) -> None:
+        """Chính người phụ trách cũng bị chặn (400) khi tiền nhiệm chưa xong."""
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        task_a = self._make_task(event, "Chuẩn bị địa điểm")
+        task_b = self._make_task(
+            event, "Setup âm thanh", assignee=self.member_profile, depends_on=[task_a]
+        )
+
+        self.client.force_authenticate(self.member)  # đúng người phụ trách task B
+        response = self.client.patch(
+            f"{EVENTS_URL}{event.id}/tasks/{task_b.id}/", {"is_completed": True}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("tiên quyết", response.data["message"])
+        task_b.refresh_from_db()
+        self.assertFalse(task_b.is_completed)
+
+    def test_assignee_can_complete_after_dependency_done(self) -> None:
+        """Tiền nhiệm đã xong → người phụ trách tự tích hoàn thành OK (200)."""
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        task_a = self._make_task(event, "Chuẩn bị địa điểm")
+        task_a.is_completed = True
+        task_a.save(update_fields=["is_completed"])
+        task_b = self._make_task(
+            event, "Setup âm thanh", assignee=self.member_profile, depends_on=[task_a]
+        )
+
+        self.client.force_authenticate(self.member)
+        response = self.client.patch(
+            f"{EVENTS_URL}{event.id}/tasks/{task_b.id}/", {"is_completed": True}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["data"]["is_completed"])
+
+    def test_bcn_allowed_to_complete_any_task(self) -> None:
+        """BCN được cập nhật task của bất kỳ ai (200) — quyền quản lý."""
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        task = self._make_task(event, "Task của member", assignee=self.member_profile)
+
+        self.client.force_authenticate(self.bcn)
+        response = self.client.patch(
+            f"{EVENTS_URL}{event.id}/tasks/{task.id}/", {"is_completed": True}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertTrue(task.is_completed)
+
+    def test_xp_awarded_exactly_once_on_repeated_complete(self) -> None:
+        """XP cộng ĐÚNG 1 LẦN: PATCH lặp (view short-circuit) và gọi
+        EventTaskService.complete_task 2 lần trực tiếp (idempotency_key
+        task_<id> của award_xp phải chặn cộng đôi ở tầng service)."""
+        try:
+            import apps.gamification.services  # noqa: F401
+        except ImportError:
+            self.skipTest("GamificationService chưa triển khai")
+
+        from apps.gamification.models import XpLedger
+
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        task = self._make_task(event, "Task có thưởng", assignee=self.member_profile)
+
+        self.client.force_authenticate(self.member)
+        r1 = self.client.patch(
+            f"{EVENTS_URL}{event.id}/tasks/{task.id}/", {"is_completed": True}, format="json"
+        )
+        self.assertEqual(r1.status_code, 200)
+        # Gửi lại PATCH (double-click / retry mạng) — task đã hoàn thành
+        r2 = self.client.patch(
+            f"{EVENTS_URL}{event.id}/tasks/{task.id}/", {"is_completed": True}, format="json"
+        )
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(
+            XpLedger.objects.filter(idempotency_key=f"task_{task.id}").count(), 1
+        )
+
+        # Vượt qua short-circuit của view: gọi service trực tiếp 2 lần nữa —
+        # lần 2 phải được award_xp chặn bằng idempotency_key (không cộng đôi)
+        EventTaskService.complete_task(task.id)
+        EventTaskService.complete_task(task.id)
+        self.assertEqual(
+            XpLedger.objects.filter(idempotency_key=f"task_{task.id}").count(), 1
+        )
+
+
+# ----------------------------------------------------------------------
 # Budget + Danh sách vé (BCN)
 # ----------------------------------------------------------------------
 class EventBudgetAndRegistrationListTests(EventTestBase):

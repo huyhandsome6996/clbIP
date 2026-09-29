@@ -235,19 +235,27 @@ class EventTaskListCreateView(APIView):
 # (đánh dấu hoàn thành → cộng XP cho người phụ trách qua complete_task)
 # ======================================================================
 class EventTaskDetailView(APIView):
-    """Cập nhật task (đủ điều kiện DAG mới được tích — validate ở frontend + service)."""
+    """Cập nhật task — CHỈ BCN/ADMIN hoặc người phụ trách (QA-Audit P1-1);
+    đủ điều kiện DAG (tiền nhiệm đã xong) mới được tích hoàn thành."""
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         summary="Cập nhật task (đánh dấu hoàn thành / mở lại)",
-        description="Body: {is_completed: bool}. is_completed=true cộng XP người phụ trách.",
+        description=(
+            "Body: {is_completed: bool}. is_completed=true cộng XP người phụ "
+            "trách. Chỉ BCN/ADMIN hoặc chính người phụ trách được gọi; task "
+            "còn tiền nhiệm chưa hoàn thành sẽ bị từ chối (400)."
+        ),
         request=None,
         responses=EventTaskSerializer,
         tags=["Events"],
     )
     def patch(self, request, pk: int, task_id: int):
         task = EventTaskService.get_task_or_404(task_id, event_id=pk)
+        # Phân quyền object-level: BCN/ADMIN hoặc đúng người phụ trách (403)
+        EventTaskService.assert_can_update(request.user, task)
+
         is_completed = request.data.get("is_completed")
         if not isinstance(is_completed, bool):
             raise ValidationException("Trường 'is_completed' bắt buộc là boolean.")

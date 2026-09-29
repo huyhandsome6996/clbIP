@@ -169,6 +169,10 @@ class IEventRepository(ABC):
     def get_dependency_edges(self, event: ActivityEvent) -> list[tuple[int, int]]:
         """Cạnh phụ thuộc (task_trước, task_sau) của sự kiện từ bảng through M2M."""
 
+    @abstractmethod
+    def has_incomplete_dependencies(self, task: EventTask) -> bool:
+        """Task còn TIỀN NHIỆM chưa hoàn thành (DAG — chặn complete khi vắt giáo)."""
+
 
 class DjangoEventRepository(IEventRepository):
     """Triển khai cụ thể bằng Django ORM cho `IEventRepository`."""
@@ -394,3 +398,15 @@ class DjangoEventRepository(IEventRepository):
                 from_eventtask__event_id=event.pk
             ).values_list("to_eventtask_id", "from_eventtask_id")
         )
+
+    def has_incomplete_dependencies(self, task: EventTask) -> bool:
+        """
+        Kiểm tra task còn TIỀN NHIỆM chưa hoàn thành hay không.
+
+        Ràng buộc DAG khi hoàn thành: một task chỉ được tích "đã xong" khi
+        TOÀN BỘ task mà nó depends_on đã hoàn thành trước đó (QA-Audit P1-1
+        — trước đây service chỉ validate chu trình khi tạo, không chặn
+        complete khi tiền nhiệm còn tồn). Query EXISTS — không đụng hàng loạt
+        dòng, chỉ trả True/False.
+        """
+        return task.depends_on.exclude(is_completed=True).exists()

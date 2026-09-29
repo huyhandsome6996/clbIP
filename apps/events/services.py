@@ -340,11 +340,17 @@ class EventTaskService:
 
     # DI repository (funds-style) — cho phép swap khi unit test
     _repository_class: ClassVar[type[IEventRepository]] = DjangoEventRepository
+    _member_repository_class: ClassVar[type[IMemberRepository]] = DjangoMemberRepository
 
     @classmethod
     def _repo(cls) -> IEventRepository:
         """Factory method cho repository — cho phép DI khi unit test."""
         return cls._repository_class()
+
+    @classmethod
+    def _member_repo(cls) -> IMemberRepository:
+        """Factory method cho repository thành viên (tra cứu hồ sơ người gọi)."""
+        return cls._member_repository_class()
 
     # ------------------------------------------------------------------
     # Đọc đồ thị phụ thuộc
@@ -505,16 +511,61 @@ class EventTaskService:
         }
 
     # ------------------------------------------------------------------
+    # Phân quyền cập nhật task (QA-Audit P1-1 — chống IDOR/BOLA)
+    # ------------------------------------------------------------------
+    @classmethod
+    def assert_can_update(cls, user, task: EventTask) -> None:
+        """
+        Chỉ BCN/ADMIN hoặc CHÍNH người phụ trách task được cập nhật trạng thái.
+
+        Trước đây PATCH /events/<id>/tasks/<task_id>/ chỉ yêu cầu
+        IsAuthenticated — thành viên bất kỳ có thể đóng/mở lại task của
+        người khác và kích hoạt cộng XP cho người phụ trách (IDOR/BOLA).
+
+        Raises:
+            ForbiddenException (403): user không phải BCN/ADMIN và không phải
+                người phụ trách của task.
+        """
+        if user is not None and getattr(user, "is_bcn", False):
+            return  # BCN/ADMIN toàn quyền quản lý task của sự kiện
+
+        profile = cls._member_repo().get_by_user(user)
+        if profile is None or task.nguoi_phu_trach_id != profile.pk:
+            raise ForbiddenException(
+                "Chỉ BCN hoặc người phụ trách mới được cập nhật task này."
+            )
+
+    # ------------------------------------------------------------------
     # Hoàn thành task (+ XP qua GamificationService — lazy import)
     # ------------------------------------------------------------------
     @classmethod
+    @transaction.atomic
     def complete_task(cls, task_id: int, actor_member: Optional[MemberProfile] = None) -> EventTask:
         """
-        Đánh dấu task hoàn thành. Nếu task có người phụ trách → cộng XP
-        qua GamificationService (lazy import — tích hợp song song an toàn
-        với Agent B; chưa có module thì chỉ ghi log, không lỗi).
+        Đánh dấu task hoàn thành — TUẦN TỰ HÓA bằng khóa bi + ràng buộc DAG.
+
+        Quy trình (QA-Audit P1-1):
+            1. atomic + select_for_update chặn 2 request cùng tích lúc 0 giờ
+               (race condition — cùng cách làm register_member §5.3).
+            2. Chặn hoàn thành khi còn TIỀN NHIỆM chưa xong (ràng buộc DAG
+               khi thực thi — trước đây chỉ validate chu trình khi tạo task).
+            3. Nếu task có người phụ trách → cộng XP qua GamificationService
+               (lazy import — chưa có module thì chỉ ghi log, không lỗi).
+
+        Lưu ý: `actor_member` giữ lại cho tương thích cũ (không dùng —
+        phân quyền đã tách sang `assert_can_update` để cả view lẫn service
+        khác gọi được).
         """
-        task = cls._get_task_or_404(task_id)
+        task = cls._repo().get_task_for_update(task_id)
+        if task is None:
+            raise NotFoundException("Không tìm thấy task.")
+
+        if cls._repo().has_incomplete_dependencies(task):
+            raise ValidationException(
+                "Không thể hoàn thành task khi còn task tiên quyết chưa hoàn thành.",
+                errors={"depends_on": "còn tiền nhiệm chưa hoàn thành"},
+            )
+
         task.is_completed = True
         task.save(update_fields=["is_completed", "updated_at"])
 
