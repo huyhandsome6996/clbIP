@@ -438,3 +438,61 @@ class MemberPasswordPolicyTests(TestCase):
             "/api/v1/auth/token/", {"email": "ngau-nhien@clbip.vn", "password": password}, format="json",
         )
         self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+
+class MemberTrieCacheSharedVersionTests(TestCase):
+    """
+    QA-Audit đợt 2 (P2-2) — Trie thành viên phải invalidate ĐA WORKER:
+    counter lưu trong cache dùng chung; bump counter ở "worker khác" →
+    process này phải dựng lại Trie (trước đây chỉ tăng biến local).
+    """
+
+    def setUp(self) -> None:
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def test_bump_counter_worker_khac_buoc_rebuild(self) -> None:
+        from django.core.cache import cache
+        from django.db.models.signals import post_delete, post_save
+
+        from apps.members import search_index
+
+        user1 = User.objects.create_user(
+            email="trie1@clbip.vn", password="TestPass123!", role="MEMBER", mssv="22A4010101"
+        )
+        MemberProfile.objects.create(user=user1, ho_ten="Nguyễn Trie Một")
+        trie_1 = search_index.get_trie()
+        self.assertIn(user1.member_profile.pk, trie_1.search_prefix("nguyen trie"))
+
+        # Tạo hồ sơ KHÔNG bắn signal cục bộ (mô phỏng: worker khác nhận ghi)
+        # ⚠️ disconnect phải truyền đúng sender — lookup key = (dispatch_uid, _make_id(sender))
+        post_save.disconnect(sender=MemberProfile, dispatch_uid="trie_member_save")
+        post_delete.disconnect(sender=MemberProfile, dispatch_uid="trie_member_del")
+        post_save.disconnect(sender=User, dispatch_uid="trie_user_save")
+        post_delete.disconnect(sender=User, dispatch_uid="trie_user_del")
+        try:
+            user2 = User.objects.create_user(
+                email="trie2@clbip.vn", password="TestPass123!", role="MEMBER", mssv="22A4010102"
+            )
+            MemberProfile.objects.create(user=user2, ho_ten="Nguyễn Trie Hai")
+        finally:
+            post_save.connect(search_index.invalidate, sender=MemberProfile, dispatch_uid="trie_member_save")
+            post_delete.connect(search_index.invalidate, sender=MemberProfile, dispatch_uid="trie_member_del")
+            post_save.connect(search_index.invalidate, sender=User, dispatch_uid="trie_user_save")
+            post_delete.connect(search_index.invalidate, sender=User, dispatch_uid="trie_user_del")
+
+        # Chưa biết gì về thay đổi → Trie cũ giữ nguyên (không rebuild thừa)
+        trie_stale = search_index.get_trie()
+        self.assertIs(trie_stale, trie_1)
+        self.assertNotIn(user2.member_profile.pk, trie_stale.search_prefix("nguyen trie"))
+
+        # "Worker khác" tăng counter dùng chung → process này phải thấy
+        try:
+            cache.incr(search_index._VERSION_CACHE_KEY)
+        except ValueError:
+            cache.add(search_index._VERSION_CACHE_KEY, 1, timeout=None)
+
+        trie_2 = search_index.get_trie()
+        self.assertIsNot(trie_2, trie_stale, "Counter dùng chung đổi → phải dựng lại Trie")
+        self.assertIn(user2.member_profile.pk, trie_2.search_prefix("nguyen trie"))

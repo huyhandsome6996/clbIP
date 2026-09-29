@@ -19,7 +19,7 @@ import tempfile
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -438,3 +438,138 @@ class DocumentPhamViScopeTests(ThrottleFreeMixin, APITestCase):
         self.client.force_authenticate(user=self.bcn)
         resp2 = self.client.get(f"/api/v1/documents/{doc.pk}/")
         self.assertEqual(resp2.data["data"]["uploaded_by"], self.bcn.email)
+
+
+@TEST_MEDIA_ROOT
+class SearchIndexTrieCacheTests(TestCase):
+    """
+    QA-Audit đợt 2 (P2-1 + P2-2) — Cache Trie tài liệu:
+        1. `_built_at` phải theo TỪNG scope: PUBLIC dựng lại không được gán
+           version mới cho FULL (regression của bug đã tái hiện trong audit).
+        2. Invalidation phải hiệu lực QUA CÁC WORKER qua cache dùng chung:
+           bump counter ở "worker khác" → process này phải dựng lại Trie.
+        3. Cache hỏng → fallback counter trong process, không lỗi request.
+    """
+
+    def setUp(self) -> None:
+        from django.core.cache import cache
+
+        cache.clear()
+        self.uploader = User.objects.create_user(
+            username="trie-uploader", email="trie@clbip.test",
+            password="TestPass123!", role=User.Role.MEMBER,
+        )
+
+    def _create_doc(self, tieu_de: str, pham_vi: str = Document.PhamVi.PUBLIC_MEMBER) -> Document:
+        return Document.objects.create(
+            tieu_de=tieu_de,
+            nhom=Document.Nhom.CHUYEN_MON,
+            pham_vi=pham_vi,
+            file=SimpleUploadedFile("x.pdf", PDF_BYTES, content_type="application/pdf"),
+            file_type="pdf",
+            file_size=len(PDF_BYTES),
+            uploaded_by=self.uploader,
+        )
+
+    def test_public_rebuild_khong_gan_version_cho_full(self) -> None:
+        """Regression P2-1: đổi doc → search PUBLIC → search FULL phải thấy thay đổi."""
+        from apps.documents import search_index
+
+        doc = self._create_doc("Tai lieu goc CLB")
+
+        # BCN dựng FULL trước (version v1)
+        trie_full_v1 = search_index.get_trie(search_index.SCOPE_FULL)
+        self.assertIn(doc.pk, trie_full_v1.search_prefix("tai lieu"))
+
+        # Đổi tiêu đề → post_save invalidate (version v2)
+        doc.tieu_de = "De thi OOP 2026"
+        doc.save(update_fields=["tieu_de", "updated_at"])
+
+        # Member tìm PUBLIC trước → PUBLIC dựng lại tại v2
+        trie_public = search_index.get_trie(search_index.SCOPE_PUBLIC)
+        self.assertIn(doc.pk, trie_public.search_prefix("de thi"))
+
+        # BCN tìm FULL sau → PHẢI dựng lại (bug cũ: coi FULL còn mới tại v1)
+        trie_full_v2 = search_index.get_trie(search_index.SCOPE_FULL)
+        self.assertIsNot(trie_full_v2, trie_full_v1, "FULL phải được dựng lại sau khi PUBLIC dựng lại")
+        self.assertIn(doc.pk, trie_full_v2.search_prefix("de thi"))
+        self.assertNotIn(doc.pk, trie_full_v2.search_prefix("tai lieu"))
+
+    def test_invalidate_da_worker_qua_cache_dung_chung(self) -> None:
+        """P2-2: bump counter ở 'worker khác' (chỉ cache) → process này rebuild."""
+        from django.core.cache import cache
+
+        from apps.documents import search_index
+
+        self._create_doc("Tai lieu worker 1")
+        trie_1 = search_index.get_trie(search_index.SCOPE_PUBLIC)
+        self.assertIn(
+            Document.objects.get(tieu_de="Tai lieu worker 1").pk,
+            trie_1.search_prefix("tai lieu"),
+        )
+
+        # Tạo doc KHÔNG bắn signal cục bộ (mô phỏng: worker khác nhận ghi)
+        # ⚠️ disconnect phải truyền đúng sender — lookup key = (dispatch_uid, _make_id(sender))
+        from django.db.models.signals import post_delete, post_save
+
+        post_save.disconnect(sender=Document, dispatch_uid="trie_doc_save")
+        post_delete.disconnect(sender=Document, dispatch_uid="trie_doc_del")
+        try:
+            self._create_doc("Tai lieu worker 2")
+        finally:
+            post_save.connect(search_index.invalidate, sender=Document, dispatch_uid="trie_doc_save")
+            post_delete.connect(search_index.invalidate, sender=Document, dispatch_uid="trie_doc_del")
+
+        # Process này chưa biết gì → Trie cũ không có doc mới
+        trie_stale = search_index.get_trie(search_index.SCOPE_PUBLIC)
+        self.assertEqual(trie_stale, trie_1)
+
+        # "Worker khác" đã tăng counter dùng chung → process này phải thấy
+        try:
+            cache.incr(search_index._VERSION_CACHE_KEY)
+        except ValueError:
+            cache.add(search_index._VERSION_CACHE_KEY, 99, timeout=None)
+
+        trie_2 = search_index.get_trie(search_index.SCOPE_PUBLIC)
+        self.assertIsNot(trie_2, trie_stale, "Counter dùng chung đổi → phải dựng lại Trie")
+        # Doc của worker khác giờ phải xuất hiện trong kết quả tìm
+        pks = trie_2.search_prefix("tai lieu")
+        doc2 = Document.objects.get(tieu_de="Tai lieu worker 2")
+        self.assertIn(doc2.pk, pks)
+
+    def test_cache_hong_fallback_counter_local(self) -> None:
+        """Cache hỏng (DummyCache — get luôn None) → invalidation local vẫn chạy."""
+        from apps.documents import search_index
+
+        with override_settings(
+            CACHES={"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+        ):
+            doc = self._create_doc("Tai lieu khi cache hong")
+            trie = search_index.get_trie(search_index.SCOPE_PUBLIC)
+            self.assertIn(doc.pk, trie.search_prefix("tai lieu"))
+
+    def test_incr_khong_mat_ttl_never_expire(self) -> None:
+        """Regression MAJOR-1: DatabaseCache.incr của Django = get+set không
+        truyền timeout → TTL về default 300s. invalidate() phải `touch(None)`
+        khôi phục never-expire, nếu không counter chết sau 5 phút → mất
+        invalidation đa worker (backend production mặc định là DatabaseCache)."""
+        from django.core.cache import cache
+        from django.db import connection
+
+        from apps.documents import search_index
+
+        search_index.invalidate()  # lần đầu: add với timeout=None
+        search_index.invalidate()  # lần sau: incr (+touch None)
+        search_index.invalidate()
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT expires FROM django_cache_table WHERE cache_key LIKE %s",
+                ["%trie_version:documents%"],
+            )
+            row = cursor.fetchone()
+
+        self.assertIsNotNone(row, "Counter dùng chung phải tồn tại trong cache DB")
+        # datetime.max (9999-12-31) = never-expire; nếu incr làm mất TTL thì
+        # expires sẽ là now + 300s (năm hiện tại)
+        self.assertEqual(getattr(row[0], "year", None), 9999)
