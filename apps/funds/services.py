@@ -385,24 +385,20 @@ class FundService:
         if tu_ngay > den_ngay:
             raise ValidationException("'Từ ngày' phải nhỏ hơn hoặc bằng 'Đến ngày'.")
 
+        repo = cls._repo()
         with transaction.atomic():
-            if FundPeriodLock.objects.filter(ten_ky=ten_ky).exists():
+            if repo.exists_period_lock_by_name(ten_ky):
                 raise DuplicateDataException(f"Kỳ khóa sổ '{ten_ky}' đã tồn tại.")
 
-            lock = FundPeriodLock.objects.create(
+            lock = repo.create_period_lock(
                 ten_ky=ten_ky,
                 tu_ngay=tu_ngay,
                 den_ngay=den_ngay,
                 locked_by=locked_by,
                 ghi_chu=ghi_chu,
             )
-            # Update hàng loạt 1 query — đóng băng lịch sử trong khoảng kỳ
-            # (range datetime di động đa CSDL — thay cho __date, xem timeutils)
             start_dt, end_dt = local_range_inclusive(tu_ngay, den_ngay)
-            FundTransaction.objects.filter(
-                ngay_gd__gte=start_dt,
-                ngay_gd__lt=end_dt,
-            ).update(is_locked=True)
+            repo.mark_transactions_locked_between(start_dt, end_dt)
 
         logger.info("Khóa sổ kỳ '%s' (%s → %s)", ten_ky, tu_ngay, den_ngay)
         return lock

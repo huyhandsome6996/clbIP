@@ -1,0 +1,219 @@
+"""
+Repository Layer — apps.attendance
+==================================
+Tách biệt tầng truy vấn CSDL khỏi tầng nghiệp vụ (Repository Pattern — SKILL.md
+Phần 1 §2.A, nguyên tắc Dependency Inversion) — làm theo mẫu của `apps.funds`.
+
+`AttendanceService` và `GPSAntiCheatEngine` chỉ phụ thuộc vào trừu tượng
+`IAttendanceRepository`, không đụng trực tiếp vào ORM. 100% truy vấn dùng
+Django ORM parameterized (TUYỆT ĐỐI không raw SQL — Security Hardening §2.1).
+
+⚠️ Cross-app queries: hai phương thức cuối (`member_exists`,
+`get_member_profile_for_user`) đọc `MemberProfile` của apps.members và
+`mark_event_registrations_checked_in` cập nhật `EventRegistration` của
+apps.events. Chúng nằm ở đây (KHÔNG sửa file của apps kia) kèm comment rõ
+ràng — apps.events chưa có repository riêng tại thời điểm refactor.
+"""
+from abc import ABC, abstractmethod
+from typing import Optional, Tuple
+
+from django.db.models import QuerySet
+
+from apps.attendance.models import AttendanceRecord, AttendanceSession
+from apps.members.models import MemberProfile
+
+
+class IAttendanceRepository(ABC):
+    """Hợp đồng (interface) truy cập dữ liệu Điểm danh — phụ thuộc trừu tượng (DIP)."""
+
+    # ------------------------------------------------------------------
+    # AttendanceSession
+    # ------------------------------------------------------------------
+    @abstractmethod
+    def list_sessions(
+        self, trang_thai: Optional[str] = None
+    ) -> QuerySet[AttendanceSession]:
+        """Danh sách phiên (lọc `trang_thai` nếu nằm trong whitelist choices)."""
+
+    @abstractmethod
+    def create_session(self, **fields) -> AttendanceSession:
+        """Mở phiên điểm danh mới (INSERT một dòng)."""
+
+    @abstractmethod
+    def get_session(self, session_id: int) -> AttendanceSession:
+        """Lấy phiên theo pk — raise `AttendanceSession.DoesNotExist` nếu thiếu."""
+
+    # ------------------------------------------------------------------
+    # AttendanceRecord
+    # ------------------------------------------------------------------
+    @abstractmethod
+    def bulk_create_vang_records(self, session: AttendanceSession, members, batch_size: int = 500) -> None:
+        """Bulk-create bản ghi VẮNG cho danh sách thành viên khi mở phiên."""
+
+    @abstractmethod
+    def get_record_for_member(self, session: AttendanceSession, member: MemberProfile) -> AttendanceRecord:
+        """Bản ghi điểm danh của một thành viên trong một phiên."""
+
+    @abstractmethod
+    def get_or_create_record(
+        self, session: AttendanceSession, member_id: int, defaults: dict
+    ) -> Tuple[AttendanceRecord, bool]:
+        """Lấy hoặc tạo bản ghi (BCN override cho member tham gia muộn)."""
+
+    @abstractmethod
+    def history_for_member(self, member: MemberProfile, limit: int = 50) -> QuerySet[AttendanceRecord]:
+        """Lịch sử điểm danh cá nhân (mới nhất trước, select_related session)."""
+
+    @abstractmethod
+    def exists_device_reuse(self, session: AttendanceSession, member: MemberProfile, device_id: str) -> bool:
+        """Anti-cheat lớp 5: device_id đã bị dùng cho thành viên khác trong phiên?"""
+
+    @abstractmethod
+    def get_last_checkin_for_teleport_check(self, member: MemberProfile) -> Optional[AttendanceRecord]:
+        """Anti-cheat lớp 6: lần check-in hợp lệ gần nhất (so vận tốc teleport)."""
+
+    # ------------------------------------------------------------------
+    # Truy vấn chéo app (MemberProfile / EventRegistration)
+    # ------------------------------------------------------------------
+    @abstractmethod
+    def member_exists(self, member_id: int) -> bool:
+        """Thành viên có tồn tại theo pk? (bulk_override validate)."""
+
+    @abstractmethod
+    def get_member_profile_for_user(self, user) -> Optional[MemberProfile]:
+        """Hồ sơ thành viên gắn với user (None nếu không có — chặn IDOR/403)."""
+
+    @abstractmethod
+    def mark_event_registrations_checked_in(self, event_id: int, member: MemberProfile) -> int:
+        """Vé sự kiện của member → CHECKED_IN (trả về số dòng cập nhật)."""
+
+
+class DjangoAttendanceRepository(IAttendanceRepository):
+    """Triển khai cụ thể bằng Django ORM cho `IAttendanceRepository`."""
+
+    # ------------------------------------------------------------------
+    # AttendanceSession
+    # ------------------------------------------------------------------
+    def list_sessions(
+        self, trang_thai: Optional[str] = None
+    ) -> QuerySet[AttendanceSession]:
+        """Danh sách phiên — chỉ lọc khi `trang_thai` hợp lệ (whitelist choices)."""
+        queryset = AttendanceSession.objects.all()
+        if trang_thai and trang_thai in AttendanceSession.TrangThai.values:
+            queryset = queryset.filter(trang_thai=trang_thai)
+        return queryset
+
+    def create_session(self, **fields) -> AttendanceSession:
+        """Mở phiên điểm danh mới."""
+        return AttendanceSession.objects.create(**fields)
+
+    def get_session(self, session_id: int) -> AttendanceSession:
+        """Lấy phiên theo pk — caller tự xử lý DoesNotExist → NotFoundException."""
+        return AttendanceSession.objects.get(pk=session_id)
+
+    # ------------------------------------------------------------------
+    # AttendanceRecord
+    # ------------------------------------------------------------------
+    def bulk_create_vang_records(
+        self, session: AttendanceSession, members, batch_size: int = 500
+    ) -> None:
+        """Tạo hàng loạt bản ghi VẮNG (vắng mặt là mặc định khi mở phiên)."""
+        AttendanceRecord.objects.bulk_create(
+            [
+                AttendanceRecord(
+                    session=session,
+                    member=member,
+                    trang_thai=AttendanceRecord.TrangThaiDiemDanh.VANG,
+                )
+                for member in members
+            ],
+            batch_size=batch_size,
+        )
+
+    def get_record_for_member(
+        self, session: AttendanceSession, member: MemberProfile
+    ) -> AttendanceRecord:
+        """Bản ghi của `member` trong `session` — raise DoesNotExist nếu thiếu."""
+        return AttendanceRecord.objects.get(session=session, member=member)
+
+    def get_or_create_record(
+        self, session: AttendanceSession, member_id: int, defaults: dict
+    ) -> Tuple[AttendanceRecord, bool]:
+        """Get-or-create phục vụ BCN bulk override (member tham gia muộn)."""
+        return AttendanceRecord.objects.get_or_create(
+            session=session,
+            member_id=member_id,
+            defaults=defaults,
+        )
+
+    def history_for_member(
+        self, member: MemberProfile, limit: int = 50
+    ) -> QuerySet[AttendanceRecord]:
+        """Lịch sử của CHÍNH member này (chống IDOR ở tầng service/view)."""
+        return (
+            AttendanceRecord.objects.filter(member=member)
+            .select_related("session")
+            .order_by("-created_at")[:limit]
+        )
+
+    def exists_device_reuse(
+        self, session: AttendanceSession, member: MemberProfile, device_id: str
+    ) -> bool:
+        """True nếu `device_id` đã được dùng cho thành viên khác trong phiên."""
+        return (
+            AttendanceRecord.objects.filter(session=session, device_id=device_id)
+            .exclude(member=member)
+            .exclude(device_id="")
+            .exists()
+        )
+
+    def get_last_checkin_for_teleport_check(
+        self, member: MemberProfile
+    ) -> Optional[AttendanceRecord]:
+        """Check-in có tọa độ gần nhất của member (mốc tính vận tốc di chuyển)."""
+        return (
+            AttendanceRecord.objects.filter(
+                member=member,
+                checked_in_at__isnull=False,
+                vi_do__isnull=False,
+                kinh_do__isnull=False,
+            )
+            .order_by("-checked_in_at")
+            .first()
+        )
+
+    # ------------------------------------------------------------------
+    # Truy vấn chéo app (MemberProfile / EventRegistration)
+    # ------------------------------------------------------------------
+    def member_exists(self, member_id: int) -> bool:
+        """
+        Thành viên tồn tại theo pk?
+
+        ⚠️ Cross-app: đọc thẳng `MemberProfile` (apps.members) — apps.members
+        chưa có phương thức `exists()` tương ứng trong repository của nó.
+        """
+        return MemberProfile.objects.filter(pk=member_id).exists()
+
+    def get_member_profile_for_user(self, user) -> Optional[MemberProfile]:
+        """
+        Hồ sơ thành viên của user (None → service raise ForbiddenException).
+
+        Cross-app: ủy quyền cho members repository — truy vấn user→profile
+        sống đúng một nơi (DjangoMemberRepository.get_by_user).
+        """
+        from apps.members.repositories import DjangoMemberRepository  # noqa: PLC0415
+
+        return DjangoMemberRepository().get_by_user(user)
+
+    def mark_event_registrations_checked_in(
+        self, event_id: int, member: MemberProfile
+    ) -> int:
+        """
+        Vé sự kiện của member chuyển sang CHECKED_IN khi check-in phiên gắn event.
+
+        Cross-app: cập nhật `EventRegistration` (apps.events) — ủy quyền qua
+        DjangoEventRepository để truy vấn của từng model sống đúng 1 nơi.
+        """
+        from apps.events.repositories import DjangoEventRepository  # noqa: PLC0415
+
+        return DjangoEventRepository().mark_registrations_checked_in(event_id, member)

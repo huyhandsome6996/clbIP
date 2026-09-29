@@ -22,7 +22,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.common.throttles import FeedbackRateThrottle
-from apps.posts.models import CommunityPoll, Post
 from apps.posts.serializers import (
     FeedbackCreateSerializer,
     FeedbackListSerializer,
@@ -138,7 +137,9 @@ class PostListCreateView(EnvelopeListMixin, generics.ListCreateAPIView):
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Chi tiết bài đăng + Sửa (BCN) + Xóa mềm (BCN) — mọi thay đổi ghi audit."""
 
-    queryset = Post.objects.all()
+    def get_queryset(self):
+        """Queryset qua Repository (PostService.all_posts) — thay class attr ORM."""
+        return PostService.all_posts()
 
     def get_serializer_class(self) -> type:
         """GET/PATCH/PUT → PostDetailSerializer (có audit); DELETE không cần."""
@@ -290,8 +291,8 @@ class PollListCreateView(EnvelopeListMixin, generics.ListCreateAPIView):
     # Phân trang bắt buộc cho MỌI API danh sách (Security §3.3) — dùng default.
 
     def get_queryset(self):
-        """Toàn bộ poll, mới nhất trước (model Meta ordering)."""
-        return CommunityPoll.objects.all()
+        """Toàn bộ poll, mới nhất trước (Meta ordering) — qua Repository."""
+        return PollService.all_polls()
 
     def get_serializer_class(self) -> type:
         """GET → PollSerializer; POST → PollCreateSerializer."""

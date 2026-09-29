@@ -2,25 +2,42 @@
 View Layer (Controller) — apps.gamification
 ===========================================
 View MỎNG: nhận request → gọi Service → trả envelope `core.response.ok`.
+100% truy vấn CSDL nằm ở `apps.gamification.repositories` (Repository Pattern,
+mẫu apps.funds) — View chỉ truy cập dữ liệu qua module-level `_repo()` (DI bằng
+cách gán `_repository_class`).
 
 Phân quyền: MỌI user đăng nhập đều được XEM (leaderboard/badge/me) —
 `IsAuthenticated` khai báo tường minh.
 Server-Authoritative: KHÔNG có endpoint nào nhận `xp` từ client.
 """
+from typing import ClassVar
+
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.exceptions import NotFoundException
-from apps.gamification.models import Badge, MemberBadge
-from apps.gamification.serializers import BadgeSerializer, MemberBadgeSerializer
+from apps.gamification.repositories import (
+    DjangoGamificationRepository,
+    IGamificationRepository,
+)
+from apps.gamification.serializers import MemberBadgeSerializer
 from apps.gamification.services import (
+    BadgeService,
     GamificationService,
     LeaderboardService,
 )
-from apps.members.models import MemberProfile
 from core.response import ok
+
+_repository_class: ClassVar[type[IGamificationRepository]] = (
+    DjangoGamificationRepository
+)
+
+
+def _repo() -> IGamificationRepository:
+    """Repository accessor cho tầng View — cho phép DI khi unit test."""
+    return _repository_class()
 
 
 class LeaderboardView(APIView):
@@ -43,7 +60,7 @@ class LeaderboardView(APIView):
     )
     def get(self, request, *args, **kwargs) -> Response:
         """Trả bảng vàng; my_position=None nếu user chưa có hồ sơ thành viên."""
-        profile = MemberProfile.objects.filter(user=request.user).first()
+        profile = _repo().find_member_profile_by_user(request.user)
         data = LeaderboardService.get_leaderboard(profile)
         return ok(data=data, message="Lấy bảng vàng thành công")
 
@@ -63,29 +80,11 @@ class BadgeListView(APIView):
         responses={200: OpenApiResponse(description="Envelope items + unlocked")},
     )
     def get(self, request, *args, **kwargs) -> Response:
-        """Gom badge toàn hệ thống + trạng thái mở khóa của user (2 query)."""
-        profile = MemberProfile.objects.filter(user=request.user).first()
-        unlocked_ids: set[int] = set()
-        if profile is not None:
-            # Một query duy nhất cho MemberBadge của user
-            unlocked_ids = set(
-                MemberBadge.objects.filter(member=profile).values_list(
-                    "badge_id", flat=True
-                )
-            )
-
-        items: list[dict] = []
-        unlocked: list[str] = []
-        for badge in Badge.objects.all():
-            is_unlocked = badge.pk in unlocked_ids
-            item = BadgeSerializer(badge).data
-            item["unlocked"] = is_unlocked
-            items.append(item)
-            if is_unlocked:
-                unlocked.append(badge.ma_badge)
-
+        """Service gom badge toàn hệ thống + trạng thái mở khóa của user."""
+        profile = _repo().find_member_profile_by_user(request.user)
+        data = BadgeService.list_badges_with_status(profile)
         return ok(
-            data={"items": items, "unlocked": unlocked},
+            data=data,
             message="Lấy danh sách huy hiệu thành công",
         )
 
@@ -109,11 +108,11 @@ class MyGamificationView(APIView):
     )
     def get(self, request, *args, **kwargs) -> Response:
         """Ghép dữ liệu hồ sơ + badge + nhiệm vụ tuần từ Service."""
-        profile = MemberProfile.objects.filter(user=request.user).first()
+        profile = _repo().find_member_profile_by_user(request.user)
         if profile is None:
             raise NotFoundException("Bạn chưa có hồ sơ thành viên trong hệ thống.")
 
-        unlocked_badges = profile.badges.select_related("badge").all()
+        unlocked_badges = _repo().list_member_badges(profile)
         data = {
             "xp": profile.xp_points,
             "level": profile.current_level,

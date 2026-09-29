@@ -3,18 +3,17 @@ Views — Events API (prefix /api/v1/events/).
 ============================================
 View mỏng: nhận HTTP request → gọi Service → trả envelope chuẩn.
 Lọc/sort theo WHITELIST (chống SQL Injection qua order_by — Security §2.1).
+Toàn bộ truy vấn ORM nằm ở apps/events/repositories.py (Repository Pattern)
+— view KHÔNG đụng trực tiếp vào `.objects` của model nào.
 """
-from typing import Any
-
-from django.db.models import Count, Q, Sum
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.exceptions import NotFoundException, ValidationException
-from apps.events.models import ActivityEvent, EventBudgetDetail, EventCommunication, EventRegistration
+from apps.common.exceptions import ValidationException
+from apps.events.models import ActivityEvent
 from apps.events.serializers import (
     ActivityEventCreateUpdateSerializer,
     ActivityEventDetailSerializer,
@@ -63,16 +62,6 @@ def _paginated_envelope(items: list, page, message: str) -> Response:
     )
 
 
-def _event_queryset() -> Any:
-    """Queryset chuẩn kèm annotation số đăng ký hiệu lực (tránh N+1)."""
-    return ActivityEvent.objects.annotate(
-        active_reg_count=Count(
-            "registrations",
-            filter=~Q(registrations__trang_thai=EventRegistration.TrangThai.CANCELLED),
-        )
-    )
-
-
 # ======================================================================
 # GET  /api/v1/events/          — danh sách (mọi user đã đăng nhập)
 # POST /api/v1/events/          — tạo sự kiện (BCN/ADMIN)
@@ -92,20 +81,19 @@ class EventListCreateView(APIView):
         tags=["Events"],
     )
     def get(self, request):
-        queryset = _event_queryset()
-
-        # Filter whitelist theo choices — giá trị lạ bị bỏ qua
+        # Filter whitelist theo choices — giá trị lạ bị bỏ qua (None → repo bỏ filter)
         trang_thai = request.query_params.get("trang_thai")
-        if trang_thai and trang_thai in ActivityEvent.TrangThai.values:
-            queryset = queryset.filter(trang_thai=trang_thai)
+        if trang_thai and trang_thai not in ActivityEvent.TrangThai.values:
+            trang_thai = None
         loai_hd = request.query_params.get("loai_hd")
-        if loai_hd and loai_hd in ActivityEvent.LoaiHoatDong.values:
-            queryset = queryset.filter(loai_hd=loai_hd)
+        if loai_hd and loai_hd not in ActivityEvent.LoaiHoatDong.values:
+            loai_hd = None
 
         sort = request.query_params.get("sort", "-thoi_gian_bat_dau")
         if sort not in EVENT_SORT_WHITELIST:
             sort = "-thoi_gian_bat_dau"
-        queryset = queryset.order_by(sort)
+
+        queryset = EventService.list_events(trang_thai=trang_thai, loai_hd=loai_hd, sort=sort)
 
         paginator = StandardPagination()
         page_items = paginator.paginate_queryset(queryset, request, view=self)
@@ -267,8 +255,7 @@ class EventTaskDetailView(APIView):
         if is_completed and not task.is_completed:
             task = EventTaskService.complete_task(task_id)
         elif is_completed is False and task.is_completed:
-            task.is_completed = False
-            task.save(update_fields=["is_completed", "updated_at"])
+            task = EventTaskService.reopen_task(task)
 
         data = EventTaskSerializer(task).data
         return Response(
@@ -327,11 +314,7 @@ class MyTicketsView(APIView):
     )
     def get(self, request):
         member = EventService.get_member_profile_or_forbidden(request.user)
-        tickets = (
-            EventRegistration.objects.filter(member=member)
-            .select_related("event")
-            .order_by("-created_at")
-        )
+        tickets = EventService.list_tickets_for_member(member)
         data = EventRegistrationSerializer(tickets, many=True).data
         return Response(
             {
@@ -410,7 +393,7 @@ class EventRegistrationListView(APIView):
     )
     def get(self, request, pk: int):
         event = EventService.get_event_or_404(pk)
-        queryset = event.registrations.select_related("member__user", "event").order_by("-created_at")
+        queryset = EventService.list_registrations(event)
         paginator = StandardPagination()
         page_items = paginator.paginate_queryset(queryset, request, view=self)
         items = EventRegistrationSerializer(page_items, many=True).data
@@ -435,7 +418,7 @@ class BudgetView(APIView):
     )
     def get(self, request, pk: int):
         event = EventService.get_event_or_404(pk)
-        items = EventBudgetDetailSerializer(event.budget_details.all(), many=True).data
+        items = EventBudgetDetailSerializer(EventService.list_budget_details(event), many=True).data
         return Response(
             {
                 "success": True,
@@ -453,15 +436,10 @@ class BudgetView(APIView):
         tags=["Events"],
     )
     def post(self, request, pk: int):
-        event = EventService.get_event_or_404(pk)
+        event = EventService.get_event_or_404(pk)  # 404 phải trước 400 (validate payload)
         serializer = EventBudgetDetailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        item = EventBudgetDetail.objects.create(event=event, **serializer.validated_data)
-        # Tự động tính lại tổng kinh phí dự trù
-        event.tong_kinh_phi_du_tru = (
-            event.budget_details.aggregate(total=Sum("so_tien"))["total"] or 0
-        )
-        event.save(update_fields=["tong_kinh_phi_du_tru", "updated_at"])
+        item, event = EventService.add_budget_item(event, serializer.validated_data)
         data = EventBudgetDetailSerializer(item).data
         data["tong_kinh_phi_du_tru"] = event.tong_kinh_phi_du_tru
         return Response(
@@ -488,7 +466,7 @@ class CommunicationView(APIView):
     )
     def get(self, request, pk: int):
         event = EventService.get_event_or_404(pk)
-        items = EventCommunicationSerializer(event.communications.all(), many=True).data
+        items = EventCommunicationSerializer(EventService.list_communications(event), many=True).data
         return Response(
             {
                 "success": True,
@@ -508,7 +486,7 @@ class CommunicationView(APIView):
         EventService.get_event_or_404(pk)  # đảm bảo sự kiện tồn tại → 404 nếu không
         serializer = EventCommunicationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        comm = EventCommunication.objects.create(event_id=pk, **serializer.validated_data)
+        comm = EventService.add_communication(event_id=pk, data=serializer.validated_data)
         return Response(
             {
                 "success": True,

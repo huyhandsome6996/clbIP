@@ -15,13 +15,16 @@ Toàn bộ PASS → trả (True, distance_m) cho Service ghi vào AttendanceReco
 """
 import datetime as _dt
 import logging
-from typing import Optional, Tuple, Union
+from typing import ClassVar, Optional, Tuple, Union
 
 from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from apps.attendance.models import AttendanceRecord
+from apps.attendance.repositories import (
+    DjangoAttendanceRepository,
+    IAttendanceRepository,
+)
 from apps.attendance.services.nonce import AttendanceNonceService
 from apps.common.exceptions import AntiCheatException, InvalidNonceException
 from core.algorithms.geo_haversine import GeoSpatialService
@@ -31,6 +34,14 @@ logger = logging.getLogger(__name__)
 
 class GPSAntiCheatEngine:
     """Engine kiểm tra tính hợp lệ của một request check-in GPS."""
+
+    # DI: repository dữ liệu (anti-cheat KHÔNG đụng ORM trực tiếp)
+    _repository_class: ClassVar[type[IAttendanceRepository]] = DjangoAttendanceRepository
+
+    @classmethod
+    def _repo(cls) -> IAttendanceRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     @staticmethod
     def _coerce_client_time(client_time: Union[None, str, _dt.datetime]) -> _dt.datetime:
@@ -109,28 +120,14 @@ class GPSAntiCheatEngine:
 
         # 5. Device reuse — 1 thiết bị không điểm danh cho 2 thành viên
         if device_id:
-            reused = (
-                AttendanceRecord.objects.filter(session=session, device_id=device_id)
-                .exclude(member=member)
-                .exclude(device_id="")
-                .exists()
-            )
+            reused = cls._repo().exists_device_reuse(session, member, device_id)
             if reused:
                 raise AntiCheatException(
                     "Thiết bị này đã được dùng để điểm danh cho sinh viên khác!"
                 )
 
         # 6. Teleportation — vận tốc bất khả thi giữa 2 lần check-in liên tiếp
-        last_record = (
-            AttendanceRecord.objects.filter(
-                member=member,
-                checked_in_at__isnull=False,
-                vi_do__isnull=False,
-                kinh_do__isnull=False,
-            )
-            .order_by("-checked_in_at")
-            .first()
-        )
+        last_record = cls._repo().get_last_checkin_for_teleport_check(member)
         if last_record is not None:
             seconds = (client_dt - last_record.checked_in_at).total_seconds()
             speed_kmh = GeoSpatialService.travel_speed_kmh(

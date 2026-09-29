@@ -10,7 +10,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.attendance.models import AttendanceRecord, AttendanceSession
 from apps.attendance.serializers import (
     AttendanceRecordSerializer,
     AttendanceSessionSerializer,
@@ -19,7 +18,6 @@ from apps.attendance.serializers import (
     SessionCreateSerializer,
 )
 from apps.attendance.services import AttendanceNonceService, AttendanceService
-from apps.common.exceptions import ForbiddenException
 from apps.common.throttles import CheckInRateThrottle
 from apps.attendance.services.attendance_service import LATE_AFTER_MINUTES
 from core.pagination import StandardPagination
@@ -69,10 +67,8 @@ class SessionListCreateView(APIView):
         tags=["Attendance"],
     )
     def get(self, request):
-        queryset = AttendanceSession.objects.all()
-        trang_thai = request.query_params.get("trang_thai")
-        if trang_thai and trang_thai in AttendanceSession.TrangThai.values:
-            queryset = queryset.filter(trang_thai=trang_thai)
+        # QuerySet do repository cung cấp (whitelist trang_thai nằm trong repo)
+        queryset = AttendanceService.list_sessions(request.query_params.get("trang_thai"))
 
         paginator = StandardPagination()
         page_items = paginator.paginate_queryset(queryset, request, view=self)
@@ -296,11 +292,8 @@ class MyAttendanceHistoryView(APIView):
     )
     def get(self, request):
         member = AttendanceService.get_member_profile_or_forbidden(request.user)
-        records = (
-            AttendanceRecord.objects.filter(member=member)
-            .select_related("session")
-            .order_by("-created_at")[:50]
-        )
+        # Chống IDOR: repository chỉ trả record của CHÍNH member này (limit 50)
+        records = AttendanceService.history_for_member(member)
         items = AttendanceRecordSerializer(records, many=True).data
         return Response(
             {

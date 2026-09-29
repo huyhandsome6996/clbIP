@@ -8,9 +8,14 @@ Toàn bộ nghiệp vụ Bảng tin / Hòm thư góp ý / Bình chọn nằm t�
 
 Chống XSS theo CLBIP_Security_Hardening_Prompt.md §2.2: mọi nội dung do
 người dùng nhập PHẢI qua bleach.clean trước khi lưu DB.
+
+Truy vấn CSDL được ủy quyền cho `IPostRepository` (Repository Pattern — DIP):
+Service chỉ orchestration nghiệp vụ (bleach, audit, chống spam, khóa bi vote),
+KHÔNG đụng ORM trực tiếp. DI qua `_repository_class` + `_repo()` (giống
+`FundService`). Instance `.save()` của đối tượng nghiệp vụ vẫn nằm ở service.
 """
 import logging
-from typing import Optional
+from typing import ClassVar, Optional
 
 import bleach
 from django.db import transaction
@@ -24,6 +29,7 @@ from apps.common.exceptions import (
 )
 from apps.common.timeutils import local_day_range
 from apps.posts.models import CommunityPoll, FeedbackEntry, Post, PostAuditLog
+from apps.posts.repositories import IPostRepository, DjangoPostRepository
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +43,14 @@ class PostService:
     # Whitelist tag HTML an toàn cho nội dung bài đăng (Security §2.2)
     ALLOWED_TAGS: list = ["p", "br", "strong", "em", "u", "ul", "ol", "li", "a"]
     ALLOWED_ATTRIBUTES: dict = {"a": ["href"]}
+
+    # Repository Pattern (DIP): truy vấn CSDL ủy quyền cho IPostRepository
+    _repository_class: ClassVar[type[IPostRepository]] = DjangoPostRepository
+
+    @classmethod
+    def _repo(cls) -> IPostRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     @classmethod
     def sanitize(cls, html: str) -> str:
@@ -63,7 +77,7 @@ class PostService:
         Returns:
             Post vừa tạo.
         """
-        post = Post.objects.create(
+        post = cls._repo().create_post(
             tieu_de=cls.sanitize_text(data.get("tieu_de", "")),
             noi_dung=cls.sanitize(data.get("noi_dung", "")),
             anh_dinh_kem=data.get("anh_dinh_kem", "") or "",
@@ -119,21 +133,26 @@ class PostService:
         cls._log(post, PostAuditLog.Action.DELETE, actor, "Xóa bài đăng (soft delete)")
         return post
 
-    @staticmethod
-    def get_feed(user=None):
+    @classmethod
+    def get_feed(cls, user=None):
         """
         Feed bảng tin cho MEMBER PORTAL: bỏ bài đã xóa, bài ghim lên đầu,
         mới nhất trước. Tham số `user` giữ chỗ cho cá nhân hóa tương lai.
         """
-        return Post.objects.filter(is_deleted=False).order_by("-is_pinned", "-created_at")
+        return cls._repo().get_feed_queryset()
 
-    @staticmethod
-    def get_or_404(pk: int) -> Post:
+    @classmethod
+    def all_posts(cls):
+        """Queryset toàn bộ bài đăng cho view chi tiết — qua Repository."""
+        return cls._repo().all_posts()
+
+    @classmethod
+    def get_or_404(cls, pk: int) -> Post:
         """Lấy Post theo pk hoặc raise NotFoundException."""
-        try:
-            return Post.objects.get(pk=pk)
-        except Post.DoesNotExist as exc:
-            raise NotFoundException("Không tìm thấy bài đăng yêu cầu.") from exc
+        post = cls._repo().get_post(pk)
+        if post is None:
+            raise NotFoundException("Không tìm thấy bài đăng yêu cầu.")
+        return post
 
     # ==================================================================
     # Nội bộ
@@ -143,10 +162,10 @@ class PostService:
         """Sanitize text thuần (tiêu đề) — không cho phép tag nào."""
         return bleach.clean(text or "", tags=[], strip=True)
 
-    @staticmethod
-    def _log(post: Post, action: str, actor, chi_tiet: str) -> None:
+    @classmethod
+    def _log(cls, post: Post, action: str, actor, chi_tiet: str) -> None:
         """Ghi một dòng PostAuditLog — mọi hành động đều phải truy vết được."""
-        PostAuditLog.objects.create(post=post, action=action, performed_by=actor, chi_tiet=chi_tiet)
+        cls._repo().create_audit_log(post=post, action=action, performed_by=actor, chi_tiet=chi_tiet)
 
 
 class FeedbackService:
@@ -159,6 +178,14 @@ class FeedbackService:
     """
 
     DAILY_LIMIT: int = 5
+
+    # Repository Pattern (DIP): chung IPostRepository với PostService/PollService
+    _repository_class: ClassVar[type[IPostRepository]] = DjangoPostRepository
+
+    @classmethod
+    def _repo(cls) -> IPostRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     @classmethod
     def create_feedback(cls, noi_dung: str, user) -> FeedbackEntry:
@@ -177,13 +204,12 @@ class FeedbackService:
             raise ValidationException("Nội dung góp ý không được để trống.")
 
         day_start, day_end = local_day_range(timezone.localdate())
-        count_today = FeedbackEntry.objects.filter(
-            sender=user, created_at__gte=day_start, created_at__lt=day_end
-        ).count()
+        repo = cls._repo()
+        count_today = repo.count_feedback_today(user, day_start, day_end)
         if count_today >= cls.DAILY_LIMIT:
             raise ValidationException("Bạn đã gửi quá nhiều góp ý hôm nay. Hãy quay lại vào mai!")
 
-        entry = FeedbackEntry.objects.create(
+        entry = repo.create_feedback(
             noi_dung=bleach.clean(noi_dung, tags=[], strip=True),
             is_anonymous=True,
             sender=user,
@@ -191,15 +217,15 @@ class FeedbackService:
         logger.info("Feedback #%s (ẩn danh) — user pk=%s", entry.pk, user.pk)
         return entry
 
-    @staticmethod
-    def list_feedback():
+    @classmethod
+    def list_feedback(cls):
         """
         Danh sách góp ý cho BCN — QuerySet CHỈ gồm nội dung + thời gian.
 
         Serializer tương ứng (FeedbackListSerializer) TUYỆT ĐỐI không serialize
         sender — ẩn danh đúng nghĩa ngay cả khi BCN đọc.
         """
-        return FeedbackEntry.objects.all()
+        return cls._repo().all_feedback()
 
 
 class PollService:
@@ -207,6 +233,14 @@ class PollService:
     Bình chọn cộng đồng — chống race condition bằng select_for_update,
     chống double-vote bằng voted_user_ids (JSON list).
     """
+
+    # Repository Pattern (DIP): chung IPostRepository với PostService/FeedbackService
+    _repository_class: ClassVar[type[IPostRepository]] = DjangoPostRepository
+
+    @classmethod
+    def _repo(cls) -> IPostRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     @classmethod
     def create_poll(cls, question: str, options: list, actor) -> CommunityPoll:
@@ -225,7 +259,7 @@ class PollService:
         if len(options) < 2:
             raise ValidationException("Bình chọn cần ít nhất 2 lựa chọn.")
 
-        poll = CommunityPoll.objects.create(
+        poll = cls._repo().create_poll(
             question=question,
             options=options,
             votes={str(i): 0 for i in range(len(options))},
@@ -249,10 +283,9 @@ class PollService:
             ValidationException: option_index ngoài phạm vi options.
         """
         with transaction.atomic():
-            try:
-                poll = CommunityPoll.objects.select_for_update().get(pk=poll_id)
-            except CommunityPoll.DoesNotExist as exc:
-                raise NotFoundException("Không tìm thấy bình chọn yêu cầu.") from exc
+            poll = cls._repo().get_poll_for_update(poll_id)
+            if poll is None:
+                raise NotFoundException("Không tìm thấy bình chọn yêu cầu.")
 
             if poll.is_closed:
                 raise EventStatusException("Bình chọn đã đóng. Cảm ơn bạn đã quan tâm!")
@@ -275,10 +308,15 @@ class PollService:
         )
         return poll
 
-    @staticmethod
-    def get_or_404(pk: int) -> Optional[CommunityPoll]:
+    @classmethod
+    def all_polls(cls):
+        """Toàn bộ bình chọn, mới nhất trước (Meta ordering) — qua Repository."""
+        return cls._repo().all_polls()
+
+    @classmethod
+    def get_or_404(cls, pk: int) -> Optional[CommunityPoll]:
         """Lấy Poll theo pk hoặc raise NotFoundException."""
-        try:
-            return CommunityPoll.objects.get(pk=pk)
-        except CommunityPoll.DoesNotExist as exc:
-            raise NotFoundException("Không tìm thấy bình chọn yêu cầu.") from exc
+        poll = cls._repo().get_poll(pk)
+        if poll is None:
+            raise NotFoundException("Không tìm thấy bình chọn yêu cầu.")
+        return poll

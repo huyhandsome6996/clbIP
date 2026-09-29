@@ -12,13 +12,17 @@ Luồng chính:
 """
 import logging
 from datetime import timedelta
-from typing import Optional
+from typing import ClassVar, Optional
 
 from django.conf import settings
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
 from apps.attendance.models import AttendanceRecord, AttendanceSession
+from apps.attendance.repositories import (
+    DjangoAttendanceRepository,
+    IAttendanceRepository,
+)
 from apps.attendance.services.anti_cheat import GPSAntiCheatEngine
 from apps.common.exceptions import (
     DuplicateDataException,
@@ -27,8 +31,8 @@ from apps.common.exceptions import (
     SessionClosedException,
     ValidationException,
 )
-from apps.events.models import EventRegistration
 from apps.members.models import MemberProfile
+from apps.members.repositories import DjangoMemberRepository
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +41,27 @@ LATE_AFTER_MINUTES = 15
 
 
 class AttendanceService:
-    """Điều phối phiên điểm danh + check-in GPS + override của BCN."""
+    """
+    Điều phối phiên điểm danh + check-in GPS + override của BCN.
+
+    Toàn bộ truy vấn ORM tách vào `IAttendanceRepository` (Repository Pattern
+    — Dependency Inversion, mẫu của apps.funds); service chỉ giữ nghiệp vụ.
+    """
+
+    # DI: repository dữ liệu attendance (cho phép mock khi unit test)
+    _repository_class: ClassVar[type[IAttendanceRepository]] = DjangoAttendanceRepository
+    # DI: tái dùng repository của apps.members (KHÔNG nhân bản truy vấn ACTIVE)
+    _member_repository_class: ClassVar[type] = DjangoMemberRepository
+
+    @classmethod
+    def _repo(cls) -> IAttendanceRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
+
+    @classmethod
+    def _member_repo(cls):
+        """Repository thành viên (apps.members) — chỉ đọc dữ liệu chéo app."""
+        return cls._member_repository_class()
 
     # ------------------------------------------------------------------
     # Mở / đóng phiên
@@ -62,7 +86,7 @@ class AttendanceService:
         Returns:
             AttendanceSession vừa mở.
         """
-        session = AttendanceSession.objects.create(
+        session = cls._repo().create_session(
             ten_phien=ten_phien,
             vi_do=vi_do,
             kinh_do=kinh_do,
@@ -72,20 +96,9 @@ class AttendanceService:
             nonce_secret=get_random_string(length=48),
             trang_thai=AttendanceSession.TrangThai.OPEN,
         )
-        active_members = MemberProfile.objects.filter(
-            trang_thai_hd=MemberProfile.TrangThai.ACTIVE
-        )
-        AttendanceRecord.objects.bulk_create(
-            [
-                AttendanceRecord(
-                    session=session,
-                    member=member,
-                    trang_thai=AttendanceRecord.TrangThaiDiemDanh.VANG,
-                )
-                for member in active_members
-            ],
-            batch_size=500,
-        )
+        # Route qua repository của apps.members (get_active_members) — không trùng lặp
+        active_members = cls._member_repo().get_active_members()
+        cls._repo().bulk_create_vang_records(session, active_members, batch_size=500)
         logger.info(
             "Mở phiên %s (id=%s) bởi %s — %s bản ghi VẮNG",
             ten_phien,
@@ -140,7 +153,7 @@ class AttendanceService:
 
         # 1. Phiên hợp lệ?
         try:
-            session = AttendanceSession.objects.get(pk=session_id)
+            session = cls._repo().get_session(session_id)
         except AttendanceSession.DoesNotExist:
             raise NotFoundException("Không tìm thấy phiên điểm danh.")
         if session.trang_thai != AttendanceSession.TrangThai.OPEN:
@@ -150,7 +163,7 @@ class AttendanceService:
 
         # 2. Bản ghi trong phiên (được tạo VẮNG khi mở phiên)
         try:
-            record = AttendanceRecord.objects.get(session=session, member=member)
+            record = cls._repo().get_record_for_member(session, member)
         except AttendanceRecord.DoesNotExist:
             raise NotFoundException("Bạn không có bản ghi điểm danh trong phiên này.")
 
@@ -209,11 +222,9 @@ class AttendanceService:
         # 6b. XP qua GamificationService (lazy import — an toàn tích hợp song song)
         cls._award_xp_safe(member=member, amount=xp_total, session=session, record=record)
 
-        # 7. Vé sự kiện (nếu có) → CHECKED_IN
+        # 7. Vé sự kiện (nếu có) → CHECKED_IN (query chéo app nằm trong repo)
         if session.event_id:
-            EventRegistration.objects.filter(
-                event_id=session.event_id, member=member
-            ).update(trang_thai=EventRegistration.TrangThai.CHECKED_IN)
+            cls._repo().mark_event_registrations_checked_in(session.event_id, member)
 
         logger.info(
             "Check-in OK: member=%s session=%s dist=%.1fm status=%s xp=%s",
@@ -312,13 +323,13 @@ class AttendanceService:
                     f"Trạng thái điểm danh không hợp lệ: {trang_thai}",
                     errors={"trang_thai": trang_thai},
                 )
-            if not MemberProfile.objects.filter(pk=member_id).exists():
+            if not cls._repo().member_exists(member_id):
                 raise ValidationException(
                     f"Không tồn tại thành viên với member_id={member_id}",
                     errors={"member_id": member_id},
                 )
 
-            record, created = AttendanceRecord.objects.get_or_create(
+            record, created = cls._repo().get_or_create_record(
                 session=session,
                 member_id=member_id,
                 defaults={"trang_thai": trang_thai},
@@ -338,18 +349,31 @@ class AttendanceService:
     # ------------------------------------------------------------------
     # Tra cứu
     # ------------------------------------------------------------------
-    @staticmethod
-    def get_session_or_404(session_id: int) -> AttendanceSession:
+    @classmethod
+    def get_session_or_404(cls, session_id: int) -> AttendanceSession:
         """Lấy phiên theo id — không thấy → NotFoundException (404 envelope)."""
         try:
-            return AttendanceSession.objects.get(pk=session_id)
+            return cls._repo().get_session(session_id)
         except AttendanceSession.DoesNotExist:
             raise NotFoundException("Không tìm thấy phiên điểm danh.")
 
-    @staticmethod
-    def get_member_profile_or_forbidden(user) -> MemberProfile:
+    @classmethod
+    def get_member_profile_or_forbidden(cls, user) -> MemberProfile:
         """Chỉ user gắn với hồ sơ thành viên mới được check-in."""
-        profile = MemberProfile.objects.filter(user=user).first()
+        profile = cls._repo().get_member_profile_for_user(user)
         if profile is None:
             raise ForbiddenException("Tài khoản này không gắn với hồ sơ thành viên CLB.")
         return profile
+
+    # ------------------------------------------------------------------
+    # Tra cứu cho view (view mỏng — không đụng ORM)
+    # ------------------------------------------------------------------
+    @classmethod
+    def list_sessions(cls, trang_thai: Optional[str] = None):
+        """QuerySet phiên điểm danh (view tự phân trang + serialize)."""
+        return cls._repo().list_sessions(trang_thai)
+
+    @classmethod
+    def history_for_member(cls, member: MemberProfile, limit: int = 50):
+        """Lịch sử điểm danh cá nhân (mới nhất trước, tối đa `limit` bản ghi)."""
+        return cls._repo().history_for_member(member, limit=limit)

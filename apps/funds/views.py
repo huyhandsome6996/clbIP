@@ -21,6 +21,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.common.exceptions import ValidationException
+from apps.funds.repositories import DjangoFundRepository
 from apps.funds.services import FundService
 from apps.funds.serializers import (
     FundPeriodLockSerializer,
@@ -258,9 +259,8 @@ class FundPeriodLockListView(generics.ListAPIView):
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        from apps.funds.models import FundPeriodLock
-
-        return FundPeriodLock.objects.all()
+        """Ủy quyền truy vấn cho Repository (Repository Pattern — DIP)."""
+        return DjangoFundRepository().get_period_locks()
 
     @extend_schema(
         tags=["Funds"],

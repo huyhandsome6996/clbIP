@@ -15,7 +15,7 @@ from typing import Optional
 from django.db.models import QuerySet
 
 from apps.common.timeutils import local_day_range, local_range_inclusive
-from apps.funds.models import FundTransaction
+from apps.funds.models import FundPeriodLock, FundTransaction
 
 
 class IFundRepository(ABC):
@@ -63,6 +63,22 @@ class IFundRepository(ABC):
     def get_by_idempotency_key(self, key: str) -> Optional[FundTransaction]:
         """Tra cứu giao dịch theo Idempotency-Key (None nếu chưa tồn tại)."""
 
+    @abstractmethod
+    def exists_period_lock_by_name(self, ten_ky: str) -> bool:
+        """Kỳ khóa sổ trùng tên đã tồn tại chưa (409 DuplicateData)."""
+
+    @abstractmethod
+    def create_period_lock(self, **fields) -> FundPeriodLock:
+        """Tạo kỳ khóa sổ mới."""
+
+    @abstractmethod
+    def mark_transactions_locked_between(self, start_dt, end_dt) -> int:
+        """Đóng băng mọi giao dịch trong khoảng [start_dt, end_dt] (1 UPDATE)."""
+
+    @abstractmethod
+    def get_period_locks(self) -> QuerySet[FundPeriodLock]:
+        """Danh sách toàn bộ kỳ đã khóa sổ (theo ordering mặc định của model)."""
+
 
 class DjangoFundRepository(IFundRepository):
     """Triển khai cụ thể bằng Django ORM cho `IFundRepository`."""
@@ -95,8 +111,6 @@ class DjangoFundRepository(IFundRepository):
 
     def exists_locked_period_containing(self, ngay: date) -> bool:
         """True nếu `ngay` ∈ [tu_ngay, den_ngay] của ít nhất một kỳ khóa sổ."""
-        from apps.funds.models import FundPeriodLock
-
         return FundPeriodLock.objects.filter(
             tu_ngay__lte=ngay,
             den_ngay__gte=ngay,
@@ -137,3 +151,21 @@ class DjangoFundRepository(IFundRepository):
     def get_by_idempotency_key(self, key: str) -> Optional[FundTransaction]:
         """Tra cứu giao dịch theo Idempotency-Key (None nếu chưa tồn tại)."""
         return FundTransaction.objects.filter(idempotency_key=key).first()
+
+    def exists_period_lock_by_name(self, ten_ky: str) -> bool:
+        return FundPeriodLock.objects.filter(ten_ky=ten_ky).exists()
+
+    def create_period_lock(self, **fields) -> FundPeriodLock:
+        return FundPeriodLock.objects.create(**fields)
+
+    def mark_transactions_locked_between(self, start_dt, end_dt) -> int:
+        # Update hàng loạt 1 query — đóng băng lịch sử trong khoảng kỳ
+        # (range datetime di động đa CSDL — thay cho __date, xem timeutils)
+        return FundTransaction.objects.filter(
+            ngay_gd__gte=start_dt,
+            ngay_gd__lt=end_dt,
+        ).update(is_locked=True)
+
+    def get_period_locks(self) -> QuerySet[FundPeriodLock]:
+        """Toàn bộ kỳ khóa sổ — sắp theo Meta.ordering của model (-tu_ngay)."""
+        return FundPeriodLock.objects.all()

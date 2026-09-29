@@ -1,12 +1,14 @@
 """
 Service Layer — apps.members
 Toàn bộ nghiệp vụ thành viên: CRUD, Hồ sơ 360°, Trie search, Excel import/export.
+
+Repository Pattern (DIP): mọi truy vấn CSDL được ủy quyền cho `IMemberRepository`
+(mặc định `DjangoMemberRepository`) — service KHÔNG gọi `*.objects` trực tiếp.
 """
 import io
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
-from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from openpyxl import Workbook, load_workbook
@@ -19,23 +21,26 @@ from apps.common.exceptions import (
     ValidationException,
 )
 from apps.members.models import MemberProfile
-from apps.members.repositories import DjangoMemberRepository, IMemberRepository
-
-User = get_user_model()
-
-# Whitelist các trường được phép sort (chống SQL injection qua order_by — Security §2.1)
-ALLOWED_SORT_FIELDS = {
-    "created_at", "-created_at",
-    "xp_points", "-xp_points",
-    "ho_ten", "-ho_ten",
-}
+from apps.members.repositories import (
+    DjangoMemberRepository,
+    IMemberRepository,
+)
 
 
 class MemberService:
-    """Nghiệp vụ quản lý thành viên — chỉ BCN/ADMIN mới thao tác ghi."""
+    """
+    Nghiệp vụ quản lý thành viên — chỉ BCN/ADMIN mới thao tác ghi.
 
-    def __init__(self, repository: Optional[IMemberRepository] = None) -> None:
-        self._repo: IMemberRepository = repository or DjangoMemberRepository()
+    DI theo mẫu funds: `_repository_class` là ClassVar, `_repo()` là factory
+    method — unit test có thể thay repository giả bằng cách ghi đè class var.
+    """
+
+    _repository_class: ClassVar[type[IMemberRepository]] = DjangoMemberRepository
+
+    @classmethod
+    def _repo(cls) -> IMemberRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     # ------------------------------------------------------------------
     # CREATE
@@ -59,29 +64,23 @@ class MemberService:
         email: str = (data.get("email") or "").strip().lower()
         mssv: str = (data.get("mssv") or "").strip() or None
 
-        if User.objects.filter(email=email).exists():
+        if cls._repo().exists_user_by_email(email):
             raise DuplicateDataException(f"Email {email} đã được sử dụng.")
-        if mssv and User.objects.filter(mssv=mssv).exists():
+        if mssv and cls._repo().exists_user_by_mssv(mssv):
             raise DuplicateDataException(f"MSSV {mssv} đã tồn tại.")
 
         password: str = data.get("password") or "CLBIP@2026"
 
-        with transaction.atomic():
-            user = User.objects.create_user(
-                email=email,
-                password=password,
-                mssv=mssv,
-                role=User.Role.MEMBER,
-            )
-            profile = MemberProfile.objects.create(
-                user=user,
-                ho_ten=data.get("ho_ten") or email.split("@")[0],
-                lop=data.get("lop") or "",
-                sdt=data.get("sdt") or "",
-                gioi_tinh=data.get("gioi_tinh") or "",
-                ngay_sinh=cls._parse_date(data.get("ngay_sinh")),
-            )
-        return profile
+        return cls._repo().create_user_with_profile(
+            email=email,
+            password=password,
+            mssv=mssv,
+            ho_ten=data.get("ho_ten") or email.split("@")[0],
+            lop=data.get("lop") or "",
+            sdt=data.get("sdt") or "",
+            gioi_tinh=data.get("gioi_tinh") or "",
+            ngay_sinh=cls._parse_date(data.get("ngay_sinh")),
+        )
 
     # ------------------------------------------------------------------
     # UPDATE / LOCK
@@ -96,17 +95,18 @@ class MemberService:
         """
         profile = cls._get_or_404(member_id)
         user = profile.user
+        repo = cls._repo()
 
         with transaction.atomic():
             if not is_self_edit:  # BCN sửa toàn bộ
                 if "mssv" in data and data["mssv"]:
                     new_mssv = data["mssv"].strip()
-                    if User.objects.filter(mssv=new_mssv).exclude(pk=user.pk).exists():
+                    if repo.exists_user_by_mssv(new_mssv, exclude_pk=user.pk):
                         raise DuplicateDataException(f"MSSV {new_mssv} đã tồn tại.")
                     user.mssv = new_mssv
                 if "email" in data and data["email"]:
                     new_email = data["email"].strip().lower()
-                    if User.objects.filter(email=new_email).exclude(pk=user.pk).exists():
+                    if repo.exists_user_by_email(new_email, exclude_pk=user.pk):
                         raise DuplicateDataException(f"Email {new_email} đã được sử dụng.")
                     user.email = new_email
                 if "trang_thai_hd" in data and data["trang_thai_hd"]:
@@ -151,18 +151,16 @@ class MemberService:
         """
         profile = cls._get_or_404(member_id)
         user = profile.user
+        repo = cls._repo()
 
-        registrations = profile.event_registrations.exclude(
-            trang_thai="CANCELLED"
-        ).select_related("event")
-
-        records = profile.attendance_records.select_related("session")
-        total_sessions = records.count()
-        attended = records.filter(trang_thai__in=["CO_MAT", "DI_MUON"]).count()
+        total_sessions = repo.count_profile_attendance(profile)
+        attended = repo.count_profile_attendance(
+            profile, trang_thai_in=["CO_MAT", "DI_MUON"]
+        )
         attendance_rate = round(attended / total_sessions * 100, 1) if total_sessions else None
 
-        badges = profile.badges.select_related("badge")
-        recent_xp = profile.xp_ledger.all()[:5]
+        badges = repo.get_profile_badges(profile)
+        recent_xp = repo.get_recent_xp_entries(profile, limit=5)
 
         return {
             "id": profile.pk,
@@ -183,10 +181,10 @@ class MemberService:
                     "ban_phu_trach": b.ban_phu_trach,
                     "nhiem_ky": b.nhiem_ky,
                 }
-                for b in profile.board_positions.all()
+                for b in repo.get_profile_board_positions(profile)
             ],
             "stats": {
-                "events_registered": registrations.count(),
+                "events_registered": repo.count_profile_registrations(profile),
                 "attendance_sessions": total_sessions,
                 "attendance_attended": attended,
                 "attendance_rate_percent": attendance_rate,
@@ -207,8 +205,8 @@ class MemberService:
     # ------------------------------------------------------------------
     # TRIE SEARCH (DSA 3)
     # ------------------------------------------------------------------
-    @staticmethod
-    def search_profiles(q: str, limit: int = 20, only_active: bool = False) -> list:
+    @classmethod
+    def search_profiles(cls, q: str, limit: int = 20, only_active: bool = False) -> list:
         """
         Tìm kiếm tức thời O(L) bằng PrefixSearchTrie.
 
@@ -225,11 +223,9 @@ class MemberService:
 
         from core.algorithms.trie_search import PrefixSearchTrie
 
+        repo = cls._repo()
         trie = PrefixSearchTrie()
-        for profile in MemberProfile.objects.select_related("user").only(
-            "id", "ho_ten", "user__mssv", "user__email", "lop", "sdt", "gioi_tinh",
-            "avatar", "xp_points", "current_level", "streak_count", "trang_thai_hd",
-        ):
+        for profile in repo.iter_search_index_profiles():
             mssv = profile.user.mssv or ""
             words = {profile.ho_ten, mssv}
             trie.insert_multi([w for w in words if w], profile.pk)
@@ -238,16 +234,9 @@ class MemberService:
         if not matched_ids:
             return []
 
-        profiles = (
-            MemberProfile.objects.select_related("user")
-            .filter(pk__in=matched_ids)
-            .order_by("-xp_points")
+        return list(
+            repo.get_by_ids_ordered_by_xp(matched_ids, only_active=only_active)[:limit]
         )
-        if only_active:
-            profiles = profiles.filter(
-                trang_thai_hd=MemberProfile.TrangThai.ACTIVE
-            )
-        return list(profiles[:limit])
 
     # ------------------------------------------------------------------
     # EXCEL IMPORT / EXPORT
@@ -290,9 +279,9 @@ class MemberService:
                 row_error = f"Email {email} bị lặp trong file"
             elif mssv in seen_mssvs:
                 row_error = f"MSSV {mssv} bị lặp trong file"
-            elif User.objects.filter(email=email).exists():
+            elif cls._repo().exists_user_by_email(email):
                 row_error = f"Email {email} đã tồn tại trong hệ thống"
-            elif User.objects.filter(mssv=mssv).exists():
+            elif cls._repo().exists_user_by_mssv(mssv):
                 row_error = f"MSSV {mssv} đã tồn tại trong hệ thống"
 
             if row_error:
@@ -336,7 +325,7 @@ class MemberService:
 
         status_labels = dict(MemberProfile.TrangThai.choices)
         for row_idx, profile in enumerate(
-            MemberProfile.objects.select_related("user").order_by("ho_ten"), start=2
+            cls._repo().get_all_ordered_by_name(), start=2
         ):
             sheet.cell(row=row_idx, column=1, value=profile.user.mssv or "")
             sheet.cell(row=row_idx, column=2, value=profile.ho_ten)
@@ -359,29 +348,20 @@ class MemberService:
     # ------------------------------------------------------------------
     # Danh sách + whitelist sort (chống SQLi)
     # ------------------------------------------------------------------
-    @staticmethod
-    def list_profiles(lop: Optional[str] = None, trang_thai: Optional[str] = None,
+    @classmethod
+    def list_profiles(cls, lop: Optional[str] = None, trang_thai: Optional[str] = None,
                       search: Optional[str] = None, sort: Optional[str] = None):
-        """Queryset danh sách thành viên với filter/sort an toàn."""
-        repo = DjangoMemberRepository()
-        queryset = repo.get_all()
-
-        if lop:
-            queryset = queryset.filter(lop=lop)
-        if trang_thai:
-            queryset = queryset.filter(trang_thai_hd=trang_thai)
-        if search:
-            queryset = queryset.filter(_build_search_q(search))
-
-        sort_param = sort if sort in ALLOWED_SORT_FIELDS else "-xp_points"
-        return queryset.order_by(sort_param)
+        """Queryset danh sách thành viên với filter/sort an toàn (ủy quyền Repository)."""
+        return cls._repo().filter_profiles(
+            lop=lop, trang_thai=trang_thai, q=search, sort=sort
+        )
 
     # ------------------------------------------------------------------
     # Nội bộ
     # ------------------------------------------------------------------
-    @staticmethod
-    def _get_or_404(member_id: int) -> MemberProfile:
-        profile = MemberProfile.objects.select_related("user").filter(pk=member_id).first()
+    @classmethod
+    def _get_or_404(cls, member_id: int) -> MemberProfile:
+        profile = cls._repo().get_by_id(member_id)
         if profile is None:
             raise NotFoundException("Không tìm thấy thành viên.")
         return profile
@@ -397,10 +377,3 @@ class MemberService:
             return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
         except ValueError:
             return None
-
-
-def _build_search_q(search: str):
-    """Q object tìm kiếm họ tên / MSSV (ORM parameterized — an toàn SQLi)."""
-    from django.db.models import Q
-
-    return Q(ho_ten__icontains=search) | Q(user__mssv__icontains=search) | Q(user__email__icontains=search)

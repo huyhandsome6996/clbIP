@@ -9,7 +9,7 @@ Prefix mount: /api/v1/documents/
     GET  /api/v1/documents/<id>/download/ — tải về (đếm lượt tải atomic)
     DELETE /api/v1/documents/<id>/    — xóa (BCN/ADMIN hoặc người upload)
 """
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 from django.http import FileResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
@@ -20,7 +20,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.common.exceptions import NotFoundException
-from apps.documents.models import Document
 from apps.documents.serializers import DocumentCreateSerializer, DocumentSerializer
 from apps.documents.services import DocumentService
 from core.pagination import StandardPagination
@@ -84,32 +83,14 @@ class DocumentListCreateView(EnvelopeListMixin, generics.ListCreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
     pagination_class = StandardPagination
 
-    # Whitelist sắp xếp — TUYỆT ĐỐI không order_by giá trị client thô (SQLi §2.1)
-    ALLOWED_SORT_FIELDS: set = {"-created_at", "luot_tai", "-luot_tai", "tieu_de"}
-
     def get_queryset(self) -> QuerySet:
-        """Queryset có tối ưu join + filter/sort whitelist từ query params."""
-        # QA-Audit 2d: thành viên thường chỉ thấy tài liệu PUBLIC_MEMBER
-        queryset = DocumentService.visible_documents(self.request.user).select_related(
-            "uploaded_by__member_profile"
+        """Queryset qua Repository (scope pham_vi + filter/sort whitelist) — controller mỏng."""
+        return DocumentService.list_documents(
+            self.request.user,
+            nhom=self.request.query_params.get("nhom"),
+            search=self.request.query_params.get("search") or "",
+            sort=self.request.query_params.get("sort", "-created_at"),
         )
-
-        nhom = self.request.query_params.get("nhom")
-        if nhom in Document.Nhom.values:  # whitelist nhóm
-            queryset = queryset.filter(nhom=nhom)
-
-        search = (self.request.query_params.get("search") or "").strip()
-        if search:
-            queryset = queryset.filter(
-                Q(tieu_de__icontains=search)
-                | Q(tags__icontains=search)
-                | Q(mo_ta__icontains=search)
-            )
-
-        sort = self.request.query_params.get("sort", "-created_at")
-        if sort not in self.ALLOWED_SORT_FIELDS:
-            sort = "-created_at"
-        return queryset.order_by(sort)
 
     def get_serializer_class(self) -> type:
         """GET dùng DocumentSerializer, POST dùng DocumentCreateSerializer."""
@@ -177,7 +158,10 @@ class DocumentDetailView(generics.RetrieveDestroyAPIView):
 
     permission_classes = [IsAuthenticated]
     serializer_class = DocumentSerializer
-    queryset = Document.objects.select_related("uploaded_by__member_profile")
+
+    def get_queryset(self) -> QuerySet:
+        """Queryset qua Repository — thay class attr giữ ORM queryset (Repository Pattern)."""
+        return DocumentService.detail_queryset()
 
     @extend_schema(
         summary="Chi tiết tài liệu",

@@ -7,11 +7,16 @@ Views CHỈ là Controller; toàn bộ logic nằm ở đây:
                    chống Race Condition / oversell — Security Hardening §5.3).
 - EventTaskService: Quản lý task sự kiện theo đồ thị DAG (DSA 4 — Kahn
                    Topological Sort), chặn phụ thuộc vòng tròn (deadlock).
+
+Cả hai service KHÔNG đụng trực tiếp vào ORM — toàn bộ truy vấn đi qua
+`IEventRepository` (Repository Pattern — Dependency Inversion, xem
+apps/events/repositories.py; pattern DI giống `FundService`).
 """
 import logging
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
@@ -25,8 +30,10 @@ from apps.common.exceptions import (
     ValidationException,
 )
 from apps.authentication.models import User
-from apps.events.models import ActivityEvent, EventBudgetDetail, EventRegistration, EventTask
+from apps.events.models import ActivityEvent, EventBudgetDetail, EventCommunication, EventRegistration, EventTask
+from apps.events.repositories import DjangoEventRepository, IEventRepository
 from apps.members.models import MemberProfile
+from apps.members.repositories import DjangoMemberRepository, IMemberRepository
 from core.algorithms.dag_workflow import TaskDependencyEngine
 
 logger = logging.getLogger(__name__)
@@ -38,28 +45,42 @@ TICKET_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 class EventService:
     """Nghiệp vụ sự kiện: tạo/cập nhật + đăng ký vé chống oversell."""
 
+    # DI repository (funds-style) — cho phép swap khi unit test
+    _repository_class: ClassVar[type[IEventRepository]] = DjangoEventRepository
+    _member_repository_class: ClassVar[type[IMemberRepository]] = DjangoMemberRepository
+
+    @classmethod
+    def _repo(cls) -> IEventRepository:
+        """Factory method cho repository sự kiện — cho phép DI khi unit test."""
+        return cls._repository_class()
+
+    @classmethod
+    def _member_repo(cls) -> IMemberRepository:
+        """Factory method cho repository thành viên (tra cứu chéo apps.members)."""
+        return cls._member_repository_class()
+
     # ------------------------------------------------------------------
     # Sinh mã tự động
     # ------------------------------------------------------------------
-    @staticmethod
-    def _generate_ma_hd() -> str:
+    @classmethod
+    def _generate_ma_hd(cls) -> str:
         """
         Sinh mã hoạt động tự động: "EV" + năm + số thứ tự 3 chữ số.
         VD: EV2026001. Vòng while đảm bảo unique khi nhiều sự kiện cùng năm.
         """
         prefix = f"EV{timezone.now().year}"
-        seq = ActivityEvent.objects.filter(ma_hd__startswith=prefix).count()
+        seq = cls._repo().count_events_with_ma_hd_prefix(prefix)
         candidate = f"{prefix}{seq + 1:03d}"
-        while ActivityEvent.objects.filter(ma_hd=candidate).exists():
+        while cls._repo().exists_ma_hd(candidate):
             seq += 1
             candidate = f"{prefix}{seq + 1:03d}"
         return candidate
 
-    @staticmethod
-    def _generate_ma_ve() -> str:
+    @classmethod
+    def _generate_ma_ve(cls) -> str:
         """Sinh mã vé điện tử "VE-" + 12 ký tự ngẫu nhiên (không chứa I/1, O/0)."""
         ma_ve = f"VE-{get_random_string(length=12, allowed_chars=TICKET_CODE_CHARS)}"
-        while EventRegistration.objects.filter(ma_ve=ma_ve).exists():
+        while cls._repo().exists_ma_ve(ma_ve):
             ma_ve = f"VE-{get_random_string(length=12, allowed_chars=TICKET_CODE_CHARS)}"
         return ma_ve
 
@@ -98,23 +119,13 @@ class EventService:
         cls._validate_time_range(data.get("thoi_gian_bat_dau"), data.get("thoi_gian_ket_thuc"))
 
         with transaction.atomic():
-            event = ActivityEvent.objects.create(
+            event = cls._repo().create_event(
                 ma_hd=cls._generate_ma_hd(),
                 created_by=actor,
                 **data,
             )
             if budget_items:
-                EventBudgetDetail.objects.bulk_create(
-                    [
-                        EventBudgetDetail(
-                            event=event,
-                            ten_hang_muc=item["ten_hang_muc"],
-                            so_tien=item["so_tien"],
-                            ghi_chu=item.get("ghi_chu", ""),
-                        )
-                        for item in budget_items
-                    ]
-                )
+                cls._repo().bulk_create_budget_details(event, budget_items)
                 event.tong_kinh_phi_du_tru = sum(item["so_tien"] for item in budget_items)
                 event.save(update_fields=["tong_kinh_phi_du_tru", "updated_at"])
 
@@ -141,18 +152,8 @@ class EventService:
             for field, value in data.items():
                 setattr(event, field, value)
             if budget_items is not None:
-                event.budget_details.all().delete()
-                EventBudgetDetail.objects.bulk_create(
-                    [
-                        EventBudgetDetail(
-                            event=event,
-                            ten_hang_muc=item["ten_hang_muc"],
-                            so_tien=item["so_tien"],
-                            ghi_chu=item.get("ghi_chu", ""),
-                        )
-                        for item in budget_items
-                    ]
-                )
+                cls._repo().delete_budget_details(event)
+                cls._repo().bulk_create_budget_details(event, budget_items)
                 event.tong_kinh_phi_du_tru = sum(item["so_tien"] for item in budget_items)
             event.save()
 
@@ -181,22 +182,19 @@ class EventService:
             EventRegistration với mã vé điện tử.
         """
         with transaction.atomic():
-            try:
-                event = ActivityEvent.objects.select_for_update().get(pk=event_id)
-            except ActivityEvent.DoesNotExist:
+            event = cls._repo().get_event_for_update(event_id)
+            if event is None:
                 raise NotFoundException("Không tìm thấy sự kiện.")
 
             if event.trang_thai != ActivityEvent.TrangThai.OPEN_REGISTRATION:
                 raise EventStatusException("Sự kiện chưa mở đăng ký.")
 
-            existing = EventRegistration.objects.filter(event=event, member=member).first()
+            existing = cls._repo().get_registration(event, member)
             # Vé đã hủy (CANCELLED) không tính là trùng — cho phép đăng ký lại
             if existing is not None and existing.trang_thai != EventRegistration.TrangThai.CANCELLED:
                 raise DuplicateRegistrationException()
 
-            active_count = event.registrations.exclude(
-                trang_thai=EventRegistration.TrangThai.CANCELLED
-            ).count()
+            active_count = cls._repo().count_active_registrations(event)
             if active_count >= event.so_luong_toi_da:
                 raise EventFullException()
 
@@ -207,7 +205,7 @@ class EventService:
                 existing.save(update_fields=["ma_ve", "trang_thai", "updated_at"])
                 registration = existing
             else:
-                registration = EventRegistration.objects.create(
+                registration = cls._repo().create_registration(
                     event=event,
                     member=member,
                     ma_ve=cls._generate_ma_ve(),
@@ -226,13 +224,8 @@ class EventService:
         cho người khác đăng ký.
         """
         with transaction.atomic():
-            try:
-                registration = (
-                    EventRegistration.objects.select_for_update()
-                    .select_related("event")
-                    .get(event_id=event_id, member=member)
-                )
-            except EventRegistration.DoesNotExist:
+            registration = cls._repo().get_registration_for_update(event_id, member)
+            if registration is None:
                 raise NotFoundException("Bạn chưa đăng ký sự kiện này.")
 
             if registration.trang_thai == EventRegistration.TrangThai.CANCELLED:
@@ -249,21 +242,91 @@ class EventService:
     # ------------------------------------------------------------------
     # Tra cứu
     # ------------------------------------------------------------------
-    @staticmethod
-    def get_event_or_404(event_id: int) -> ActivityEvent:
+    @classmethod
+    def get_event_or_404(cls, event_id: int) -> ActivityEvent:
         """Lấy sự kiện theo id, không thấy → NotFoundException (404 envelope)."""
-        try:
-            return ActivityEvent.objects.get(pk=event_id)
-        except ActivityEvent.DoesNotExist:
+        event = cls._repo().get_event_by_id(event_id)
+        if event is None:
             raise NotFoundException("Không tìm thấy sự kiện.")
+        return event
 
-    @staticmethod
-    def get_member_profile_or_forbidden(user: User) -> MemberProfile:
-        """User phải gắn với hồ sơ thành viên mới được đăng ký vé."""
-        profile = MemberProfile.objects.filter(user=user).first()
+    @classmethod
+    def get_member_profile_or_forbidden(cls, user: User) -> MemberProfile:
+        """User phải gắn với hồ sơ thành viên mới được đăng ký vé (repo apps.members)."""
+        profile = cls._member_repo().get_by_user(user)
         if profile is None:
             raise ForbiddenException("Chỉ thành viên CLB mới đăng ký được.")
         return profile
+
+    # ------------------------------------------------------------------
+    # Danh sách (view mỏng gọi — trả QuerySet cho serializer paginate)
+    # ------------------------------------------------------------------
+    @classmethod
+    def list_events(
+        cls,
+        trang_thai: Optional[str] = None,
+        loai_hd: Optional[str] = None,
+        sort: str = "-thoi_gian_bat_dau",
+    ) -> QuerySet[ActivityEvent]:
+        """
+        Danh sách sự kiện kèm annotation `active_reg_count` (chống N+1).
+
+        `trang_thai` / `loai_hd` đã được view validate theo choices, `sort`
+        đã được view ràng buộc whitelist EVENT_SORT_WHITELIST (Security §2.1).
+        """
+        return cls._repo().list_events(trang_thai=trang_thai, loai_hd=loai_hd, sort=sort)
+
+    @classmethod
+    def list_tickets_for_member(cls, member: MemberProfile) -> QuerySet[EventRegistration]:
+        """Vé điện tử của một thành viên (mới nhất trước) — MyTicketsView."""
+        return cls._repo().list_registrations_by_member(member)
+
+    @classmethod
+    def list_registrations(cls, event: ActivityEvent) -> QuerySet[EventRegistration]:
+        """Danh sách vé của sự kiện (mới nhất trước) — BCN/ADMIN xem."""
+        return cls._repo().list_registrations_by_event(event)
+
+    @classmethod
+    def list_budget_details(cls, event: ActivityEvent) -> QuerySet[EventBudgetDetail]:
+        """Hạng mục dự trù kinh phí của sự kiện."""
+        return cls._repo().get_budget_details(event)
+
+    @classmethod
+    def list_communications(cls, event: ActivityEvent) -> QuerySet[EventCommunication]:
+        """Kế hoạch truyền thông đa kênh của sự kiện."""
+        return cls._repo().get_communications(event)
+
+    # ------------------------------------------------------------------
+    # Ghi nhanh từ view (business op đã được tách khỏi controller)
+    # ------------------------------------------------------------------
+    @classmethod
+    def add_budget_item(
+        cls, event: ActivityEvent, data: dict
+    ) -> tuple[EventBudgetDetail, ActivityEvent]:
+        """
+        Thêm hạng mục dự trù kinh phí rồi TỰ ĐỘNG tính lại
+        `tong_kinh_phi_du_tru` = tổng các hạng mục.
+
+        Ghi chú: `event` phải đã được kiểm tra tồn tại (404) ở view TRƯỚC khi
+        validate payload — giữ nguyên thứ tự lỗi 404 → 400 như bản cũ.
+        """
+        with transaction.atomic():
+            item = cls._repo().create_budget_detail(event, **data)
+            # Tự động tính lại tổng kinh phí dự trù
+            event.tong_kinh_phi_du_tru = cls._repo().sum_budget_total(event)
+            event.save(update_fields=["tong_kinh_phi_du_tru", "updated_at"])
+        return item, event
+
+    @classmethod
+    def add_communication(cls, event_id: int, data: dict) -> EventCommunication:
+        """
+        Thêm kế hoạch truyền thông cho sự kiện.
+
+        Ghi chú: sự kiện đã được kiểm tra tồn tại (404) ở view trước khi
+        validate payload — giữ nguyên thứ tự lỗi 404 → 400 như bản cũ.
+        """
+        with transaction.atomic():
+            return cls._repo().create_communication(event_id=event_id, **data)
 
 
 class EventTaskService:
@@ -275,53 +338,55 @@ class EventTaskService:
     (kỹ thuật "tạo trong transaction, validate, cycle → raise để rollback").
     """
 
+    # DI repository (funds-style) — cho phép swap khi unit test
+    _repository_class: ClassVar[type[IEventRepository]] = DjangoEventRepository
+
+    @classmethod
+    def _repo(cls) -> IEventRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
+
     # ------------------------------------------------------------------
     # Đọc đồ thị phụ thuộc
     # ------------------------------------------------------------------
-    @staticmethod
-    def _dependency_edges(event: ActivityEvent) -> list[tuple[int, int]]:
+    @classmethod
+    def _dependency_edges(cls, event: ActivityEvent) -> list[tuple[int, int]]:
         """
-        Trả về danh sách cạnh (task_truoc, task_sau) của sự kiện.
+        Trả về danh sách cạnh (task_trước, task_sau) của sự kiện.
 
         M2M `depends_on`: task A depends_on B nghĩa là B phải xong trước A
         → cạnh (B → A) = (to_eventtask, from_eventtask) trong bảng through.
         """
-        return list(
-            EventTask.depends_on.through.objects.filter(
-                from_eventtask__event_id=event.pk
-            ).values_list("to_eventtask_id", "from_eventtask_id")
-        )
+        return cls._repo().get_dependency_edges(event)
 
-    @staticmethod
-    def _get_event_or_404(event_id: int) -> ActivityEvent:
-        try:
-            return ActivityEvent.objects.get(pk=event_id)
-        except ActivityEvent.DoesNotExist:
+    @classmethod
+    def _get_event_or_404(cls, event_id: int) -> ActivityEvent:
+        event = cls._repo().get_event_by_id(event_id)
+        if event is None:
             raise NotFoundException("Không tìm thấy sự kiện.")
+        return event
 
-    @staticmethod
-    def get_task_or_404(task_id: int, event_id: Optional[int] = None) -> EventTask:
+    @classmethod
+    def get_task_or_404(cls, task_id: int, event_id: Optional[int] = None) -> EventTask:
         """Lấy task theo id (tuỳ chọn kiểm tra thuộc đúng sự kiện)."""
-        task = EventTaskService._get_task_or_404(task_id)
+        task = cls._get_task_or_404(task_id)
         if event_id is not None and task.event_id != event_id:
             raise NotFoundException("Task không thuộc sự kiện này.")
         return task
 
-    @staticmethod
-    def _get_task_or_404(task_id: int) -> EventTask:
-        try:
-            return EventTask.objects.select_related("event").get(pk=task_id)
-        except EventTask.DoesNotExist:
+    @classmethod
+    def _get_task_or_404(cls, task_id: int) -> EventTask:
+        task = cls._repo().get_task_by_id(task_id)
+        if task is None:
             raise NotFoundException("Không tìm thấy task.")
+        return task
 
-    @staticmethod
-    def _validate_depends_ids(event: ActivityEvent, depends_on_ids: list[int]) -> None:
+    @classmethod
+    def _validate_depends_ids(cls, event: ActivityEvent, depends_on_ids: list[int]) -> None:
         """Mọi task phụ thuộc phải thuộc CÙNG sự kiện."""
         if not depends_on_ids:
             return
-        valid_ids = set(
-            EventTask.objects.filter(event=event).values_list("id", flat=True)
-        )
+        valid_ids = set(cls._repo().get_task_ids(event))
         invalid = [tid for tid in depends_on_ids if tid not in valid_ids]
         if invalid:
             raise ValidationException(
@@ -351,17 +416,17 @@ class EventTaskService:
             event = cls._get_event_or_404(event_id)
             cls._validate_depends_ids(event, depends_on_ids)
 
-            task = EventTask.objects.create(
+            task = cls._repo().create_task(
                 event=event,
                 ten_task=ten_task,
                 nguoi_phu_trach_id=nguoi_phu_trach_id,
                 deadline=deadline,
             )
             if depends_on_ids:
-                task.depends_on.set(EventTask.objects.filter(pk__in=depends_on_ids))
+                task.depends_on.set(cls._repo().get_tasks_by_ids(depends_on_ids))
 
             # Validate DAG trên dữ liệu đã ghi (chưa commit)
-            task_ids = list(EventTask.objects.filter(event=event).values_list("id", flat=True))
+            task_ids = cls._repo().get_task_ids(event)
             edges = cls._dependency_edges(event)
             is_valid, _order = TaskDependencyEngine.resolve_task_order(task_ids, edges)
             if not is_valid:
@@ -384,18 +449,13 @@ class EventTaskService:
         """
         depends_on_ids = list(depends_on_ids or [])
         with transaction.atomic():
-            try:
-                task = (
-                    EventTask.objects.select_for_update()
-                    .select_related("event")
-                    .get(pk=task_id)
-                )
-            except EventTask.DoesNotExist:
+            task = cls._repo().get_task_for_update(task_id)
+            if task is None:
                 raise NotFoundException("Không tìm thấy task.")
             event = task.event
             cls._validate_depends_ids(event, depends_on_ids)
 
-            task_ids = list(EventTask.objects.filter(event=event).values_list("id", flat=True))
+            task_ids = cls._repo().get_task_ids(event)
             # Giả lập: bỏ các cạnh cũ trỏ VÀO task, thêm cạnh mới (dep → task)
             simulated_edges = [
                 (u, v) for (u, v) in cls._dependency_edges(event) if v != task.pk
@@ -409,7 +469,7 @@ class EventTaskService:
                 )
                 raise CycleDetectedException(errors={"cycle": cycle})
 
-            task.depends_on.set(EventTask.objects.filter(pk__in=depends_on_ids))
+            task.depends_on.set(cls._repo().get_tasks_by_ids(depends_on_ids))
 
         return task
 
@@ -427,12 +487,7 @@ class EventTaskService:
         from apps.events.serializers import EventTaskSerializer  # import cục bộ tránh vòng
 
         event = cls._get_event_or_404(event_id)
-        tasks = list(
-            EventTask.objects.filter(event=event)
-            .select_related("nguoi_phu_trach")
-            .prefetch_related("depends_on")
-            .order_by("id")
-        )
+        tasks = list(cls._repo().list_tasks_for_plan(event))
         task_ids = [t.id for t in tasks]
         edges = cls._dependency_edges(event)
 
@@ -467,6 +522,18 @@ class EventTaskService:
             cls._award_xp_for_completion(task)
 
         logger.info("Task %s (%s) hoàn thành", task.id, task.ten_task)
+        return task
+
+    @classmethod
+    def reopen_task(cls, task: EventTask) -> EventTask:
+        """
+        Mở lại task đã hoàn thành (is_completed=False).
+
+        KHÔNG hoàn lại XP đã cộng (XP ledger là bất biến — xem
+        GamificationService với idempotency_key "task_<id>").
+        """
+        task.is_completed = False
+        task.save(update_fields=["is_completed", "updated_at"])
         return task
 
     @staticmethod

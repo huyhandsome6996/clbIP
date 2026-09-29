@@ -11,30 +11,36 @@ Service Layer — apps.gamification
     - **Daily XP Cap**: mỗi thành viên nhận tối đa `DAILY_XP_CAP` (300 XP)/ngày
       (tính trên tổng ledger dương trong ngày — timezone địa phương).
     - Chống race condition: khóa bi hồ sơ thành viên bằng
-      `MemberProfile.objects.select_for_update()` trong `transaction.atomic()`
-      (Security Hardening §5.3).
+      `IGamificationRepository.lock_member_profile()` (select_for_update)
+      trong `transaction.atomic()` (Security Hardening §5.3).
 
 OOP (SKILL.md):
     - **Strategy Pattern**: `IRewardStrategy` + các chiến lược tính XP cụ thể,
       khởi tạo qua `RewardStrategyFactory` (OCP — thêm nguồn thưởng mới không
       phải sửa `GamificationService`).
+    - **Repository Pattern (DIP)**: 100% truy vấn CSDL nằm ở
+      `apps.gamification.repositories.DjangoGamificationRepository`; Service chỉ
+      phụ thuộc trừu tượng `IGamificationRepository` qua DI
+      `_repository_class` + `_repo()` (mẫu của apps.funds).
     - **DSA 2**: Leaderboard dùng `core.algorithms.leaderboard_heap.LeaderboardEngine`
       (Min-Heap O(N log K) + hash map tra cứu rank O(1)).
 """
 from abc import ABC, abstractmethod
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, ClassVar, Final, Optional
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Sum, Value
-from django.db.models.functions import Coalesce
 from django.utils import timezone
 
-from apps.attendance.models import AttendanceRecord
 from apps.common.exceptions import ValidationException
 from apps.common.timeutils import local_day_range, local_day_start
-from apps.gamification.models import Badge, MemberBadge, XpLedger
+from apps.gamification.models import Badge, XpLedger
+from apps.gamification.repositories import (
+    DjangoGamificationRepository,
+    IGamificationRepository,
+)
+from apps.gamification.serializers import BadgeSerializer
 from apps.members.models import MemberProfile
 from core.algorithms.leaderboard_heap import LeaderboardEngine
 
@@ -157,7 +163,17 @@ class BadgeService:
     """
     Engine mở huy hiệu tự động — điều kiện kiểm tra theo hồ sơ/ledger hiện tại.
     Hoàn toàn idempotent: badge đã mở thì bỏ qua, không nhân đôi (unique constraint).
+    Truy vấn CSDL đi qua `IGamificationRepository` (DI `_repository_class`).
     """
+
+    _repository_class: ClassVar[type[IGamificationRepository]] = (
+        DjangoGamificationRepository
+    )
+
+    @classmethod
+    def _repo(cls) -> IGamificationRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     # Catalog mặc định — badge chưa có trong DB sẽ được get_or_create (idempotent)
     CATALOG: ClassVar[dict[str, dict[str, str]]] = {
@@ -187,7 +203,7 @@ class BadgeService:
     def _ensure_badge(cls, ma_badge: str) -> Badge:
         """Lấy hoặc tạo badge trong DB theo catalog mặc định (idempotent)."""
         meta = cls.CATALOG[ma_badge]
-        badge, _created = Badge.objects.get_or_create(
+        badge, _created = cls._repo().get_or_create_badge(
             ma_badge=ma_badge,
             defaults={
                 "ten_badge": meta["ten_badge"],
@@ -209,31 +225,55 @@ class BadgeService:
 
         conditions: dict[str, bool] = {
             "STREAK_7": member.streak_count >= 7,
-            "ATTENDANCE_10": AttendanceRecord.objects.filter(
-                member=member,
-                trang_thai__in=[
-                    AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
-                    AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
-                ],
-            ).count() >= 10,
-            "DOC_CONTRIBUTOR_3": XpLedger.objects.filter(
-                member=member,
-                source=XpLedger.Source.DOCUMENT_SHARE,
-            ).count() >= 3,
+            # Cross-app query (attendance) — đặt trong repository, không sửa apps.attendance
+            "ATTENDANCE_10": cls._repo().count_attended_records(member) >= 10,
+            "DOC_CONTRIBUTOR_3": cls._repo().count_ledger_entries(
+                member, source=XpLedger.Source.DOCUMENT_SHARE
+            )
+            >= 3,
             "LEVEL_5": member.current_level >= 5,
         }
 
         for ma_badge, passed in conditions.items():
             if not passed:
                 continue
-            if MemberBadge.objects.filter(member=member, badge__ma_badge=ma_badge).exists():
+            if cls._repo().member_has_badge(member, ma_badge):
                 continue  # đã mở → bỏ qua (không nhân đôi)
             badge = cls._ensure_badge(ma_badge)
-            _mb, created = MemberBadge.objects.get_or_create(member=member, badge=badge)
+            _mb, created = cls._repo().get_or_create_member_badge(member, badge)
             if created:
                 newly_unlocked.append(badge.ten_badge)
 
         return newly_unlocked
+
+    @classmethod
+    def list_badges_with_status(cls, profile: Optional[MemberProfile]) -> dict:
+        """
+        Danh mục badge toàn hệ thống + flag `unlocked` của user (dời từ
+        BadgeListView.get — View chỉ còn gọi Service và bọc envelope).
+
+        Args:
+            profile: hồ sơ của user hiện tại (có thể None → mọi badge khóa).
+
+        Returns:
+            {"items": [badge serializer data + unlocked], "unlocked": [ma_badge]}
+        """
+        unlocked_ids: set[int] = set()
+        if profile is not None:
+            # Một query duy nhất cho MemberBadge của user
+            unlocked_ids = cls._repo().get_unlocked_badge_ids(profile)
+
+        items: list[dict] = []
+        unlocked: list[str] = []
+        for badge in cls._repo().list_all_badges():
+            is_unlocked = badge.pk in unlocked_ids
+            item = BadgeSerializer(badge).data
+            item["unlocked"] = is_unlocked
+            items.append(item)
+            if is_unlocked:
+                unlocked.append(badge.ma_badge)
+
+        return {"items": items, "unlocked": unlocked}
 
 
 # ----------------------------------------------------------------------
@@ -241,6 +281,15 @@ class BadgeService:
 # ----------------------------------------------------------------------
 class GamificationService:
     """Nghiệp vụ cộng XP (Server-Authoritative) và widget nhiệm vụ tuần."""
+
+    _repository_class: ClassVar[type[IGamificationRepository]] = (
+        DjangoGamificationRepository
+    )
+
+    @classmethod
+    def _repo(cls) -> IGamificationRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     # Ánh xạ source nghiệp vụ → giá trị hợp lệ của XpLedger.Source
     _LEDGER_SOURCE_MAP: ClassVar[dict[str, str]] = {
@@ -291,12 +340,10 @@ class GamificationService:
 
         with transaction.atomic():
             # Bước 0 — khóa bi hồ sơ để chống cộng song song (race condition)
-            member = MemberProfile.objects.select_for_update().get(pk=member.pk)
+            member = cls._repo().lock_member_profile(member.pk)
 
             # Bước 2 — Idempotency chống cộng lặp
-            if idempotency_key and XpLedger.objects.filter(
-                idempotency_key=idempotency_key
-            ).exists():
+            if idempotency_key and cls._repo().exists_idempotency_key(idempotency_key):
                 return {
                     "awarded": False,
                     "xp_gained": 0,
@@ -338,7 +385,7 @@ class GamificationService:
                 actual_amount = amount
 
             # Bước 5 — ghi sổ + cập nhật hồ sơ
-            XpLedger.objects.create(
+            cls._repo().create_ledger_entry(
                 member=member,
                 amount=actual_amount,
                 reason=reason,
@@ -360,21 +407,16 @@ class GamificationService:
                 "message": f"Đã cộng {actual_amount} XP",
             }
 
-    @staticmethod
-    def _xp_used_today(member: MemberProfile) -> int:
+    @classmethod
+    def _xp_used_today(cls, member: MemberProfile) -> int:
         """Tổng XP dương đã nhận hôm nay (múi giờ địa phương) từ XpLedger.
 
+        Aggregate (Coalesce/Sum) nằm trong repository (`sum_positive_xp_between`).
         Dùng range datetime thay vì `__date` — di động đa CSDL (xem
         apps/common/timeutils.py: MySQL không cần bảng timezone).
         """
         day_start, day_end = local_day_range(timezone.localdate())
-        result = XpLedger.objects.filter(
-            member=member,
-            amount__gt=0,
-            created_at__gte=day_start,
-            created_at__lt=day_end,
-        ).aggregate(total=Coalesce(Sum("amount"), Value(0)))
-        return int(result["total"] or 0)
+        return cls._repo().sum_positive_xp_between(member, day_start, day_end)
 
     @classmethod
     def get_weekly_quests(cls, member: MemberProfile) -> dict:
@@ -387,28 +429,17 @@ class GamificationService:
         """
         today = timezone.localdate()
         monday = today - timedelta(days=today.weekday())
+        week_start: datetime = local_day_start(monday)
 
-        ledger_this_week = XpLedger.objects.filter(
-            member=member,
-            created_at__gte=local_day_start(monday),
+        repo = cls._repo()
+        xp_this_week: int = repo.sum_xp_since(member, week_start)
+        attendance_count: int = repo.count_attended_records_since(member, week_start)
+        document_shared: int = repo.count_ledger_entries(
+            member, source=XpLedger.Source.DOCUMENT_SHARE, since_dt=week_start
         )
-        xp_this_week: int = int(
-            ledger_this_week.aggregate(total=Coalesce(Sum("amount"), Value(0)))["total"] or 0
+        task_completed: int = repo.count_ledger_entries(
+            member, source=XpLedger.Source.TASK_COMPLETION, since_dt=week_start
         )
-        attendance_count: int = AttendanceRecord.objects.filter(
-            member=member,
-            trang_thai__in=[
-                AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
-                AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
-            ],
-            created_at__gte=local_day_start(monday),
-        ).count()
-        document_shared: int = ledger_this_week.filter(
-            source=XpLedger.Source.DOCUMENT_SHARE
-        ).count()
-        task_completed: int = ledger_this_week.filter(
-            source=XpLedger.Source.TASK_COMPLETION
-        ).count()
 
         return {
             "week_start": monday.isoformat(),
@@ -427,6 +458,15 @@ class LeaderboardService:
 
     TOP_K: Final[int] = 10
 
+    _repository_class: ClassVar[type[IGamificationRepository]] = (
+        DjangoGamificationRepository
+    )
+
+    @classmethod
+    def _repo(cls) -> IGamificationRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
+
     @classmethod
     def get_leaderboard(cls, member_profile: Optional[MemberProfile] = None) -> dict:
         """
@@ -438,13 +478,6 @@ class LeaderboardService:
         Returns:
             {"top_10": [...], "my_position": {...}|None, "total_members": int}
         """
-        active_profiles = (
-            MemberProfile.objects.filter(
-                trang_thai_hd=MemberProfile.TrangThai.ACTIVE,
-            )
-            .select_related("user")
-            .order_by("-xp_points", "ho_ten")
-        )
         members: list[dict[str, Any]] = [
             {
                 "id": profile.pk,
@@ -452,7 +485,7 @@ class LeaderboardService:
                 "name": profile.ho_ten,
                 "avatar": profile.avatar or "",
             }
-            for profile in active_profiles
+            for profile in cls._repo().get_active_profiles_ordered()
         ]
 
         engine = LeaderboardEngine(top_k=cls.TOP_K)

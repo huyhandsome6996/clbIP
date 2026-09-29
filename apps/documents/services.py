@@ -8,18 +8,22 @@ Toàn bộ nghiệp vụ Kho Tài liệu nằm tại đây (Clean Architecture �
     - DocumentService.increment_download: Đếm lượt tải atomic (F expression).
     - DocumentService.delete_document: Phân quyền xóa + dọn file vật lý.
 
+Truy vấn CSDL được ủy quyền cho `IDocumentRepository` (Repository Pattern — DIP):
+Service chỉ orchestration nghiệp vụ, KHÔNG đụng ORM trực tiếp. DI qua
+`_repository_class` + `_repo()` (giống `FundService`).
+
 KHÔNG viết logic trong views.py — view chỉ là controller mỏng.
 """
 import logging
 import os
 import uuid
-from typing import Iterable, List, Optional
+from typing import ClassVar, Iterable, List, Optional
 
 from django.conf import settings
-from django.db.models import F
 
 from apps.common.exceptions import FileValidationException, ForbiddenException, NotFoundException
 from apps.documents.models import Document
+from apps.documents.repositories import IDocumentRepository, DjangoDocumentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +67,14 @@ class DocumentService:
         ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }
+
+    # Repository Pattern (DIP): truy vấn CSDL ủy quyền cho IDocumentRepository
+    _repository_class: ClassVar[type[IDocumentRepository]] = DjangoDocumentRepository
+
+    @classmethod
+    def _repo(cls) -> IDocumentRepository:
+        """Factory method cho repository — cho phép DI khi unit test."""
+        return cls._repository_class()
 
     # ==================================================================
     # Tầng kiểm tra tệp (4 tầng hardening)
@@ -174,8 +186,8 @@ class DocumentService:
         cls._award_share_xp(user, doc)
         return doc
 
-    @staticmethod
-    def _award_share_xp(user, doc: Document) -> None:
+    @classmethod
+    def _award_share_xp(cls, user, doc: Document) -> None:
         """
         Thưởng XP chia sẻ tài liệu (+100) — HỢP ĐỒNG CHÉO-APP với Agent B.
 
@@ -189,9 +201,7 @@ class DocumentService:
             logger.debug("GamificationService chưa khả dụng — bỏ qua thưởng XP.")
             return
 
-        from apps.members.models import MemberProfile  # noqa: PLC0415
-
-        member: Optional[MemberProfile] = MemberProfile.objects.filter(user=user).first()
+        member = cls._repo().get_member_profile_by_user(user)
         if member is None:
             return  # Không có profile → không cộng XP, upload vẫn OK
 
@@ -226,19 +236,37 @@ class DocumentService:
             doc.file.delete(save=False)
         except Exception:  # noqa: BLE001 — file có thể đã mất, vẫn xóa record
             logger.warning("Không xóa được file vật lý của doc #%s.", doc_id, exc_info=True)
-        doc.delete()
+        cls._repo().delete_document(doc)
         logger.info("Đã xóa tài liệu #%s bởi %s", doc_id, getattr(actor, "email", "?"))
 
     # ==================================================================
     # Phạm vi truy cập (QA-Audit 2d)
     # ==================================================================
-    @staticmethod
-    def visible_documents(user):
-        """Queryset tài liệu theo phạm vi: MEMBER chỉ thấy PUBLIC_MEMBER."""
-        qs = Document.objects.all()
-        if not getattr(user, "is_bcn", False):
-            qs = qs.filter(pham_vi=Document.PhamVi.PUBLIC_MEMBER)
-        return qs
+    @classmethod
+    def visible_documents(cls, user):
+        """Queryset tài liệu theo phạm vi: MEMBER chỉ thấy PUBLIC_MEMBER (qua Repository)."""
+        return cls._repo().visible_for(user)
+
+    @classmethod
+    def list_documents(
+        cls,
+        user,
+        nhom: Optional[str] = None,
+        search: str = "",
+        sort: str = "-created_at",
+    ):
+        """
+        Danh sách tài liệu cho GET /documents/ — scope pham_vi + select_related
+        + filter nhom/search (icontains parameterized) + sort whitelist.
+
+        Whitelist sort sống ở tầng Repository (nguồn sự thật duy nhất).
+        """
+        return cls._repo().list_documents(user, nhom=nhom, search=search, sort=sort)
+
+    @classmethod
+    def detail_queryset(cls):
+        """Queryset cơ sở cho view chi tiết (select_related) — qua Repository."""
+        return cls._repo().detail_queryset()
 
     @staticmethod
     def can_view(doc: Document, user) -> bool:
@@ -275,12 +303,13 @@ class DocumentService:
         from core.algorithms.trie_search import PrefixSearchTrie  # noqa: PLC0415
 
         # Chỉ index những tài liệu người tìm được phép thấy — không lộ ID
-        queryset = Document.objects.all()
+        scope_filter: Optional[dict] = None
         if user is not None and not getattr(user, "is_bcn", False):
-            queryset = queryset.filter(pham_vi=Document.PhamVi.PUBLIC_MEMBER)
+            scope_filter = {"pham_vi": Document.PhamVi.PUBLIC_MEMBER}
 
+        repo = cls._repo()
         trie = PrefixSearchTrie()
-        for doc in queryset.only("id", "tieu_de", "tags").iterator():
+        for doc in repo.iter_indexable_documents(scope_filter):
             aliases: List[str] = [doc.tieu_de, *doc.tieu_de.split()]
             aliases += [tag.strip() for tag in (doc.tags or "").split(",") if tag.strip()]
             trie.insert_multi(aliases, doc.pk)
@@ -288,27 +317,27 @@ class DocumentService:
         matched_ids: Iterable[int] = trie.search_prefix(q)
         if not matched_ids:
             return []
-        return list(Document.objects.filter(id__in=matched_ids)[:limit])
+        return repo.get_by_ids_ordered(matched_ids, limit)
 
     # ==================================================================
     # Đếm lượt tải — atomic chống race condition
     # ==================================================================
-    @staticmethod
-    def increment_download(doc: Document) -> Document:
+    @classmethod
+    def increment_download(cls, doc: Document) -> Document:
         """
         Tăng lượt tải +1 một cách atomic (F expression) rồi refresh instance.
 
         Returns:
             Document với luot_tai mới nhất.
         """
-        Document.objects.filter(pk=doc.pk).update(luot_tai=F("luot_tai") + 1)
+        cls._repo().increment_download(doc.pk)
         doc.refresh_from_db(fields=["luot_tai"])
         return doc
 
-    @staticmethod
-    def get_or_404(pk: int) -> Document:
+    @classmethod
+    def get_or_404(cls, pk: int) -> Document:
         """Lấy Document theo pk hoặc raise NotFoundException (envelope 404)."""
-        try:
-            return Document.objects.select_related("uploaded_by__member_profile").get(pk=pk)
-        except Document.DoesNotExist as exc:
-            raise NotFoundException("Không tìm thấy tài liệu yêu cầu.") from exc
+        doc = cls._repo().get_by_id_select_related(pk)
+        if doc is None:
+            raise NotFoundException("Không tìm thấy tài liệu yêu cầu.")
+        return doc
