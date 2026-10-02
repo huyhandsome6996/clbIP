@@ -15,6 +15,7 @@ from apps.events.views import (
     EventTaskListCreateView,
     MyTicketsView,
     TaskOrderView,
+    VerifyTicketView,
 )
 
 urlpatterns = [
@@ -35,6 +36,7 @@ urlpatterns = [
         name="event_cancel_registration",
     ),
     path("<int:pk>/registrations/", EventRegistrationListView.as_view(), name="event_registrations"),
+    path("<int:pk>/verify-ticket/", VerifyTicketView.as_view(), name="event_verify_ticket"),
     path("<int:pk>/budget/", BudgetView.as_view(), name="event_budget"),
     path("<int:pk>/communications/", CommunicationView.as_view(), name="event_communications"),
 ]

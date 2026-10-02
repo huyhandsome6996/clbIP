@@ -275,3 +275,12 @@ class EventCommunicationSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_nguoi_phu_trach_ten(self, obj: EventCommunication) -> Optional[str]:
         return obj.nguoi_phu_trach.ho_ten if obj.nguoi_phu_trach_id else None
+
+
+class TicketVerifySerializer(serializers.Serializer):
+    """POST /events/{id}/verify-ticket/ — BCN quét QR vé tại cổng (TASK 3)."""
+
+    ma_ve = serializers.CharField(
+        max_length=32,
+        help_text="Mã vé in trên QR (VD: VE-ABCD1234EFGH).",
+    )

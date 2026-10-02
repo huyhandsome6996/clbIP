@@ -595,3 +595,103 @@ class ServerSideSanitizationTests(EventTestBase):
         self.assertNotIn("<b>", response.data["data"]["ten_hang_muc"])
         self.assertNotIn("<img", response.data["data"]["ten_hang_muc"])
         self.assertIn("Thuê loa", response.data["data"]["ten_hang_muc"])
+
+
+class VerifyTicketTests(EventTestBase):
+    """QA-Audit đợt 3 — TASK 3 (P1): BCN quét/kiểm tra vé QR tại cổng."""
+
+    VERIFY_URL = "/api/v1/events/{pk}/verify-ticket/"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.event = self.make_event(trang_thai="OPEN_REGISTRATION")
+        self.bcn_client = APIClient()
+        self.bcn_client.force_authenticate(user=self.bcn)
+
+    def _register_member(self, user=None):
+        """Đăng ký vé cho member qua service thật (sinh ma_ve chuẩn)."""
+        profile = self.member_profile
+        if user is not None:
+            profile = MemberProfile.objects.get(user=user)
+        return EventService.register_member(self.event.pk, profile)
+
+    def test_bcn_quet_ve_hop_le_200_check_in(self) -> None:
+        """Vé hợp lệ → 200, member_name + trạng thái CHECKED_IN trong DB."""
+        reg = self._register_member()
+        res = self.bcn_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk), {"ma_ve": reg.ma_ve}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.data["success"])
+        self.assertEqual(res.data["data"]["ma_ve"], reg.ma_ve)
+        self.assertEqual(res.data["data"]["member_name"], "Nguyễn Thành Viên")
+        self.assertEqual(res.data["data"]["trang_thai"], "CHECKED_IN")
+        reg.refresh_from_db()
+        self.assertEqual(reg.trang_thai, EventRegistration.TrangThai.CHECKED_IN)
+
+    def test_quet_lan_2_409_da_quet(self) -> None:
+        """Quét 2 lần cùng mã vé → lần 2 bị 409, DB KHÔNG đổi trạng thái thêm."""
+        reg = self._register_member()
+        self.bcn_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk), {"ma_ve": reg.ma_ve}, format="json"
+        )
+        res = self.bcn_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk), {"ma_ve": reg.ma_ve}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("đã được quét", res.data["message"])
+
+    def test_ve_da_huy_400(self) -> None:
+        """Vé bị hủy (CANCELLED) → 400, không thể check-in tại cổng."""
+        reg = self._register_member()
+        reg.trang_thai = EventRegistration.TrangThai.CANCELLED
+        reg.save(update_fields=["trang_thai", "updated_at"])
+
+        res = self.bcn_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk), {"ma_ve": reg.ma_ve}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("đã bị hủy", res.data["message"])
+
+    def test_ma_ve_khong_ton_tai_404(self) -> None:
+        """Mã vé không tồn tại → 404."""
+        res = self.bcn_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk), {"ma_ve": "VE-KHONGTONTAI99"}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_ma_ve_thuoc_su_kien_khac_404(self) -> None:
+        """Vé của sự kiện khác → 404 (không quét chéo sự kiện được)."""
+        other_event = self.make_event(trang_thai="OPEN_REGISTRATION")
+        other_reg = EventService.register_member(
+            other_event.pk, self.member_profile
+        )
+        res = self.bcn_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk), {"ma_ve": other_reg.ma_ve}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_member_thuong_403(self) -> None:
+        """MEMBER thường không được verify vé — chỉ BCN/ADMIN."""
+        reg = self._register_member()
+        member_client = APIClient()
+        member_client.force_authenticate(user=self.member)
+        res = member_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk), {"ma_ve": reg.ma_ve}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_ma_ve_chu_hoa_thuong_van_hop_le(self) -> None:
+        """Nhập tay mã thường/thầy khoảng trắng → service tự chuẩn hóa upper/strip."""
+        reg = self._register_member()
+        res = self.bcn_client.post(
+            self.VERIFY_URL.format(pk=self.event.pk),
+            {"ma_ve": f"  {reg.ma_ve.lower()}  "},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_ma_ve_thieu_400(self) -> None:
+        """Body thiếu ma_ve → 400 (serializer validate)."""
+        res = self.bcn_client.post(self.VERIFY_URL.format(pk=self.event.pk), {}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)

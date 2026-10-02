@@ -22,6 +22,7 @@ from django.utils.crypto import get_random_string
 
 from apps.common.exceptions import (
     CycleDetectedException,
+    DuplicateDataException,
     DuplicateRegistrationException,
     EventFullException,
     EventStatusException,
@@ -250,6 +251,52 @@ class EventService:
             "Member %s hủy vé %s — chỗ được giải phóng", member.id, registration.ma_ve
         )
         return registration
+
+    # ------------------------------------------------------------------
+    # Verify vé tại cổng — quét QR (QA-Audit đợt 3 — TASK 3)
+    # ------------------------------------------------------------------
+    @classmethod
+    def verify_ticket(cls, event_id: int, ma_ve: str) -> dict:
+        """
+        Xác minh vé tại cổng sự kiện — BCN quét QR hoặc nhập tay.
+
+        - Không tìm thấy (hoặc vé thuộc sự kiện khác) → 404.
+        - Vé đã hủy → 400.
+        - Vé đã check-in → 409 (DuplicateDataException) — quét 2 lần không
+          ghi đè lần đầu (idempotent-safe).
+        - Hợp lệ → chuyển CHECKED_IN (khóa BI — 2 lần quét song song cùng
+          mã vé chỉ 1 lần được vào) và trả thông tin thành viên để hiển thị.
+
+        Returns:
+            dict: {member_name, ma_ve, checked_in_at, trang_thai}.
+        """
+        ma_ve = (ma_ve or "").strip().upper()
+        with transaction.atomic():
+            reg = cls._repo().get_registration_by_ma_ve(event_id, ma_ve, for_update=True)
+            if reg is None:
+                raise NotFoundException("Mã vé không hợp lệ hoặc không thuộc sự kiện này.")
+            if reg.trang_thai == EventRegistration.TrangThai.CANCELLED:
+                raise ValidationException("Vé này đã bị hủy.")
+            if reg.trang_thai == EventRegistration.TrangThai.CHECKED_IN:
+                raise DuplicateDataException(
+                    "Vé này đã được quét rồi — thành viên đã vào cổng."
+                )
+
+            reg.trang_thai = EventRegistration.TrangThai.CHECKED_IN
+            reg.save(update_fields=["trang_thai", "updated_at"])
+
+        logger.info(
+            "Verify vé %s tại sự kiện #%s — CHECKED_IN (%s)",
+            ma_ve,
+            event_id,
+            reg.member.ho_ten,
+        )
+        return {
+            "member_name": reg.member.ho_ten,
+            "ma_ve": reg.ma_ve,
+            "checked_in_at": reg.updated_at,
+            "trang_thai": reg.trang_thai,
+        }
 
     # ------------------------------------------------------------------
     # Tra cứu

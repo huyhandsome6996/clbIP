@@ -22,6 +22,7 @@ from apps.events.serializers import (
     EventCommunicationSerializer,
     EventRegistrationSerializer,
     EventTaskSerializer,
+    TicketVerifySerializer,
 )
 from apps.events.services import EventService, EventTaskService
 from core.pagination import StandardPagination
@@ -516,4 +517,34 @@ class CommunicationView(APIView):
                 "errors": None,
             },
             status=status.HTTP_201_CREATED,
+        )
+
+
+class VerifyTicketView(APIView):
+    """POST /api/v1/events/{pk}/verify-ticket/ — quét/kiểm tra vé tại cổng."""
+
+    permission_classes = [IsBCNOrAdmin]
+
+    @extend_schema(
+        tags=["Events"],
+        summary="Xác minh vé tại cổng sự kiện (BCN)",
+        description=(
+            "BCN quét QR hoặc nhập tay mã vé → check-in thành viên. "
+            "404 = vé không tồn tại/không thuộc sự kiện; 400 = vé đã hủy; "
+            "409 = vé đã quét trước đó. Kèm mã vé trong body."
+        ),
+        request=TicketVerifySerializer,
+        responses={200: None, 400: None, 404: None, 409: None},
+    )
+    def post(self, request, pk: int) -> Response:
+        serializer = TicketVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = EventService.verify_ticket(pk, serializer.validated_data["ma_ve"])
+        return Response(
+            {
+                "success": True,
+                "data": result,
+                "message": f"Đã xác nhận — {result['member_name']} vào cổng.",
+                "errors": None,
+            }
         )

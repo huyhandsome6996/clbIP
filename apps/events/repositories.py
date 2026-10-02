@@ -87,6 +87,12 @@ class IEventRepository(ABC):
         """Vé của member VỚI KHÓA BI + kèm event (hủy vé an toàn dưới race)."""
 
     @abstractmethod
+    def get_registration_by_ma_ve(
+        self, event_id: int, ma_ve: str, for_update: bool = False
+    ) -> Optional[EventRegistration]:
+        """Tìm vé theo mã vé (quét QR tại cổng) — tùy chọn khóa BI."""
+
+    @abstractmethod
     def count_active_registrations(self, event: ActivityEvent) -> int:
         """Số vé đang hiệu lực của sự kiện (loại trừ CANCELLED) — chặn oversell."""
 
@@ -263,6 +269,23 @@ class DjangoEventRepository(IEventRepository):
     def get_registration(self, event: ActivityEvent, member) -> Optional[EventRegistration]:
         """Vé của `member` tại `event` — None nếu chưa từng đăng ký."""
         return EventRegistration.objects.filter(event=event, member=member).first()
+
+    def get_registration_by_ma_ve(
+        self, event_id: int, ma_ve: str, for_update: bool = False
+    ) -> Optional[EventRegistration]:
+        """
+        Tìm vé theo (event_id, ma_ve) — dùng khi BCN quét QR tại cổng
+        (QA-Audit đợt 3 — TASK 3). Kèm `member` để trả tên ngay không N+1.
+
+        with for_update=True: khóa BI dòng vé — 2 lần quét song song cùng mã
+        vé phải tuần tự hóa, chỉ 1 lần được check-in.
+        """
+        qs = EventRegistration.objects.filter(event_id=event_id, ma_ve=ma_ve).select_related(
+            "member", "event"
+        )
+        if for_update:
+            qs = qs.select_for_update()
+        return qs.first()
 
     def get_registration_for_update(self, event_id: int, member) -> Optional[EventRegistration]:
         """
