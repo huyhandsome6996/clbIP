@@ -157,3 +157,124 @@ class StorageResolverTests(TestCase):
         cfg = resolve_default_storage({"USE_S3": "1"})
         self.assertEqual(cfg["BACKEND"], "storages.backends.s3.S3Storage")
         self.assertEqual(cfg["OPTIONS"]["bucket_name"], "")
+
+
+# --- imports bổ sung cho TrendStatsTests (TASK 4) ---
+from datetime import datetime, timedelta
+
+from django.core.cache import cache
+from django.utils import timezone
+
+from apps.attendance.models import AttendanceRecord, AttendanceSession
+from apps.members.models import MemberProfile
+from rest_framework.test import APIClient
+
+
+class TrendStatsTests(TestCase):
+    """QA-Audit đợt 3 — TASK 4 (P1): GET /api/v1/common/stats/trend/."""
+
+    def setUp(self) -> None:
+        from rest_framework.test import APIClient
+
+        cache.clear()
+        self.client = APIClient()
+        self.bcn = User.objects.create_user(
+            email="trend-bcn@clb.vn", password="TestPass123!", role="BCN"
+        )
+        self.member = User.objects.create_user(
+            email="trend-member@clb.vn", password="TestPass123!", role="MEMBER"
+        )
+        self.member_profile = MemberProfile.objects.create(
+            user=self.member, ho_ten="Thành Viên Trend"
+        )
+        self.client.force_authenticate(user=self.bcn)
+
+    def _make_fund_transaction(self, loai_gd: str, so_tien: int, ngay_gd) -> None:
+        FundTransaction.objects.create(
+            ma_phieu=f"PT{so_tien}{abs(hash((loai_gd, ngay_gd.isoformat()))) % 10**6:06d}",
+            loai_gd=loai_gd,
+            so_tien=so_tien,
+            ngay_gd=ngay_gd,
+            nguoi_thuc_hien="Tester",
+        )
+
+    def _make_attendance(self, mo_phien_at, trang_thai: str) -> None:
+        # mo_phien_at là auto_now_add → phải update sau khi tạo để đặt giá trị
+        session = AttendanceSession.objects.create(
+            ten_phien=f"Phiên {trang_thai} {mo_phien_at:%Y%m%d%H%M%S}",
+            vi_do=16.4637,
+            kinh_do=107.5909,
+        )
+        AttendanceSession.objects.filter(pk=session.pk).update(mo_phien_at=mo_phien_at)
+        AttendanceRecord.objects.create(
+            session=session, member=self.member_profile, trang_thai=trang_thai
+        )
+
+    def test_member_ban_quyen_403(self) -> None:
+        """MEMBER thường → 403 (endpoint chỉ BCN/ADMIN)."""
+        client = APIClient()
+        client.force_authenticate(user=self.member)
+        res = client.get("/api/v1/common/stats/trend/")
+        self.assertEqual(res.status_code, 403)
+
+    def test_chua_auth_401(self) -> None:
+        client = APIClient()
+        res = client.get("/api/v1/common/stats/trend/")
+        self.assertEqual(res.status_code, 401)
+
+    def test_rong_tra_mang_rong(self) -> None:
+        """Chưa có dữ liệu → 200 với 2 mảng rỗng (frontend vẽ empty state)."""
+        res = self.client.get("/api/v1/common/stats/trend/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["data"]["fund_trend"], [])
+        self.assertEqual(res.data["data"]["attendance_trend"], [])
+
+    def test_fund_trend_group_by_thang(self) -> None:
+        """2 tháng giao dịch thu/chi → đúng tổng theo từng tháng, tháng tăng dần."""
+        tz = timezone.get_current_timezone()
+        # months=12 để bao trọn dữ liệu cố định ở dưới (tránh phụ thuộc ngày chạy test)
+        self._make_fund_transaction("THU", 1_500_000, datetime(2026, 4, 10, 9, 0, tzinfo=tz))
+        self._make_fund_transaction("CHI", 800_000, datetime(2026, 4, 20, 10, 0, tzinfo=tz))
+        self._make_fund_transaction("THU", 2_000_000, datetime(2026, 5, 5, 9, 0, tzinfo=tz))
+
+        res = self.client.get("/api/v1/common/stats/trend/?months=12")
+        self.assertEqual(res.status_code, 200)
+        fund = res.data["data"]["fund_trend"]
+        by_month = {row["month"]: row for row in fund}
+        self.assertEqual(by_month["2026-04"]["thu"], 1_500_000)
+        self.assertEqual(by_month["2026-04"]["chi"], 800_000)
+        self.assertEqual(by_month["2026-05"]["thu"], 2_000_000)
+        self.assertEqual(by_month["2026-05"]["chi"], 0)
+        months = [row["month"] for row in fund]
+        self.assertEqual(months, sorted(months))
+
+    def test_attendance_trend_rate_theo_tuan(self) -> None:
+        """2 phiên trong cùng tuần (3 có mặt + 1 vắng) → rate = 0.75."""
+        tz = timezone.get_current_timezone()
+        # Thứ 2 và thứ 5 cùng một tuần ISO
+        monday = datetime(2026, 9, 14, 8, 0, tzinfo=tz)   # 2026-W38
+        thursday = datetime(2026, 9, 17, 8, 0, tzinfo=tz)  # 2026-W38
+        self._make_attendance(monday, "CO_MAT")
+        self._make_attendance(monday + timedelta(hours=1), "CO_MAT")
+        self._make_attendance(thursday, "CO_MAT")
+        self._make_attendance(thursday + timedelta(hours=1), "VANG")
+
+        res = self.client.get("/api/v1/common/stats/trend/?months=12")
+        att = res.data["data"]["attendance_trend"]
+        self.assertEqual(len(att), 1)
+        iso = monday.isocalendar()  # tuần mong đợi tính ĐỘNG từ dữ liệu test
+        self.assertEqual(att[0]["week"], f"{iso.year}-W{iso.week:02d}")
+        self.assertAlmostEqual(att[0]["rate"], 0.75, places=3)
+
+    def test_months_khong_hop_le_400(self) -> None:
+        res = self.client.get("/api/v1/common/stats/trend/?months=abc")
+        self.assertEqual(res.status_code, 400)
+        res = self.client.get("/api/v1/common/stats/trend/?months=0")
+        self.assertEqual(res.status_code, 400)
+        res = self.client.get("/api/v1/common/stats/trend/?months=13")
+        self.assertEqual(res.status_code, 400)
+
+    def test_months_mac_dinh_6(self) -> None:
+        """Không truyền months → mặc định 6 (vẫn 200)."""
+        res = self.client.get("/api/v1/common/stats/trend/")
+        self.assertEqual(res.status_code, 200)

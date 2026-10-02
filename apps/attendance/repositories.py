@@ -87,6 +87,14 @@ class IAttendanceRepository(ABC):
     def mark_event_registrations_checked_in(self, event_id: int, member: MemberProfile) -> int:
         """Vé sự kiện của member → CHECKED_IN (trả về số dòng cập nhật)."""
 
+    @abstractmethod
+    def aggregate_weekly_attendance(self, since_dt) -> list:
+        """
+        Tỉ lệ chuyên cần GROUP BY tuần từ `since_dt` — dữ liệu biểu đồ trend
+        dashboard BCN (QA-Audit đợt 3 — TASK 4).
+        Trả list [{"week": "YYYY-Wnn", "rate": float 0..1}] tăng dần theo tuần.
+        """
+
 
 class DjangoAttendanceRepository(IAttendanceRepository):
     """Triển khai cụ thể bằng Django ORM cho `IAttendanceRepository`."""
@@ -217,3 +225,42 @@ class DjangoAttendanceRepository(IAttendanceRepository):
         from apps.events.repositories import DjangoEventRepository  # noqa: PLC0415
 
         return DjangoEventRepository().mark_registrations_checked_in(event_id, member)
+
+    def aggregate_weekly_attendance(self, since_dt) -> list:
+        """
+        Tỉ lệ chuyên cần GROUP BY tuần (theo thời điểm MỞ PHIỂN) từ `since_dt` —
+        dữ liệu biểu đồ "Chuyên cần hàng tuần" trên dashboard BCN (TASK 4).
+
+        Chuyên cần = (CO_MAT + DI_MUON) / tổng bản ghi trong tuần — đi muộn
+        vẫn tính là đã đến; CO_PHEP/VANG không tính là chuyên cần.
+
+        PORTABLE TIME (apps/common/timeutils): KHÔNG dùng TruncWeek — lookup
+        timezone của MySQL phụ thuộc bảng tz của DB. Lọc bằng khoảng datetime
+        + nhóm tuần ISO trong Python — chạy đúng trên mọi CSDL.
+        Trả list [{"week": "YYYY-Wnn", "rate": float 0..1}] tăng dần theo tuần.
+        """
+        from django.utils import timezone  # noqa: PLC0415
+
+        rows = (
+            AttendanceRecord.objects.filter(session__mo_phien_at__gte=since_dt)
+            .values_list("session__mo_phien_at", "trang_thai")
+        )
+        buckets: dict = {}
+        for mo_phien_at, trang_thai in rows:
+            local_dt = timezone.localtime(mo_phien_at)
+            iso = local_dt.isocalendar()
+            key = f"{iso.year}-W{iso.week:02d}"
+            stat = buckets.setdefault(key, {"total": 0, "present": 0})
+            stat["total"] += 1
+            if trang_thai in (
+                AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
+                AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
+            ):
+                stat["present"] += 1
+        return [
+            {
+                "week": key,
+                "rate": round(stat["present"] / stat["total"], 4) if stat["total"] else 0.0,
+            }
+            for key, stat in sorted(buckets.items())
+        ]

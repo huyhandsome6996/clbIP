@@ -79,6 +79,14 @@ class IFundRepository(ABC):
     def get_period_locks(self) -> QuerySet[FundPeriodLock]:
         """Danh sách toàn bộ kỳ đã khóa sổ (theo ordering mặc định của model)."""
 
+    @abstractmethod
+    def aggregate_monthly_thu_chi(self, since_dt) -> list:
+        """
+        Tổng thu/chi GROUP BY tháng (TruncMonth ngay_gd) từ `since_dt` —
+        dữ liệu biểu đồ trend dashboard BCN (QA-Audit đợt 3 — TASK 4).
+        Trả list [{"month": "YYYY-MM", "thu": int, "chi": int}] tăng dần theo tháng.
+        """
+
 
 class DjangoFundRepository(IFundRepository):
     """Triển khai cụ thể bằng Django ORM cho `IFundRepository`."""
@@ -169,3 +177,32 @@ class DjangoFundRepository(IFundRepository):
     def get_period_locks(self) -> QuerySet[FundPeriodLock]:
         """Toàn bộ kỳ khóa sổ — sắp theo Meta.ordering của model (-tu_ngay)."""
         return FundPeriodLock.objects.all()
+
+    def aggregate_monthly_thu_chi(self, since_dt) -> list:
+        """
+        Tổng thu/chi GROUP BY tháng — dùng cho biểu đồ "Xu hướng tài chính"
+        trên dashboard BCN (TASK 4).
+
+        PORTABLE TIME (apps/common/timeutils): KHÔNG dùng TruncMonth vì
+        lookup timezone của MySQL phụ thuộc bảng tz của DB (MariaDB
+        user-space thường không có). Lọc bằng khoảng datetime + nhóm theo
+        tháng LOCAL trong Python — chạy đúng trên mọi CSDL. Số dòng trong
+        cửa sổ vài tháng thuộc cỡ nhỏ (CLB), group Python là đủ.
+        """
+        from django.utils import timezone  # noqa: PLC0415
+
+        rows = (
+            FundTransaction.objects.filter(ngay_gd__gte=since_dt)
+            .values_list("ngay_gd", "loai_gd", "so_tien")
+            .order_by("ngay_gd")
+        )
+        buckets: dict = {}
+        for ngay_gd, loai_gd, so_tien in rows:
+            local_dt = timezone.localtime(ngay_gd)
+            key = f"{local_dt:%Y-%m}"
+            bucket = buckets.setdefault(key, {"month": key, "thu": 0, "chi": 0})
+            if loai_gd == FundTransaction.LoaiGiaoDich.THU:
+                bucket["thu"] += so_tien
+            elif loai_gd == FundTransaction.LoaiGiaoDich.CHI:
+                bucket["chi"] += so_tien
+        return [buckets[key] for key in sorted(buckets)]

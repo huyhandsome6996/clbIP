@@ -79,6 +79,7 @@ urlpatterns = [
     path("api/v1/documents/", include("apps.documents.urls")),
     path("api/v1/", include("apps.posts.urls")),  # posts/, feedback/, polls/
     path("api/", include("apps.common.urls")),    # health check
+    path("api/v1/common/", include("apps.common.urls_v1")),  # stats trend (TASK 4)
 ]
 
 # Phục vụ file /media/ CHỈ khi dev (quy ước Django): preview PDF frontend
