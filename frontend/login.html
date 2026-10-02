@@ -95,6 +95,106 @@
     .alert-box svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
     .alert-error { background: var(--c-danger-soft); color: #991B1B; }
     .alert-info  { background: var(--c-info-soft);    color: #075985; }
+
+    /* ===== Quên mật khẩu: link + modal 3 bước (glass, đồng bộ login) ===== */
+    .forgot-row { text-align: center; margin-top: var(--s-3); }
+    .forgot-link {
+      background: none; border: 0; padding: 2px 4px;
+      color: #A5B4FC; font-size: var(--text-sm); font-weight: 600;
+      cursor: pointer; border-radius: 6px;
+      transition: color var(--dur-fast) var(--ease-out);
+    }
+    .forgot-link:hover { color: #C7D2FE; text-decoration: underline; }
+
+    .pw-backdrop {
+      position: fixed; inset: 0; z-index: var(--z-modal);
+      display: flex; align-items: center; justify-content: center;
+      padding: var(--s-4);
+      background: rgba(5, 10, 26, 0.62);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      animation: fadeIn var(--dur-base) var(--ease-out);
+    }
+    .pw-card {
+      width: 100%;
+      max-width: 420px;
+      max-height: min(90dvh, 640px);
+      overflow-y: auto;
+      padding: var(--s-6);
+      animation: slideUp var(--dur-base) var(--ease-out);
+    }
+    .pw-head {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: var(--s-3);
+    }
+    .pw-head h2 { font-size: var(--text-xl); font-weight: 800; letter-spacing: -0.01em; }
+    .pw-sub { color: var(--tx-muted); font-size: var(--text-sm); margin-top: 2px; }
+    .pw-steps {
+      display: flex; align-items: center; gap: var(--s-2);
+      margin: var(--s-4) 0 var(--s-5);
+    }
+    .pw-chip {
+      display: inline-flex; align-items: center;
+      font-size: var(--text-xs); font-weight: 700;
+      color: var(--tx-muted);
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      white-space: nowrap;
+      transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+    }
+    .pw-chip.active { color: #C7D2FE; background: var(--c-accent-soft); border-color: rgba(99, 102, 241, 0.45); }
+    .pw-chip.done   { color: #7EE2A0; background: rgba(22, 163, 74, 0.16); border-color: rgba(22, 163, 74, 0.40); }
+    .pw-step-arrow { display: flex; color: var(--tx-muted); opacity: 0.7; flex: none; }
+    .pw-step-arrow svg { width: 12px; height: 12px; }
+    .pw-note {
+      font-size: var(--text-sm); color: var(--tx-secondary);
+      line-height: 1.5; margin-bottom: var(--s-3);
+    }
+    .pw-note strong { color: var(--tx-primary); font-weight: 700; overflow-wrap: anywhere; }
+    .pw-otp-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--s-2); flex-wrap: wrap;
+      margin-bottom: var(--s-4);
+    }
+    .pw-countdown {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: var(--text-xs); font-weight: 700; color: #A5B4FC;
+      font-variant-numeric: tabular-nums;
+    }
+    .pw-countdown svg { width: 13px; height: 13px; flex: none; }
+    .pw-countdown.expired { color: #FCA5A5; }
+    .pw-countdown .pw-clock { display: inline-flex; }
+    .pw-resend {
+      background: none; border: 0; padding: 2px 4px;
+      color: #A5B4FC; font-size: var(--text-xs); font-weight: 700;
+      cursor: pointer; border-radius: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .pw-resend:disabled { color: var(--tx-muted); cursor: not-allowed; opacity: 0.7; }
+    .pw-resend:not(:disabled):hover { text-decoration: underline; }
+    .pw-otp-input {
+      font-family: var(--font-mono);
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      letter-spacing: 0.55em;
+      text-align: center;
+      padding-left: calc(14px + 0.55em); /* cân trailing letter-spacing */
+    }
+    .pw-back-link {
+      display: block; margin: var(--s-3) auto 0;
+      background: none; border: 0; padding: 2px 4px;
+      color: var(--tx-muted); font-size: var(--text-xs); font-weight: 600;
+      cursor: pointer; border-radius: 6px;
+    }
+    .pw-back-link:hover { color: var(--tx-secondary); text-decoration: underline; }
+
+    @media (max-width: 480px) {
+      .pw-card { padding: var(--s-5) var(--s-4); }
+      .pw-steps { flex-wrap: wrap; row-gap: var(--s-1); }
+    }
+
     @media (max-width: 900px) {
       .login-shell { grid-template-columns: 1fr; }
       .login-brand { padding: var(--s-10) var(--s-6) var(--s-8); }
@@ -168,10 +268,98 @@
           <button type="submit" class="btn btn-primary btn-lg btn-block" id="btn-login" style="margin-top: var(--s-2);">
             Đăng nhập
           </button>
+
+          <div class="forgot-row">
+            <button type="button" class="forgot-link" id="link-forgot">Quên mật khẩu?</button>
+          </div>
         </form>
       </div>
     </section>
   </main>
+
+  <!-- ===== Modal: Quên mật khẩu (3 bước: email → OTP → mật khẩu mới) ===== -->
+  <div id="pw-modal" class="pw-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="pw-modal-title">
+    <div class="pw-card glass glass-strong">
+      <div class="pw-head">
+        <div>
+          <h2 id="pw-modal-title">Quên mật khẩu</h2>
+          <p class="pw-sub" id="pw-modal-sub">Nhập email CLB để nhận mã OTP đặt lại mật khẩu.</p>
+        </div>
+        <button type="button" class="modal-close" id="pw-modal-close" aria-label="Đóng">
+          <span id="pw-modal-close-icon"></span>
+        </button>
+      </div>
+
+      <div class="pw-steps" aria-hidden="true">
+        <span class="pw-chip active" id="pw-chip-1">1 · Email</span>
+        <span class="pw-step-arrow" id="pw-arrow-1"></span>
+        <span class="pw-chip" id="pw-chip-2">2 · Mã OTP</span>
+        <span class="pw-step-arrow" id="pw-arrow-2"></span>
+        <span class="pw-chip" id="pw-chip-3">3 · Mật khẩu</span>
+      </div>
+
+      <!-- Bước 1: gửi OTP theo email -->
+      <form id="pw-form-email" class="pw-step" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="pw-email">Email <span class="req">*</span></label>
+          <input class="form-input" type="email" id="pw-email" name="pw-email"
+                 autocomplete="email" placeholder="ten@clbip.vn" required>
+          <p class="form-error hidden" id="pw-email-error"></p>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="pw-btn-send">Gửi mã OTP</button>
+      </form>
+
+      <!-- Bước 2: xác minh OTP -->
+      <form id="pw-form-otp" class="pw-step hidden" novalidate>
+        <p class="pw-note">Mã OTP đã được gửi tới <strong id="pw-email-shown"></strong>. Nếu không thấy, hãy kiểm tra cả hộp thư rác.</p>
+        <div class="pw-otp-meta">
+          <span class="pw-countdown" id="pw-otp-countdown-wrap">
+            <span class="pw-clock" id="pw-otp-clock-icon"></span>
+            Hiệu lực còn <span id="pw-otp-countdown">10:00</span>
+          </span>
+          <button type="button" class="pw-resend" id="pw-btn-resend" disabled>Gửi lại mã</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pw-otp">Mã OTP <span class="req">*</span></label>
+          <input class="form-input pw-otp-input" type="text" id="pw-otp" name="pw-otp"
+                 inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                 placeholder="••••••" required>
+          <p class="form-error hidden" id="pw-otp-expired">Mã OTP đã hết hạn. Vui lòng gửi lại mã.</p>
+          <p class="form-error hidden" id="pw-otp-error"></p>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="pw-btn-verify">Xác minh OTP</button>
+        <button type="button" class="pw-back-link" id="pw-link-back">← Dùng email khác</button>
+      </form>
+
+      <!-- Bước 3: đặt mật khẩu mới -->
+      <form id="pw-form-confirm" class="pw-step hidden" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="pw-newpw">Mật khẩu mới <span class="req">*</span></label>
+          <div class="input-wrap">
+            <input class="form-input" type="password" id="pw-newpw" name="pw-newpw"
+                   autocomplete="new-password" placeholder="Tối thiểu 8 ký tự" required>
+            <button type="button" class="input-trailing" id="pw-toggle-new" aria-label="Hiện mật khẩu">
+              <span id="pw-toggle-new-icon"></span>
+            </button>
+          </div>
+          <p class="form-hint">Tối thiểu 8 ký tự, nên gồm cả chữ cái và số.</p>
+          <p class="form-error hidden" id="pw-newpw-error"></p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pw-confpw">Xác nhận mật khẩu <span class="req">*</span></label>
+          <div class="input-wrap">
+            <input class="form-input" type="password" id="pw-confpw" name="pw-confpw"
+                   autocomplete="new-password" placeholder="Nhập lại mật khẩu mới" required>
+            <button type="button" class="input-trailing" id="pw-toggle-conf" aria-label="Hiện mật khẩu">
+              <span id="pw-toggle-conf-icon"></span>
+            </button>
+          </div>
+          <p class="form-error hidden" id="pw-confpw-error"></p>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="pw-btn-confirm">Đổi mật khẩu</button>
+      </form>
+    </div>
+  </div>
 
   <script src="/frontend/js/api.js"></script>
   <script src="/frontend/js/icons.js"></script>
@@ -258,6 +446,293 @@
           undo();
         }
       });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      "use strict";
+      /* ===== Quên mật khẩu + OTP email — modal 3 bước =====
+         Endpoint AllowAny (không cần token):
+         1) POST /auth/password-reset/request/  {email}                 → luôn 200 (chống enumerate), 429 nếu vượt 3 lần/giờ/IP
+         2) POST /auth/password-reset/verify/   {email, otp}            → 200 data {reset_token} | 400 mã sai/hết hạn
+         3) POST /auth/password-reset/confirm/  {reset_token, new_password, confirm_password} → 200 | 400 */
+
+      const $ = (id) => document.getElementById(id);
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const OTP_TTL = 10 * 60;    // 10:00 — đếm ngược thời gian hiệu lực OTP
+      const RESEND_COOLDOWN = 30; // chống spam "Gửi lại mã"
+
+      const backdrop = $("pw-modal");
+      const emailEl = $("pw-email");
+      const otpEl = $("pw-otp");
+      const newpwEl = $("pw-newpw");
+      const confpwEl = $("pw-confpw");
+
+      let email = "";
+      let resetToken = null; // chỉ giữ trong bộ nhớ tab hiện tại, KHÔNG log ra console
+      let otpTimer = null, otpRemain = 0;
+      let resendTimer = null, resendRemain = 0;
+
+      /* ---------- Icon tĩnh cho các span placeholder ---------- */
+      $("pw-modal-close-icon").innerHTML = Icons.render("x", 20);
+      $("pw-arrow-1").innerHTML = Icons.render("chevron-right", 12);
+      $("pw-arrow-2").innerHTML = Icons.render("chevron-right", 12);
+      $("pw-otp-clock-icon").innerHTML = Icons.render("clock", 13);
+      $("pw-toggle-new-icon").innerHTML = Icons.render("eye", 18);
+      $("pw-toggle-conf-icon").innerHTML = Icons.render("eye", 18);
+
+      /* ---------- Helpers ---------- */
+      function fmtClock(sec) {
+        return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+      }
+      function setErr(inputId, msg) {
+        const errEl = $(inputId + "-error");
+        const input = $(inputId);
+        if (errEl) { errEl.textContent = msg || ""; errEl.classList.toggle("hidden", !msg); }
+        if (input) input.setAttribute("aria-invalid", msg ? "true" : "false");
+      }
+      function clearErrors() {
+        ["pw-email", "pw-otp", "pw-newpw", "pw-confpw"].forEach((id) => setErr(id, ""));
+      }
+      function firstMsg(v) {
+        if (Array.isArray(v)) return v[0] || "";
+        return typeof v === "string" ? v : "";
+      }
+      function showStep(n) {
+        [1, 2, 3].forEach((i) => {
+          $("pw-step-" + i).classList.toggle("hidden", i !== n);
+          $("pw-chip-" + i).classList.toggle("active", i === n);
+          $("pw-chip-" + i).classList.toggle("done", i < n);
+        });
+        const focusMap = { 1: emailEl, 2: otpEl, 3: newpwEl };
+        setTimeout(() => { if (focusMap[n]) focusMap[n].focus(); }, 60);
+      }
+
+      /* ---------- Bộ đếm thời gian OTP ---------- */
+      function stopOtpTimer() { if (otpTimer) { clearInterval(otpTimer); otpTimer = null; } }
+      function stopResendTimer() { if (resendTimer) { clearInterval(resendTimer); resendTimer = null; } }
+
+      function startOtpCountdown() {
+        stopOtpTimer();
+        otpRemain = OTP_TTL;
+        const cd = $("pw-otp-countdown");
+        const wrap = $("pw-otp-countdown-wrap");
+        wrap.classList.remove("expired");
+        $("pw-otp-expired").classList.add("hidden");
+        $("pw-btn-verify").disabled = false;
+        cd.textContent = fmtClock(otpRemain);
+        otpTimer = setInterval(() => {
+          otpRemain -= 1;
+          if (otpRemain <= 0) {
+            stopOtpTimer();
+            cd.textContent = "00:00";
+            wrap.classList.add("expired");
+            $("pw-otp-expired").classList.remove("hidden");
+            $("pw-btn-verify").disabled = true;
+            return;
+          }
+          cd.textContent = fmtClock(otpRemain);
+        }, 1000);
+      }
+
+      function startResendCooldown() {
+        stopResendTimer();
+        resendRemain = RESEND_COOLDOWN;
+        const btn = $("pw-btn-resend");
+        btn.disabled = true;
+        btn.textContent = "Gửi lại mã (" + resendRemain + "s)";
+        resendTimer = setInterval(() => {
+          resendRemain -= 1;
+          if (resendRemain <= 0) {
+            stopResendTimer();
+            btn.disabled = false;
+            btn.textContent = "Gửi lại mã";
+            return;
+          }
+          btn.textContent = "Gửi lại mã (" + resendRemain + "s)";
+        }, 1000);
+      }
+
+      /* ---------- Mở / đóng modal ---------- */
+      function openModal() {
+        email = "";
+        resetToken = null;
+        emailEl.value = "";
+        otpEl.value = "";
+        newpwEl.value = "";
+        confpwEl.value = "";
+        clearErrors();
+        stopOtpTimer();
+        stopResendTimer();
+        $("pw-btn-resend").disabled = true;
+        $("pw-btn-resend").textContent = "Gửi lại mã";
+        $("pw-otp-countdown").textContent = fmtClock(OTP_TTL);
+        $("pw-otp-countdown-wrap").classList.remove("expired");
+        $("pw-otp-expired").classList.add("hidden");
+        $("pw-btn-verify").disabled = false;
+        showStep(1);
+        backdrop.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+      }
+      function closeModal() {
+        backdrop.classList.add("hidden");
+        document.body.style.overflow = "";
+        stopOtpTimer();
+        stopResendTimer();
+        resetToken = null; // không giữ token sau khi đóng
+      }
+
+      /* ---------- Bước 1: gửi / gửi lại OTP ---------- */
+      async function handleSend(isResend) {
+        if (!isResend) {
+          const val = emailEl.value.trim();
+          setErr("pw-email", "");
+          if (!val) { setErr("pw-email", "Vui lòng nhập email."); return; }
+          if (!EMAIL_RE.test(val)) { setErr("pw-email", "Email không đúng định dạng."); return; }
+          email = val;
+        }
+        const btn = isResend ? $("pw-btn-resend") : $("pw-btn-send");
+        // Lưu ý: không dùng Utils.btnLoading cho nút resend — nó bật lại disabled
+        // trong finally, phá trạng thái cooldown 30s đang chạy.
+        let undo = null;
+        if (isResend) {
+          btn.disabled = true;
+          btn.textContent = "Đang gửi lại...";
+        } else {
+          undo = Utils.btnLoading(btn, "Đang gửi mã...");
+        }
+        try {
+          await ApiClient.post("/auth/password-reset/request/", { email });
+          Toast.success("Nếu email tồn tại, mã OTP đã được gửi.", "Kiểm tra email của bạn");
+          $("pw-email-shown").textContent = email;
+          otpEl.value = "";
+          setErr("pw-otp", "");
+          showStep(2);
+          startOtpCountdown();
+          startResendCooldown();
+        } catch (err) {
+          if (isResend) {
+            // Trả lại đúng trạng thái cooldown còn lại khi gửi lại thất bại
+            btn.disabled = resendRemain > 0;
+            btn.textContent = resendRemain > 0 ? "Gửi lại mã (" + resendRemain + "s)" : "Gửi lại mã";
+          }
+          if (err && err.status === 429) {
+            Toast.error(err.message || "Bạn đã yêu cầu mã OTP quá nhiều lần (tối đa 3 lần/giờ). Vui lòng thử lại sau.", "Quá giới hạn");
+          } else {
+            Toast.error((err && err.message) || "Không gửi được mã OTP. Vui lòng thử lại.");
+          }
+        } finally {
+          if (undo) undo();
+        }
+      }
+
+      /* ---------- Bước 2: xác minh OTP ---------- */
+      async function handleVerify() {
+        const otp = otpEl.value.trim();
+        setErr("pw-otp", "");
+        if (!/^\d{6}$/.test(otp)) { setErr("pw-otp", "Vui lòng nhập đủ mã OTP 6 chữ số."); return; }
+        const undo = Utils.btnLoading($("pw-btn-verify"), "Đang xác minh...");
+        try {
+          const data = await ApiClient.post("/auth/password-reset/verify/", { email, otp });
+          resetToken = data && data.reset_token ? String(data.reset_token) : "";
+          if (!resetToken) {
+            Toast.error("Phản hồi từ máy chủ thiếu reset_token. Vui lòng thử lại.");
+            return;
+          }
+          stopOtpTimer();
+          showStep(3);
+          Toast.success("Mã OTP chính xác. Hãy đặt mật khẩu mới cho tài khoản.", "Xác minh thành công");
+        } catch (err) {
+          if (err && err.status === 429) {
+            Toast.error(err.message || "Bạn thử quá nhiều lần. Vui lòng chờ rồi thử lại.", "Quá giới hạn");
+          } else {
+            Toast.error((err && err.message) || "Mã OTP không đúng hoặc đã hết hạn.");
+          }
+        } finally {
+          undo();
+        }
+      }
+
+      /* ---------- Bước 3: đặt mật khẩu mới ---------- */
+      async function handleConfirm() {
+        const p1 = newpwEl.value;
+        const p2 = confpwEl.value;
+        setErr("pw-newpw", "");
+        setErr("pw-confpw", "");
+        let ok = true;
+        if (p1.length < 8) { setErr("pw-newpw", "Mật khẩu tối thiểu 8 ký tự."); ok = false; }
+        if (!p2) { setErr("pw-confpw", "Vui lòng nhập lại mật khẩu."); ok = false; }
+        else if (p2 !== p1) { setErr("pw-confpw", "Mật khẩu nhập lại không khớp."); ok = false; }
+        if (!ok) return;
+
+        const undo = Utils.btnLoading($("pw-btn-confirm"), "Đang đổi mật khẩu...");
+        try {
+          await ApiClient.post("/auth/password-reset/confirm/", {
+            reset_token: resetToken,
+            new_password: p1,
+            confirm_password: p2,
+          });
+          Toast.success("Đổi mật khẩu thành công — hãy đăng nhập lại.");
+          closeModal();
+        } catch (err) {
+          const fe = err && err.errors;
+          const np = fe ? firstMsg(fe.new_password) : "";
+          const cp = fe ? firstMsg(fe.confirm_password) : "";
+          if (np) setErr("pw-newpw", np);
+          if (cp) setErr("pw-confpw", cp);
+          if (!np && !cp) {
+            Toast.error((err && err.message) || "Không đổi được mật khẩu. Vui lòng thử lại.");
+          }
+        } finally {
+          undo();
+        }
+      }
+
+      /* ---------- Gắn sự kiện ---------- */
+      $("link-forgot").addEventListener("click", openModal);
+      $("pw-modal-close").addEventListener("click", closeModal);
+      backdrop.addEventListener("mousedown", (e) => { if (e.target === backdrop) closeModal(); });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !backdrop.classList.contains("hidden")) closeModal();
+      });
+
+      $("pw-form-email").addEventListener("submit", (e) => { e.preventDefault(); handleSend(false); });
+      $("pw-form-otp").addEventListener("submit", (e) => { e.preventDefault(); handleVerify(); });
+      $("pw-form-confirm").addEventListener("submit", (e) => { e.preventDefault(); handleConfirm(); });
+      $("pw-btn-resend").addEventListener("click", () => handleSend(true));
+
+      $("pw-link-back").addEventListener("click", () => {
+        stopOtpTimer();
+        stopResendTimer();
+        $("pw-btn-resend").disabled = true;
+        $("pw-btn-resend").textContent = "Gửi lại mã";
+        $("pw-btn-verify").disabled = false;
+        $("pw-otp-countdown").textContent = fmtClock(OTP_TTL);
+        $("pw-otp-countdown-wrap").classList.remove("expired");
+        $("pw-otp-expired").classList.add("hidden");
+        otpEl.value = "";
+        setErr("pw-otp", "");
+        showStep(1);
+      });
+
+      // OTP: chỉ nhận chữ số, tối đa 6 ký tự
+      otpEl.addEventListener("input", () => {
+        const clean = otpEl.value.replace(/\D/g, "").slice(0, 6);
+        if (clean !== otpEl.value) otpEl.value = clean;
+      });
+
+      // Hiện/ẩn mật khẩu (bước 3)
+      function bindToggle(btnId, iconId, input) {
+        $(btnId).addEventListener("click", () => {
+          const show = input.type === "password";
+          input.type = show ? "text" : "password";
+          $(iconId).innerHTML = Icons.render(show ? "eye-off" : "eye", 18);
+          $(btnId).setAttribute("aria-label", show ? "Ẩn mật khẩu" : "Hiện mật khẩu");
+        });
+      }
+      bindToggle("pw-toggle-new", "pw-toggle-new-icon", newpwEl);
+      bindToggle("pw-toggle-conf", "pw-toggle-conf-icon", confpwEl);
     })();
   </script>
 </body>
