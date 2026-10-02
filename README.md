@@ -152,7 +152,7 @@ localStorage (chuyển sang cookie HttpOnly đòi hỏi đổi toàn bộ `api.j
 FRONTEND_CONTRACT — ngoài phạm vi), bù lại:
 1. CSP nghiêm ngặt chặn script/iframe ngoại vi kể cả khi lọt XSS;
 2. Access token ngắn hạn 30 phút + refresh rotation + blacklist sau rotation;
-3. Mọi dữ liệu động qua `escapeHtml`/`textContent` (đã audit toàn bộ 14 trang).
+3. Mọi dữ liệu động qua `escapeHtml`/`textContent` (đã audit toàn bộ 16 trang).
 
 Lộ trình khuyến nghị: chuyển refresh sang cookie HttpOnly SameSite=Lax trong phiên bản sau.
 

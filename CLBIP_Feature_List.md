@@ -97,7 +97,7 @@
 
 ---
 
-## NHÓM 2 — 46 TÍNH NĂNG MỞ RỘNG
+## NHÓM 2 — 47 TÍNH NĂNG MỞ RỘNG
 
 ### H. Bảng tin & trách nhiệm giải trình (3)
 
@@ -170,15 +170,16 @@
 | 91 | Script kiểm tra tiền deploy | ✅ Done | `check_deploy.py` (verify env + cấu hình + staticfiles, exit code 0/1) |
 | 92 | Django admin site quản trị dữ liệu | ✅ Done | `path("admin/", admin.site.urls)` · `apps/*/admin.py` |
 
-### N. Chất lượng & nền tảng chung (5)
+### N. Chất lượng & nền tảng chung (6)
 
 | # | Tính năng | Trạng thái | Minh chứng |
 |---|-----------|:----------:|------------|
-| 93 | Bộ test tự động toàn hệ thống (215 hàm test đếm được trong `apps/*/tests.py` + `core/tests/`) | ✅ Done | `apps/{authentication,members,funds,events,attendance,gamification,documents,posts,common}/tests.py` · `core/tests/test_algorithms.py` |
+| 93 | Bộ test tự động toàn hệ thống (281 hàm test đếm được trong `apps/*/tests.py` + `core/tests/`) | ✅ Done | `apps/{authentication,members,funds,events,attendance,gamification,documents,posts,common}/tests.py` · `core/tests/test_algorithms.py` · `core/tests/test_urls.py` |
 | 94 | 5 thuật toán DSA tách module dùng chung + test riêng (Trie, DAG Kahn, Haversine, Heap, Fund Invariants) | ✅ Done | `core/algorithms/{trie_search,dag_workflow,geo_haversine,leaderboard_heap,fund_invariants}.py` |
 | 95 | Envelope chuẩn `{success, data, message, errors}` + phân trang `{items, pagination}` toàn API | ✅ Done | `core/response.py` (`ok`, `created`) · `core/pagination.py` `StandardPagination` (page_size max 100) |
 | 96 | Exception tập trung → envelope đúng HTTP (404/400/403/409, message thân thiện) | ✅ Done | `apps/common/exceptions.py` (`NotFoundException`, `ValidationException`, `ForbiddenException`) · `core/exceptions.py` |
 | 97 | Bộ tài liệu hợp đồng frontend–backend + promptspec | ✅ Done | `frontend/FRONTEND_CONTRACT.md` · `CLBIP_Master_Coding_Prompt.md` · `CLBIP_Security_Hardening_Prompt.md` · `CLBIP_Frontend_Integration_Prompt.md` |
+| 98 | Landing page công khai tại `/` (khách chưa đăng nhập thấy trang giới thiệu CLB + CTA Đăng nhập; đã đăng nhập → CTA "Vào cổng sinh viên") | ✅ Done | `frontend/landing.html` (Material 3, cùng design system home.html) · `core/urls.py` `frontend_index_serve` |
 
 ---
 
@@ -187,8 +188,8 @@
 | Nhóm | Tổng | ✅ Done | 🟡 Partial | ❌ Missing |
 |------|:----:|:-------:|:---------:|:---------:|
 | Cốt lõi (A–G) | **51** | 49 | 2 | 0 |
-| Mở rộng (H–N) | **46** | 46 | 0 | 0 |
-| **TỔNG** | **97** | **95** | **2** | **0** |
+| Mở rộng (H–N) | **47** | 47 | 0 | 0 |
+| **TỔNG** | **98** | **96** | **2** | **0** |
 
 ### Danh sách mục ❌ Missing / 🟡 Partial (tra cứu nhanh)
 

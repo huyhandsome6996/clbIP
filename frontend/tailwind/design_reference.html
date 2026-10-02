@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-error-container":"#93000a","surface-variant":"#dae2fd","outline-variant":"#c7c4d7","error-container":"#ffdad6","primary":"#4648d4","surface-container-lowest":"#ffffff","surface":"#faf8ff","inverse-surface":"#283044","secondary-fixed-dim":"#d0bcff","on-tertiary-fixed-variant":"#004e5c","on-secondary-container":"#fffbff","secondary-container":"#8455ef","on-secondary-fixed":"#23005c","surface-tint":"#494bd6","surface-bright":"#faf8ff","error":"#ba1a1a","tertiary-fixed":"#acedff","outline":"#767586","on-surface":"#131b2e","surface-container-low":"#f2f3ff","tertiary-container":"#008096","tertiary":"#006577","on-tertiary":"#ffffff","on-surface-variant":"#464554","on-tertiary-container":"#f9fdff","inverse-on-surface":"#eef0ff","on-primary":"#ffffff","secondary-fixed":"#e9ddff","on-background":"#131b2e","on-secondary-fixed-variant":"#5516be","primary-fixed-dim":"#c0c1ff","on-secondary":"#ffffff","inverse-primary":"#c0c1ff","on-error":"#ffffff","primary-container":"#6063ee","surface-container-high":"#e2e7ff","surface-container":"#eaedff","surface-dim":"#d2d9f4","background":"#faf8ff","surface-container-highest":"#dae2fd","secondary":"#6b38d4","on-primary-fixed-variant":"#2f2ebe","on-primary-container":"#fffbff","primary-fixed":"#e1e0ff","on-primary-fixed":"#07006c","tertiary-fixed-dim":"#4cd7f6","on-tertiary-fixed":"#001f26"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"space-sm":"0.5rem","margin-sm":"1rem","gutter-sm":"1rem","space-xl":"2.5rem","space-xs":"0.25rem",margin:"2rem",gutter:"1.5rem","space-md":"1rem","space-lg":"1.5rem"},fontFamily:{"headline-sm":["Plus Jakarta Sans"],"label-lg":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],"headline-lg-mobile":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"],"headline-xl-mobile":["Plus Jakarta Sans"]},fontSize:{"headline-sm":["18px",{lineHeight:"24px",letterSpacing:"0em",fontWeight:"600"}],"label-lg":["14px",{lineHeight:"20px",letterSpacing:"0.01em",fontWeight:"600"}],"label-md":["12px",{lineHeight:"16px",letterSpacing:"0.04em",fontWeight:"700"}],"headline-lg-mobile":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"700"}],"body-lg":["16px",{lineHeight:"26px",letterSpacing:"0em",fontWeight:"400"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0.01em",fontWeight:"400"}],"headline-lg":["32px",{lineHeight:"40px",letterSpacing:"-0.02em",fontWeight:"700"}],"label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.06em",fontWeight:"700"}],"headline-md":["22px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"700"}],"body-md":["14px",{lineHeight:"22px",letterSpacing:"0em",fontWeight:"400"}],"headline-xl":["40px",{lineHeight:"48px",letterSpacing:"-0.02em",fontWeight:"800"}],"headline-xl-mobile":["30px",{lineHeight:"38px",letterSpacing:"-0.015em",fontWeight:"800"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Collapsible Left Sidebar -->
+<aside class="fixed top-0 left-0 h-screen z-50 bg-surface-container-lowest/95 backdrop-blur-xl border-r border-outline-variant/30 transition-all duration-300 ease-in-out flex flex-col justify-between shadow-[4px_0_24px_rgba(70,72,212,0.06)] w-72" id="main-sidebar">
+<!-- Top brand & Toggle Header -->
+<div class="p-4 border-b border-surface-container/80 flex items-center justify-between gap-3 min-h-[76px]">
+<div class="flex items-center gap-3 overflow-hidden">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(70,72,212,0.35)]">
+<span class="text-on-primary font-headline-sm text-headline-sm font-extrabold tracking-wider">IP</span>
+</div>
+<div class="sidebar-text flex flex-col min-w-0 transition-opacity duration-200">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface leading-tight tracking-tight">CLB IP</span>
+<span class="px-1.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] tracking-wide uppercase font-bold">ĐHSP HUẾ</span>
+</div>
+<span class="font-label-sm text-[11px] text-outline tracking-normal truncate">Code your Future • Khoa Tin học</span>
+</div>
+</div>
+<!-- Toggle collapse button -->
+<button aria-label="Toggle sidebar" class="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-variant text-on-surface-variant flex items-center justify-center transition-colors shrink-0" id="sidebar-toggle-btn" title="Thu gọn / Mở rộng Sidebar" type="button">
+<span class="material-symbols-outlined text-[20px] transition-transform duration-300" id="toggle-icon">chevron_left</span>
+</button>
+</div>
+<!-- Navigation Links -->
+<nav class="p-3 flex-1 overflow-y-auto space-y-1.5">
+<div class="sidebar-text px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-outline">Điều hướng</div>
+<!-- Trang chủ (Active) -->
+<a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold shadow-[0_4px_14px_rgba(70,72,212,0.28)] transition-all" data-path="trang-chu" href="#">
+<span class="material-symbols-outlined text-[22px] shrink-0" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Trang chủ</span>
+</a>
+<!-- Sự kiện & Vé -->
+<a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-path="su-kien-&amp;-ve" href="#">
+<span class="material-symbols-outlined text-[22px] shrink-0 text-secondary group-hover:scale-110 transition-transform">confirmation_number</span>
+<span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Sự kiện &amp; Vé</span>
+<span class="sidebar-text ml-auto px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold">Mới</span>
+</a>
+<!-- Điểm danh GPS -->
+<a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-path="diem-danh-gps" href="#">
+<span class="material-symbols-outlined text-[22px] shrink-0 text-tertiary group-hover:scale-110 transition-transform">radar</span>
+<span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Điểm danh GPS</span>
+<span class="sidebar-text ml-auto w-2 h-2 rounded-full bg-tertiary animate-ping"></span>
+</a>
+<!-- Đua Top Bảng Vàng -->
+<a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-path="dua-top-bang-vang" href="#">
+<span class="material-symbols-outlined text-[22px] shrink-0 text-amber-500 group-hover:scale-110 transition-transform">military_tech</span>
+<span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Đua Top Bảng Vàng</span>
+</a>
+<!-- Kho Học Liệu -->
+<a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-path="kho-hoc-lieu" href="#">
+<span class="material-symbols-outlined text-[22px] shrink-0 text-primary-container group-hover:scale-110 transition-transform">menu_book</span>
+<span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Kho Học Liệu</span>
+</a>
+<!-- Lịch Sinh Hoạt -->
+<a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-path="lich-sinh-hoat" href="#">
+<span class="material-symbols-outlined text-[22px] shrink-0 text-on-surface-variant group-hover:scale-110 transition-transform">calendar_month</span>
+<span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Lịch Sinh Hoạt</span>
+</a>
+<!-- Hòm Thư -->
+<a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" data-path="hom-thu" href="#">
+<span class="material-symbols-outlined text-[22px] shrink-0 text-error group-hover:scale-110 transition-transform">mark_chat_unread</span>
+<span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Hòm Thư</span>
+</a>
+</nav>
+<!-- Sidebar Footer: Mini User Profile Card -->
+<div class="p-3 border-t border-surface-container/80 bg-surface-container-low/50">
+<div class="p-2 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center gap-3">
+<div class="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-primary via-secondary to-tertiary shrink-0">
+<div class="w-full h-full rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[19px]">person</span>
+</div>
+</div>
+<div class="sidebar-text flex-1 min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-bold truncate">Hoàng Nhật Nam</p>
+<div class="flex items-center gap-1.5">
+<span class="font-label-sm text-[11px] text-secondary font-bold">Lv.5 Dev Tập Sự</span>
+<span class="text-outline text-[10px]">•</span>
+<span class="font-label-sm text-[11px] text-tertiary font-semibold">1,420 XP</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Topbar & Main Content Layout Wrapper -->
+<div class="transition-all duration-300 ease-in-out pl-72 flex flex-col min-h-screen" id="content-area">
+<!-- Minimalist Clean Topbar -->
+<header class="sticky top-0 z-40 bg-surface-container-lowest/85 backdrop-blur-xl border-b border-outline-variant/30 h-16 flex items-center px-6 justify-between gap-4">
+<!-- Left: Breadcrumb / Fast Context -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px] text-primary">space_dashboard</span>
+<span>Cổng sinh viên</span>
+<span class="text-outline">/</span>
+<span class="text-on-surface font-bold">Trang chủ Bảng tin CLB IP</span>
+</div>
+</div>
+<!-- Right: Quick Gamification stats, Notification & Quick Actions -->
+<div class="flex items-center gap-3 shrink-0">
+<div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container/70 shadow-[0_2px_8px_rgba(186,26,26,0.08)]">
+<span class="font-label-md text-label-md">🔥</span>
+<span class="font-label-md text-label-md text-on-error-container font-semibold whitespace-nowrap">7 ngày chuyên cần</span>
+</div>
+<div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tertiary-fixed shadow-[0_2px_8px_rgba(0,101,119,0.08)]">
+<span class="font-label-md text-label-md">⚡</span>
+<span class="font-label-md text-label-md text-on-tertiary-fixed font-bold whitespace-nowrap">1,420 XP</span>
+</div>
+<button aria-label="Thông báo" class="relative w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-variant hover:text-on-surface flex items-center justify-center text-on-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-surface-container-lowest"></span>
+</button>
+<div class="flex items-center gap-2 pl-1 py-1 pr-2 rounded-full bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-on-primary font-bold text-xs">
+          NN
+        </div>
+<span class="hidden md:inline font-label-md text-label-md text-on-surface font-medium pr-1">Nhật Nam</span>
+</div>
+</div>
+</header>
+<!-- Main Body Content -->
+<main class="w-full flex-1 bg-background relative overflow-hidden">
+<div class="pointer-events-none absolute -top-40 -left-40 w-96 h-96 rounded-full bg-primary/5 blur-3xl"></div>
+<div class="pointer-events-none absolute top-1/3 -right-40 w-96 h-96 rounded-full bg-secondary/5 blur-3xl"></div>
+<div class="flex flex-col w-full">
+<div class="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+<!-- 1. Top Welcome & Hero Spotlight Banner -->
+<section class="relative w-full rounded-3xl p-6 sm:p-8 lg:p-10 bg-gradient-to-r from-primary via-primary-container to-secondary shadow-xl text-on-primary overflow-hidden">
+<div class="absolute inset-0 pointer-events-none z-0">
+<img alt="Hero tech background" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBf83jmN5FT9iSeD3vytr3zkw4Lcz3sMpcjmqyEXhdoJg1lqtabvVHB7jtqBbYFLKJNdNh4hkwtTNl-Jzn4vg2pkIc5yHfJ95gBgXdX0BXr3v-hakFwCoLKf4eBbwQJq9aU7eTdiFdaffOJ0puDXf6jPni7fhl6fDedkULq3Px6tWRrcFdD7FhgufH8FxdX41RsBIDap3pTq0wSN6_xq-QiUP8I-QfqqC57ArHbCPqj8E0eKSDFzBNG"/>
+<div class="absolute inset-0 bg-gradient-to-r from-primary/90 via-primary-container/85 to-secondary/90 backdrop-blur-[2px]"></div>
+</div>
+<!-- Ambient light layers inside banner -->
+<div class="pointer-events-none absolute -right-12 -top-12 w-80 h-80 rounded-full bg-tertiary-fixed-dim/20 blur-3xl"></div>
+<div class="pointer-events-none absolute left-1/3 -bottom-16 w-72 h-72 rounded-full bg-secondary-fixed/20 blur-2xl"></div>
+<div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+<div class="max-w-2xl space-y-4">
+<!-- Gamification Streak pill inside Hero -->
+<div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-lowest/15 backdrop-blur-md shadow-sm">
+<span class="text-base">🔥</span>
+<span class="font-label-md text-label-md text-on-primary font-bold tracking-wide">
+                  Chuỗi 7 ngày chuyên cần • Bạn nhận được +30 XP hôm nay!
+                </span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-primary font-extrabold tracking-tight">
+                Chào buổi sáng, Hoàng Nhật Nam! 🚀
+              </h1>
+<p class="font-body-lg text-body-lg text-inverse-on-surface opacity-95 leading-relaxed">
+                Sự kiện <span class="font-semibold text-tertiary-fixed">TechTalk: AI &amp; Cloud Computing</span> diễn ra vào <strong class="text-on-primary">18:30 tối nay</strong> tại Hội trường A! Đừng quên chuẩn bị laptop và vé số.
+              </p>
+<!-- CTAs -->
+<div class="flex flex-wrap items-center gap-3 pt-2">
+<button class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-surface-container-lowest text-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-surface-container-low transition-all" type="button">
+<span class="material-symbols-outlined text-[20px]" style='font-variation-settings: "FILL" 1;'>confirmation_number</span>
+<span>Xem &amp; Đăng ký vé ngay</span>
+</button>
+<button class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-surface-container-lowest/20 backdrop-blur-md text-on-primary font-label-lg text-label-lg font-semibold hover:bg-surface-container-lowest/30 transition-all" type="button">
+<span class="material-symbols-outlined text-[20px]">fmd_good</span>
+<span>Check-in sự kiện</span>
+</button>
+</div>
+</div>
+<!-- Banner Right Graphic/Data Pod -->
+<div class="shrink-0 flex items-center justify-center lg:justify-end">
+<div class="w-full sm:w-auto p-5 rounded-2xl bg-surface-container-lowest/10 backdrop-blur-xl flex flex-col gap-3 min-w-[240px]">
+<div class="flex items-center justify-between gap-4">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-inverse-on-surface opacity-90">Sự kiện hôm nay</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary text-on-tertiary font-label-sm text-label-sm font-bold">18:30</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-surface-container-lowest/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary-fixed text-[28px]">devices</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-lg text-label-lg text-on-primary font-bold truncate">Hội trường A - ĐHSP Huế</p>
+<p class="font-body-sm text-body-sm text-inverse-on-surface opacity-80">142 thành viên đăng ký</p>
+</div>
+</div>
+<div class="w-full bg-surface-container-lowest/20 rounded-full h-1.5 overflow-hidden">
+<div class="bg-tertiary-fixed h-full rounded-full w-[85%]"></div>
+</div>
+<span class="font-label-sm text-label-sm text-right text-tertiary-fixed font-semibold">Chỉ còn 18 vé</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. Quick Action Grid (4 Neo-Glassmorphism Pill Cards) -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Card 1: GPS -->
+<a class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4" href="#">
+<div class="w-13 h-13 p-3 rounded-2xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[26px]">radar</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-primary transition-colors">Điểm danh GPS</span>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary font-semibold flex items-center gap-1 mt-0.5">
+<span class="w-2 h-2 rounded-full bg-tertiary inline-block animate-pulse"></span>
+                Mở cổng 17:30
+              </p>
+</div>
+</a>
+<!-- Card 2: Sự kiện -->
+<a class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4" href="#">
+<div class="w-13 h-13 p-3 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[26px]">confirmation_number</span>
+</div>
+<div class="min-w-0 flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-secondary transition-colors">Đăng ký sự kiện</span>
+<p class="font-body-sm text-body-sm text-secondary font-semibold mt-0.5">2 sự kiện mới tuần này</p>
+</div>
+</a>
+<!-- Card 3: Bài giảng -->
+<a class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4" href="#">
+<div class="w-13 h-13 p-3 rounded-2xl bg-surface-container-highest text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[26px]">menu_book</span>
+</div>
+<div class="min-w-0 flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-primary transition-colors">Tải bài giảng mới</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate">C++ &amp; Thuật toán K47</p>
+</div>
+</a>
+<!-- Card 4: Confession -->
+<a class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4" href="#">
+<div class="w-13 h-13 p-3 rounded-2xl bg-error-container text-on-error-container flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[26px]">mark_chat_unread</span>
+</div>
+<div class="min-w-0 flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-error transition-colors">Hòm thư CLB</span>
+<p class="font-body-sm text-body-sm text-error font-semibold mt-0.5">Góp ý &amp; Bình chọn ẩn danh</p>
+</div>
+</a>
+</section>
+<!-- 3. Main Feed Section (2 Columns: Left 2/3 Feed, Right 1/3 Interactive Widgets) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- LEFT COLUMN: 8 Cols (Story Row + News Feed) -->
+<div class="lg:col-span-8 space-y-6">
+<!-- Story Highlights Row -->
+<div class="w-full p-4 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm">
+<div class="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-none">
+<!-- Add story trigger -->
+<button class="flex flex-col items-center gap-2 shrink-0 group focus:outline-none" type="button">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium text-center">Tạo tin</span>
+</button>
+<!-- Story 1 -->
+<div class="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
+<div class="p-0.5 rounded-full bg-gradient-to-tr from-primary via-secondary to-tertiary">
+<div class="w-15 h-15 rounded-full p-0.5 bg-surface-container-lowest">
+<img class="w-14 h-14 rounded-full object-cover group-hover:scale-105 transition-transform" data-alt="Students participating in a vibrant AI hackathon coding session with laptops, neon team shirts, warm university lab lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6Y8-BC5qYaG4SskY2E_45_FJ8xQ-W3n9sXxZz2v4NA2VOiOkVNmeSAowKphgCjg2w6cpB-iSBuNYOPuy42PA2oh2orLKH4QOTD2y65a7S4lTvu8IeNsiCu-e8hHFmlWmX6DnJyWy2pgHVXp_iDZVEOGEo_uWLSyW9m560LiXk2O1e5IjthlMkhLunCtj23g_tjMqQ1yLJ00M9QOIS7O4oZDcpcDYCsTv3dT2uYanJVdcocaw8c0Se"/>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface font-bold text-center w-16 truncate">Hackathon '26</span>
+</div>
+<!-- Story 2 -->
+<div class="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
+<div class="p-0.5 rounded-full bg-gradient-to-tr from-secondary to-tertiary">
+<div class="w-15 h-15 rounded-full p-0.5 bg-surface-container-lowest">
+<img class="w-14 h-14 rounded-full object-cover group-hover:scale-105 transition-transform" data-alt="University IT lecture auditorium during web design workshop, code projected on screen, engaging teacher and attentive students" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxuGzS2NMYJ1nADiel00kV1o76siSVhFwYDDqJPORimDxcv4SPJQCHLU5ZhZWOlyZm_QV15F1fs-O3b0oCrjxJxSSSHfbspJOR64oGimCeAIcoMcYEQ-cabP60DW7GB1AUXDpYzjSTD2C65Mg8leyZyJBKOG_fzJUsNh2EkKlf62FLE20HxnsEsnIwNNLLqW_WJ4oT7uVBOaMikUjudytZKvNK8dEHSkwG_572l22n2uwjOQHT1Z-I"/>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface font-medium text-center w-16 truncate">Workshop Web</span>
+</div>
+<!-- Story 3 -->
+<div class="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
+<div class="p-0.5 rounded-full bg-gradient-to-tr from-primary to-primary-container">
+<div class="w-15 h-15 rounded-full p-0.5 bg-surface-container-lowest">
+<img class="w-14 h-14 rounded-full object-cover group-hover:scale-105 transition-transform" data-alt="Festive student club anniversary party with glowing cake, purple and indigo balloons, joyful smiling students" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSi7MZeBgFFaJlREDb5Fc6evdhJNUl492O2RdeIYHPLL7st_hWtN0kngwZL2ljQEyFpJ4O605pNRq7YTNHvkYgdBrUeReJsNUOFT0he32VQZ8dLZ5j151ojudfWNWzthFwI4j44ijYYoSx-HwaTE_sCRHPJEaHdFVvUv1tZtspOsnZF9cD9ejugZz5gnvXFrjZkzW1Zs5bkKj47lO9ZwebrsTwO4MvQZ6rO4wfcauI8UboP7tG1g5B"/>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface font-medium text-center w-16 truncate">Sinh nhật CLB</span>
+</div>
+<!-- Story 4 -->
+<div class="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
+<div class="p-0.5 rounded-full bg-surface-variant">
+<div class="w-15 h-15 rounded-full p-0.5 bg-surface-container-lowest">
+<img class="w-14 h-14 rounded-full object-cover group-hover:scale-105 transition-transform" data-alt="Competitive programming ICPC contest arena with monitors displaying algorithmic problem charts and scoreboard" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAz0IFyduAIu1NLUkR2Z5MePLQcx88dB7vAdMJUsPYgXaZB67YGxG77DLT12_nmrKG7kX2OKCL75Ub4vw2fBqBgOrKi8BvyUxJzxun_ji-KSnOvnZ5eVzc4tWEvu-NSYtW774xC2PtJAkGDEUHf5hZKvxnKZAx6rQTYV3qtYR5bYc1PD8BOHxq1HGxlg_v3cLWFa2MBxJ60U7I0Zb_bVXPqXKA7El-tKg-eFA_Hog38p1BCHjE-XwUl"/>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface font-medium text-center w-16 truncate">ICPC Hue</span>
+</div>
+<!-- Story 5 -->
+<div class="flex flex-col items-center gap-2 shrink-0 cursor-pointer group">
+<div class="p-0.5 rounded-full bg-surface-variant">
+<div class="w-15 h-15 rounded-full p-0.5 bg-surface-container-lowest">
+<img class="w-14 h-14 rounded-full object-cover group-hover:scale-105 transition-transform" data-alt="Outdoor university club team bonding camp in Hue nature pine forest with guitars, tents, and club banner" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1tuY1gpNbTmfiw3ZAzoLPZeZ-KvT1edSNpLHljC4pfz0oporYCPewQ2GPubH8p-w87mH5fdOrC0oU1XO-Sl4OGLvzXq7IAxIhlAkvYl2t_4VCE0a5SJZA8Y_ccAFzoKeeCLr7zJJK-ygx2zzdEwmMie7nIDwPOBh3KQamxCZggQtucaJxGhM4RT-nzG05zMlSavfe52Qj8nMSSJpHpNwCjLS8Zd7TH4w9QWapPMSoJgF7sz5eLdmh"/>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface font-medium text-center w-16 truncate">Dã ngoại Camp</span>
+</div>
+</div>
+</div>
+<!-- Post 1: Pinned Announcement (Hackathon AI 2026) -->
+<article class="rounded-3xl bg-surface-container-lowest/95 backdrop-blur-md shadow-sm overflow-hidden flex flex-col">
+<!-- Post Header -->
+<div class="p-6 pb-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold shadow-md">
+                    IP
+                  </div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">Ban Chủ Nhiệm CLB IP</span>
+<span class="material-symbols-outlined text-primary text-[18px]" style='font-variation-settings: "FILL" 1;'>verified</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="font-body-sm text-body-sm">2 giờ trước</span>
+<span>•</span>
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded-md bg-primary-fixed text-on-primary-fixed font-bold uppercase">
+<span class="material-symbols-outlined text-[13px]">push_pin</span> Ghim thông báo
+                      </span>
+</div>
+</div>
+</div>
+<button class="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<!-- Post Content -->
+<div class="px-6 space-y-3">
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold leading-snug">
+                  📢 Khởi động Đăng ký Hackathon AI for Community 2026 - Tổng giải thưởng 25 triệu đồng!
+                </h2>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                  Chào toàn thể coder IP! Sân chơi công nghệ lớn nhất năm học đã chính thức quay trở lại. Đề bài năm nay hướng tới các giải pháp ứng dụng Trí tuệ nhân tạo (AI/LLM) nhằm hỗ trợ giáo dục di sản và du lịch thông minh cho Cố đô Huế. Đăng ký theo đội 3-5 thành viên hoặc đăng ký cá nhân để BTC hỗ trợ ghép đội!
+                </p>
+</div>
+<!-- Banner Visual Image -->
+<div class="px-6 pt-4">
+<div class="relative w-full rounded-2xl overflow-hidden aspect-[16/9] shadow-inner bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="High tech digital hackathon promotional graphic with futuristic AI circuits, 25 million VND prize text badge, deep indigo and vivid violet lighting, modern geometric shapes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAurHVa2lsZDHSfaF8R08KvuB0qvpi5r3YL74i4Ts0tUKSGmHWu4X64PRBd1XCGPUG-EiAv1w9p1aGkdVolxkBeG55Xiz3VMmgowG6O3f8FS5X14VfrAufqSjeBixs4W-adcVv73vew50BUIKTEsrGCy9SCn_eQqzjmWk33KOHJ_uxhix3DHIT2kKg0V5H5-x7cxjnOUoIQ3bToGJ4C10IZ4G26R16TKmIHPlNHBD81xi-K1v9Fs2bm"/>
+<div class="absolute bottom-3 left-3 bg-inverse-surface/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-inverse-on-surface font-label-sm text-label-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary-fixed text-[16px]">calendar_month</span>
+                    Hạn chót mở đăng ký: 25/03/2026
+                  </div>
+</div>
+</div>
+<!-- Interaction Actions -->
+<div class="p-6 pt-4 flex flex-col gap-4">
+<div class="flex items-center justify-between pt-2">
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container/40 text-on-error-container hover:bg-error-container transition-colors" type="button">
+<span class="text-base">❤️</span>
+<span class="font-label-md text-label-md font-bold">48</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface hover:bg-surface-variant transition-colors" type="button">
+<span class="text-base">🔥</span>
+<span class="font-label-md text-label-md font-bold">32</span>
+</button>
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">chat_bubble_outline</span>
+<span class="font-label-md text-label-md font-semibold">14 bình luận</span>
+</button>
+</div>
+<button class="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark_border</span>
+</button>
+</div>
+<!-- Comment Input Row -->
+<div class="flex items-center gap-3 pt-2">
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold text-xs shrink-0">
+                    NN
+                  </div>
+<div class="flex-1 relative">
+<input class="w-full px-4 py-2.5 rounded-full bg-surface-container-low font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Viết bình luận cho BCN CLB..." type="text"/>
+<button class="absolute right-2 top-1.5 w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Post 2: Celebration (Olympic Tin học Sinh viên) -->
+<article class="rounded-3xl bg-surface-container-lowest/95 backdrop-blur-md shadow-sm overflow-hidden flex flex-col">
+<!-- Post Header -->
+<div class="p-6 pb-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-secondary to-primary">
+<img class="w-full h-full rounded-full object-cover" data-alt="Portrait of a cheerful Vietnamese university female media coordinator in club polo shirt with warm smiling expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJNSixIvMfLdMmcOC3MS8wP7m_H7r07UCu8pt4Fzh-kZu05JCZNBAoLHyF5qujBLT0pJRsHZ4xgjcSWBFQB0w2JxpKWYYVlBy1abviJmo7BGkAgL7yPHKRLOll_6_340PK4QM1U6H9C-ElCyuYBaqXzgvzLtlzuHNGO5oJK0p3JkhjX7OIq8ZL7vwJf6t4C8QGnkzeAKOJ0tpZCc6zGVZm50NENvoG8fhq2bg7WYKvz-jWtnZiRZVO"/>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">Đặng Thảo Vy</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">Ban Truyền Thông</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">5 giờ trước</span>
+</div>
+</div>
+<button class="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<!-- Post Content -->
+<div class="px-6 space-y-3">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-md text-label-md font-bold">
+<span>🏆</span> VINH DANH THÀNH TÍCH
+                </div>
+<p class="font-body-lg text-body-lg text-on-surface leading-relaxed">
+                  🎉 Chúc mừng đội tuyển CLB IP - Trường ĐH Sư phạm, Đại học Huế đã xuất sắc đạt <strong class="text-primary font-bold">GIẢI NHÌ</strong> khối Chuyên Tin tại Olympic Tin học Sinh viên Toàn quốc lần thứ 33! Cảm ơn sự nỗ lực rèn luyện ngày đêm của cả thầy cô và các bạn! 🇻🇳
+                </p>
+</div>
+<!-- Post Image -->
+<div class="px-6 pt-4">
+<div class="relative w-full rounded-2xl overflow-hidden aspect-[16/10] bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Vietnamese university computer science student team holding silver trophy and certificate at national programming awards ceremony stage with proud smiles" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBReHpg4NCuG_Aerv3AB0R4P38sH3EtRlP2lT1B2f-KRll0TISpVwa02Ol-ENOYspJ-RrEJKtMwxRJ0r3jKVu9MyKYjB6OZdpKYrQg21uTf3tMn_HxQyub4VnGxqnVKA2FWtSjKCQzFbeibQdRRYAv3okR-B3if_LLeKLQ-kFganQnb4vCOzDzDFE_71iYQvJAbRMogj_FtWdARO1OjPsO_Bpfk29YP8cbcorY0-VqgRZAZCeW5PiI3"/>
+</div>
+</div>
+<!-- Reactions -->
+<div class="p-6 pt-4 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container/30 text-on-error-container" type="button">
+<span class="text-base">❤️</span>
+<span class="font-label-md text-label-md font-bold">115</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-fixed text-on-secondary-fixed" type="button">
+<span class="text-base">🎉</span>
+<span class="font-label-md text-label-md font-bold">64</span>
+</button>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-medium">28 lời chúc mừng</span>
+</div>
+</article>
+</div>
+<!-- RIGHT COLUMN: 4 Cols (Interactive Gamified Widgets) -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Widget 1: Holographic Digital Student Card (Thẻ Thành Viên Số) -->
+<div class="w-full rounded-3xl p-6 bg-gradient-to-br from-surface-container-highest via-surface-container to-surface-variant shadow-md relative overflow-hidden">
+<div class="pointer-events-none absolute -top-16 -right-16 w-44 h-44 rounded-full bg-primary/20 blur-xl"></div>
+<div class="pointer-events-none absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-secondary/20 blur-xl"></div>
+<div class="relative z-10 flex flex-col justify-between gap-6">
+<!-- Card Header -->
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-extrabold">THẺ THÀNH VIÊN SỐ VIP</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-extrabold mt-0.5">CLB IP ĐH SƯ PHẠM HUẾ</h3>
+</div>
+<span class="material-symbols-outlined text-primary text-[28px]">contactless</span>
+</div>
+<!-- Card Center Info -->
+<div class="space-y-1">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Họ và tên thành viên</p>
+<p class="font-headline-md text-headline-md text-on-surface font-black tracking-tight">HOÀNG NHẬT NAM</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant font-medium">MSSV: 21T1020088 • Khóa K45 Sư phạm Tin</p>
+</div>
+<!-- Card Bottom Bar: Rank & QR Code -->
+<div class="pt-3 flex items-end justify-between">
+<div class="space-y-1">
+<span class="px-2.5 py-1 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-bold tracking-wide">
+                      Cấp 5 • Dev Tập Sự
+                    </span>
+<p class="font-label-sm text-label-sm text-secondary font-bold pt-1">⚡ 1,420 XP Tích luỹ</p>
+</div>
+<!-- Mini QR Mockup -->
+<div class="w-14 h-14 p-1 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-center">
+<svg class="w-full h-full text-on-surface" fill="currentColor" viewbox="0 0 24 24">
+<path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm14 0h2v2h-2v-2zm-4 0h2v2h-2v-2zm2 4h4v2h-4v-2zm2-2h2v2h-2v-2zm-4 2h2v2h-2v-2z"></path>
+</svg>
+</div>
+</div>
+</div>
+</div>
+<!-- Widget 2: Leaderboard (Top Chiến Thần Tuần Này) -->
+<div class="w-full rounded-3xl p-6 bg-surface-container-lowest/90 backdrop-blur-md shadow-sm space-y-5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[22px]" style='font-variation-settings: "FILL" 1;'>military_tech</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Top Chiến Thần Tuần</h3>
+</div>
+<a class="font-label-sm text-label-sm text-primary font-bold hover:underline" href="#">Xem tất cả</a>
+</div>
+<div class="space-y-3">
+<!-- Rank 1 -->
+<div class="p-3 rounded-2xl bg-surface-container-low flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-7 text-center font-headline-sm text-headline-sm font-black text-amber-500">
+                      👑
+                    </div>
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed font-bold font-label-md text-label-md">
+                      BN
+                    </div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-bold">Lê Hoàng Bảo Ngọc</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Lớp Tin 3B • K46</p>
+</div>
+</div>
+<span class="font-label-md text-label-md text-secondary font-extrabold whitespace-nowrap">2,450 XP</span>
+</div>
+<!-- Rank 2 -->
+<div class="p-3 rounded-2xl bg-surface-container-low/70 flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-7 text-center font-headline-sm text-headline-sm font-black text-slate-400">
+                      🥈
+                    </div>
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-bold font-label-md text-label-md">
+                      VH
+                    </div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-bold">Nguyễn Văn Hùng</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Lớp Tin 2A • K47</p>
+</div>
+</div>
+<span class="font-label-md text-label-md text-primary font-extrabold whitespace-nowrap">2,120 XP</span>
+</div>
+<!-- Rank 3 -->
+<div class="p-3 rounded-2xl bg-surface-container-low/70 flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-7 text-center font-headline-sm text-headline-sm font-black text-amber-700">
+                      🥉
+                    </div>
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed font-bold font-label-md text-label-md">
+                      TV
+                    </div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-bold">Phan Thảo Vy</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Lớp Tin 1C • K48</p>
+</div>
+</div>
+<span class="font-label-md text-label-md text-tertiary font-extrabold whitespace-nowrap">1,980 XP</span>
+</div>
+</div>
+<!-- Current User Position Chip -->
+<div class="p-3.5 rounded-2xl bg-surface-container-high/60 flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-bold text-on-surface">Vị trí của bạn: Hạng #14</span>
+<span class="font-label-sm text-label-sm font-bold text-primary">1,420 XP</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2 overflow-hidden">
+<div class="bg-gradient-to-r from-primary to-secondary h-full rounded-full w-[72%]"></div>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">
+                  🔥 Chỉ còn <strong class="text-on-surface font-bold">80 XP</strong> nữa để vươn lên Top 10!
+                </p>
+</div>
+</div>
+<!-- Widget 3: Daily Quests (Nhiệm Vụ Tuần & Hôm Nay) -->
+<div class="w-full rounded-3xl p-6 bg-surface-container-lowest/90 backdrop-blur-md shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[22px]">task_alt</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Nhiệm vụ hôm nay</h3>
+</div>
+<span class="font-label-sm text-label-sm text-outline font-semibold">1/2 xong</span>
+</div>
+<div class="space-y-3">
+<!-- Quest 1: Completed -->
+<div class="p-3.5 rounded-2xl bg-surface-container-low flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-bold line-through opacity-70">Check-in điểm danh GPS</p>
+<p class="font-label-sm text-label-sm text-tertiary font-bold">+50 XP đã nhận</p>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-semibold">
+                    Đã xong
+                  </span>
+</div>
+<!-- Quest 2: Incomplete -->
+<div class="p-3.5 rounded-2xl bg-surface-container-low flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
+<span class="material-symbols-outlined text-[18px]">code</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-bold">Giải 1 bài tập C++</p>
+<p class="font-label-sm text-label-sm text-primary font-bold">+30 XP thưởng</p>
+</div>
+</div>
+<button class="px-3 py-1 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-bold shadow-sm hover:bg-primary-container transition-colors" type="button">
+                    Làm ngay
+                  </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer aligned to Content Area -->
+<footer class="w-full bg-surface-container-lowest/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(19,27,46,0.02)] border-t border-outline-variant/30 mt-auto">
+<div class="max-w-[1400px] mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold shadow-[0_2px_8px_rgba(70,72,212,0.25)]">IP</div>
+<div>
+<p class="font-headline-sm text-headline-sm text-on-surface font-bold">Câu lạc bộ Tin học Thực hành (IP Club)</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Khoa Tin học • Trường Đại học Sư phạm - Đại học Huế</p>
+</div>
+</div>
+<div class="flex flex-wrap items-center justify-center gap-6">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" data-path="lich-sinh-hoat" href="#">Lịch sinh hoạt</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" data-path="kho-hoc-lieu" href="#">Kho học liệu</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" data-path="hom-thu" href="#">Đóng góp ý kiến</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" data-path="dieu-khoan-sinh-hoat" href="#">Quy chế thành viên</a>
+</div>
+<div class="text-center md:text-right">
+<p class="font-label-sm text-label-sm text-outline">© 2025 IP Club - DHSP Hue. All rights reserved.</p>
+<p class="font-label-sm text-label-sm text-primary font-semibold">Code your Future, Build the Community</p>
+</div>
+</div>
+</footer>
+</div>
+<!-- Sidebar Toggle Interactive Script -->
+<script>
+  (function() {
+    const sidebar = document.getElementById('main-sidebar');
+    const contentArea = document.getElementById('content-area');
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
+    const toggleIcon = document.getElementById('toggle-icon');
+    const sidebarTexts = document.querySelectorAll('.sidebar-text');
+    let isCollapsed = false;
+
+    function applyCollapseState(collapsed) {
+      if (collapsed) {
+        sidebar.classList.remove('w-72');
+        sidebar.classList.add('w-20');
+        contentArea.classList.remove('pl-72');
+        contentArea.classList.add('pl-20');
+        toggleIcon.innerText = 'chevron_right';
+        toggleBtn.setAttribute('title', 'Mở rộng Sidebar');
+        sidebarTexts.forEach(el => el.classList.add('hidden'));
+      } else {
+        sidebar.classList.remove('w-20');
+        sidebar.classList.add('w-72');
+        contentArea.classList.remove('pl-20');
+        contentArea.classList.add('pl-72');
+        toggleIcon.innerText = 'chevron_left';
+        toggleBtn.setAttribute('title', 'Thu gọn Sidebar');
+        sidebarTexts.forEach(el => el.classList.remove('hidden'));
+      }
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      isCollapsed = !isCollapsed;
+      applyCollapseState(isCollapsed);
+    });
+  })();
+</script>
+</body></html>

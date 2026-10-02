@@ -2,11 +2,11 @@
 URL Configuration — CLB IP ĐHSP Huế 2.0
 Tất cả API có tiền tố /api/v1/ theo CLBIP_Master_Coding_Prompt.md §5.
 Swagger UI: /api/docs/ (drf-spectacular, OpenAPI 3.0).
-Frontend tĩnh: /frontend/ (login.html, admin/*, member/*).
+Frontend tĩnh: /frontend/ (landing.html công khai tại `/`, login.html, admin/*, member/*).
 """
 from django.conf import settings
 from django.contrib import admin
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404
 from django.urls import include, path, re_path
 from django.views.static import serve as static_serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -54,10 +54,22 @@ def frontend_serve(request, path):
     response["Cache-Control"] = "no-cache"
     return response
 
+def frontend_index_serve(request):
+    """
+    Trang chủ `/` → landing page CÔNG KHAI (frontend/landing.html):
+    giới thiệu CLB + CTA Đăng nhập, không cần phiên đăng nhập.
+    Khách đã đăng nhập: JS trong trang tự đổi CTA thành "Vào cổng sinh viên"
+    (trỏ về /frontend/index.html — splash điều hướng theo vai trò).
+    """
+    response = static_serve(request, "landing.html", document_root=FRONTEND_DIR)
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
 urlpatterns = [
-    # ---------- Trang chủ → điều hướng thông minh theo đăng nhập ----------
+    # ---------- Trang chủ công khai → landing page giới thiệu CLB ----------
     # (Swagger UI vẫn luôn sẵn tại /api/docs/)
-    path("", lambda request: HttpResponseRedirect("/frontend/index.html")),
+    path("", frontend_index_serve),
 
     # ---------- Frontend tĩnh (login, admin, member, css, js, assets) ----------
     re_path(r"^frontend/(?P<path>.*)$", frontend_serve),

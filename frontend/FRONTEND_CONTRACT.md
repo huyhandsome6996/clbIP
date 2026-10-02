@@ -3,7 +3,18 @@
 > Tài liệu BẮT BUỘC đọc cho mọi agent xây trang frontend. Backend chạy thật tại
 > `http://127.0.0.1:8000`, đã seed dữ liệu demo. KHÔNG sửa file dùng chung
 > (css/*, js/api.js, js/auth.js, js/toast.js, js/utils.js, js/icons.js,
-> js/celebration.js, login.html, index.html) — chỉ ĐỌC và DÙNG.
+> js/celebration.js, login.html, index.html, landing.html) — chỉ ĐỌC và DÙNG.
+
+> **Luồng trang chủ:** `/` → phục vụ `frontend/landing.html` (landing CÔNG KHAI,
+> không cần đăng nhập — giới thiệu CLB + CTA Đăng nhập; nếu browser còn phiên
+> đăng nhập thì JS tự đổi CTA thành "Vào cổng sinh viên" → `/frontend/index.html`
+> splash điều hướng theo vai trò). Landing dùng chung `css/landing.css`
+> (Tailwind build — config NẰM TRONG REPO tại `frontend/tailwind/`):
+> ```
+> cd frontend/tailwind && npx tailwindcss@3.4.17 -c tailwind.config.js -i input.css -o ../css/landing.css --minify
+> ```
+> `content` gồm member/home.html + landing.html + design_reference.html —
+> xây trang mới dùng landing.css phải thêm file vào `content` rồi build lại.
 
 ## 0. Tài khoản demo (đã seed trên MySQL)
 | Vai trò | Email | Mật khẩu |

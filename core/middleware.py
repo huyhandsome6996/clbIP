@@ -9,7 +9,7 @@ HTML động lọt XSS, trình duyệt vẫn chặn script ngoại vi, iframe ng
 và form action ngoài domain.
 
 Lưu ý cân bằng: 'unsafe-inline' cho script/style là ĐÁNH ĐỐI CÓ Ý THỨC — toàn
-bộ 14 trang frontend nhúng <script> inline (kiến trúc HTML/CSS/JS thuần, không
+bộ 16 trang frontend nhúng <script> inline (kiến trúc HTML/CSS/JS thuần, không
 build step). Khi frontend tách JS ra file ngoài hoàn toàn, nâng cấp lên
 nonce-based CSP ('script-src "nonce-..."').
 """
