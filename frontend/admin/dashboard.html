@@ -61,6 +61,16 @@
 
     /* ---- Card phải xếp chồng ---- */
     .side-col { display: flex; flex-direction: column; gap: var(--s-5); }
+
+    /* ---- Biểu đồ (Chart.js) ---- */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      gap: var(--s-5);
+    }
+    @media (max-width: 1023.98px) { .chart-grid { grid-template-columns: 1fr; } }
+    /* maintainAspectRatio:false → chart lấy kích thước container (cần position:relative) */
+    .chart-body { position: relative; height: 280px; }
   </style>
 </head>
 <body>
@@ -118,6 +128,24 @@
         </div>
       </section>
 
+      <!-- ===== Biểu đồ xu hướng (Chart.js) ===== -->
+      <section class="chart-grid" aria-label="Biểu đồ xu hướng">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="flex items-center gap-2"><span id="ic-chart-fund"></span>Xu hướng tài chính</h2>
+            <span class="xs muted">6 tháng gần nhất</span>
+          </div>
+          <div class="card-body chart-body" id="chart-fund-box"><!-- JS: skeleton → canvas/empty --></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="flex items-center gap-2"><span id="ic-chart-att"></span>Chuyên cần hàng tuần</h2>
+            <span class="xs muted">Tỷ lệ điểm danh</span>
+          </div>
+          <div class="card-body chart-body" id="chart-att-box"><!-- JS: skeleton → canvas/empty --></div>
+        </div>
+      </section>
+
       <!-- ===== Lưới 2 cột: bảng tin + (bình chọn / góp ý) ===== -->
       <section class="dash-grid">
         <!-- Bảng tin -->
@@ -153,6 +181,9 @@
   </div>
 </div>
 
+<!-- Chart.js v4 cho biểu đồ dashboard. Tải đồng bộ trước script chính;
+     nếu CDN fail (offline) → typeof Chart === "undefined" → trang vẫn chạy, hiện empty state. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="/frontend/js/api.js"></script>
 <script src="/frontend/js/icons.js"></script>
 <script src="/frontend/js/toast.js"></script>
@@ -239,12 +270,15 @@
     document.getElementById("ic-poll").innerHTML = ic("bar-chart", 18);
     document.getElementById("ic-new-poll").innerHTML = ic("plus", 15);
     document.getElementById("ic-fb").innerHTML = ic("message", 18);
+    document.getElementById("ic-chart-fund").innerHTML = ic("trending-up", 18);
+    document.getElementById("ic-chart-att").innerHTML = ic("activity", 18);
   }
 
   function init() {
     renderAdminNav("dashboard");
     renderStaticIcons();
     loadKpis();
+    loadTrend();
     loadPosts();
     loadPolls();
     loadFeedback();
@@ -280,6 +314,224 @@
     }
     const failed = [mem, fund, ev, att].find((r) => r.status === "rejected");
     if (failed) Toast.error(failed.reason?.message || "Không tải được chỉ số tổng quan");
+  }
+
+  /* ================= 1b. BIỂU ĐỒ XU HƯỚNG (Chart.js) ================= */
+  /* Màu lấy từ design token (variables.css) qua getComputedStyle, fallback = đúng giá trị biến.
+     Gridline: spec "rgba(255,255,255,0.08)" hợp nền tối — dashboard admin là theme sáng
+     nên giữ cùng độ mờ 8% nhưng tint theo --tx-secondary để gridline còn hiển thị. */
+  function hexToRgba(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+    if (!m) return `rgba(255, 255, 255, ${alpha})`;
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+
+  const chartTheme = (() => {
+    const cs = getComputedStyle(document.documentElement);
+    const cssVar = (name, fb) => (cs.getPropertyValue(name) || "").trim() || fb;
+    const txSecondary = cssVar("--tx-secondary", "#45586C");
+    const isDark = (cs.getPropertyValue("color-scheme") || "").includes("dark");
+    return {
+      txSecondary,
+      grid: isDark ? "rgba(255, 255, 255, 0.08)" : hexToRgba(txSecondary, 0.08),
+      thu: cssVar("--c-success", "#16A34A"),
+      chi: cssVar("--c-danger", "#DC2626"),
+      accent: cssVar("--c-accent", "#0F4C81"),
+    };
+  })();
+
+  let fundChart = null;
+  let attChart = null;
+
+  /* "2026-04" → "T4/2026" · "2026-W38" → "Tuần 38" (không khớp pattern → nguyên bản) */
+  const monthLabel = (v) => {
+    const p = /^(\d{4})-(\d{2})$/.exec(String(v || ""));
+    return p ? `T${Number(p[2])}/${p[1]}` : String(v ?? "");
+  };
+  const weekLabel = (v) => {
+    const p = /^(\d{4})-W(\d{1,2})$/.exec(String(v || ""));
+    return p ? `Tuần ${Number(p[2])}` : String(v ?? "");
+  };
+  /* Tick trục Y tiền tệ gọn: 1500000 → "1,5 tr" (tooltip vẫn hiển thị full vi-VN) */
+  const vndTick = (v) => {
+    const n = Number(v);
+    if (Math.abs(n) >= 1e9) return (n / 1e9).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) + " tỷ";
+    if (Math.abs(n) >= 1e6) return (n / 1e6).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) + " tr";
+    return n.toLocaleString("vi-VN");
+  };
+  /* 0.85 → "85%" (nhân 100, làm tròn an toàn float) */
+  const pct = (rate) => (Math.round(Number(rate) * 1000) / 10).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) + "%";
+
+  function renderFundChart(rows) {
+    const box = document.getElementById("chart-fund-box");
+    if (fundChart) { fundChart.destroy(); fundChart = null; } // tránh tạo chart trùng khi reload
+    box.innerHTML = '<canvas id="chart-fund-canvas" role="img" aria-label="Biểu đồ thu chi quỹ theo tháng"></canvas>';
+    const ctx = document.getElementById("chart-fund-canvas").getContext("2d");
+    fundChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: rows.map((r) => monthLabel(r.month)),
+        datasets: [
+          {
+            label: "Thu",
+            data: rows.map((r) => Number(r.thu) || 0),
+            borderColor: chartTheme.thu,
+            backgroundColor: hexToRgba(chartTheme.thu, 0.1),
+            pointBackgroundColor: chartTheme.thu,
+            pointBorderColor: "#FFFFFF",
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+            tension: 0.35,
+            fill: "origin",
+          },
+          {
+            label: "Chi",
+            data: rows.map((r) => Number(r.chi) || 0),
+            borderColor: chartTheme.chi,
+            backgroundColor: hexToRgba(chartTheme.chi, 0.1),
+            pointBackgroundColor: chartTheme.chi,
+            pointBorderColor: "#FFFFFF",
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+            tension: 0.35,
+            fill: "origin",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { labels: { color: chartTheme.txSecondary, usePointStyle: true, boxWidth: 8, boxHeight: 8 } },
+          tooltip: {
+            callbacks: {
+              label: (c) => ` ${c.dataset.label}: ${Number(c.parsed.y).toLocaleString("vi-VN")} ₫`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: chartTheme.txSecondary, maxRotation: 0, autoSkipPadding: 12 },
+            grid: { display: false },
+            border: { color: chartTheme.grid },
+          },
+          y: {
+            ticks: { color: chartTheme.txSecondary, callback: vndTick },
+            grid: { color: chartTheme.grid },
+            border: { display: false },
+          },
+        },
+      },
+    });
+  }
+
+  function renderAttChart(rows) {
+    const box = document.getElementById("chart-att-box");
+    if (attChart) { attChart.destroy(); attChart = null; } // tránh tạo chart trùng khi reload
+    box.innerHTML = '<canvas id="chart-att-canvas" role="img" aria-label="Biểu đồ tỷ lệ điểm danh theo tuần"></canvas>';
+    const ctx = document.getElementById("chart-att-canvas").getContext("2d");
+    attChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: rows.map((r) => weekLabel(r.week)),
+        datasets: [
+          {
+            label: "Tỷ lệ điểm danh",
+            data: rows.map((r) => Math.min(Math.max(Number(r.rate) || 0, 0), 1)), // kẹp rate trong 0..1
+            backgroundColor: hexToRgba(chartTheme.accent, 0.75),
+            hoverBackgroundColor: chartTheme.accent,
+            borderRadius: 6,
+            maxBarThickness: 36,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (c) => ` Tỷ lệ: ${pct(c.parsed.y)}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: chartTheme.txSecondary, maxRotation: 0, autoSkipPadding: 8 },
+            grid: { display: false },
+            border: { color: chartTheme.grid },
+          },
+          y: {
+            min: 0,
+            suggestedMax: 1,
+            ticks: { color: chartTheme.txSecondary, callback: (v) => `${Math.round(Number(v) * 100)}%` },
+            grid: { color: chartTheme.grid },
+            border: { display: false },
+          },
+        },
+      },
+    });
+  }
+
+  async function loadTrend() {
+    const fundBox = document.getElementById("chart-fund-box");
+    const attBox = document.getElementById("chart-att-box");
+    Utils.skeleton(fundBox, 5);
+    Utils.skeleton(attBox, 5);
+
+    // CDN Chart.js fail (offline) → trang không vỡ: hiện empty state thay vì throw
+    if (typeof Chart === "undefined") {
+      [fundBox, attBox].forEach((box) =>
+        Utils.empty(box, {
+          icon: "bar-chart",
+          title: "Chưa có dữ liệu để vẽ biểu đồ",
+          desc: "Không tải được thư viện biểu đồ (Chart.js). Vui lòng kiểm tra kết nối mạng.",
+        })
+      );
+      return;
+    }
+    if (Chart.defaults && Chart.defaults.font) {
+      Chart.defaults.font.family = '"Inter", "Segoe UI", system-ui, sans-serif';
+    }
+
+    try {
+      // Envelope {success,data,message} đã được ApiClient unwrap → data trực tiếp
+      const data = await ApiClient.get("/common/stats/trend/", { months: 6 });
+      const fundRows = Array.isArray(data?.fund_trend) ? data.fund_trend : [];
+      const attRows = Array.isArray(data?.attendance_trend) ? data.attendance_trend : [];
+
+      if (!fundRows.length) {
+        if (fundChart) { fundChart.destroy(); fundChart = null; }
+        Utils.empty(fundBox, {
+          icon: "trending-up",
+          title: "Chưa có dữ liệu để vẽ biểu đồ",
+          desc: "Chưa có giao dịch quỹ nào trong 6 tháng gần nhất.",
+        });
+      } else {
+        renderFundChart(fundRows);
+      }
+
+      if (!attRows.length) {
+        if (attChart) { attChart.destroy(); attChart = null; }
+        Utils.empty(attBox, {
+          icon: "activity",
+          title: "Chưa có dữ liệu để vẽ biểu đồ",
+          desc: "Chưa có thống kê chuyên cần theo tuần nào.",
+        });
+      } else {
+        renderAttChart(attRows);
+      }
+    } catch (err) {
+      // Theo pattern hiện có của trang: lỗi section → empty state kèm message (ApiClient đã default tiếng Việt)
+      [fundBox, attBox].forEach((box) =>
+        Utils.empty(box, { icon: "alert-triangle", title: "Không tải được biểu đồ", desc: err.message })
+      );
+    }
   }
 
   /* ================= 2. BẢNG TIN ================= */
