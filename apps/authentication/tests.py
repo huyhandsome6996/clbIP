@@ -247,3 +247,41 @@ class AxesProxyLockoutTests(TestCase):
         attempt = AccessAttempt.objects.filter(username="axespx@clbip.vn").first()
         self.assertIsNotNone(attempt)
         self.assertEqual(attempt.ip_address, "198.51.100.10")
+
+
+class AxesLockoutTests(TestCase):
+    """
+    QA-Audit đợt 2 (P3): django-axes đang AXES_ENABLED = not TESTING → chính
+    sách khóa đăng nhập không có test. Test này override AXES_ENABLED=True
+    để chạy thật: 5 lần sai → khóa, lần thứ 6 ĐÚNG mật khẩu cũng bị chặn 403.
+    """
+
+    def setUp(self) -> None:
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="lockout@clbip.vn", password="CorrectPass123!", role="MEMBER"
+        )
+
+    def _login(self, password: str):
+        return self.client.post(
+            "/api/v1/auth/token/",
+            {"email": "lockout@clbip.vn", "password": password},
+            format="json",
+        )
+
+    def test_sai_5_lan_bi_khoa_ke_ca_dung_mat_khau(self) -> None:
+        # Tắt throttle DRF của view login (429 sẽ chặn trước axes trong test)
+        with mock.patch.object(CustomTokenObtainPairView, "throttle_classes", []):
+            with override_settings(AXES_ENABLED=True):
+                # 5 lần sai mật khẩu → chạm AXES_FAILURE_LIMIT
+                for i in range(5):
+                    res = self._login("WrongPass123!")
+                    self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED, f"Lần {i+1}")
+
+                # Lần thứ 6 — ĐÚNG mật khẩu vẫn bị chặn 403 (account_locked);
+                # AccessAttempt ghi trong transaction test → rollback tự động
+                res = self._login("CorrectPass123!")
+                self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+                payload = res.json() if hasattr(res, "json") else res.data
+                self.assertIn("khóa", payload["message"])
+                self.assertEqual(payload["errors"]["detail"], "account_locked")
