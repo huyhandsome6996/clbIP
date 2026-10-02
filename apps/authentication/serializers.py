@@ -76,3 +76,48 @@ class MeSerializer(serializers.ModelSerializer):
             "xp_points", "current_level", "streak_count", "trang_thai_hd",
             "date_joined",
         ]
+
+
+# ----------------------------------------------------------------------
+# Quên mật khẩu + OTP email (QA-Audit đợt 3 — TASK 2 P0)
+# ----------------------------------------------------------------------
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """POST /auth/password-reset/request/ — yêu cầu gửi mã OTP qua email."""
+
+    email = serializers.EmailField(
+        help_text="Email tài khoản cần đặt lại mật khẩu."
+    )
+
+
+class PasswordResetVerifySerializer(serializers.Serializer):
+    """POST /auth/password-reset/verify/ — xác minh OTP, nhận reset_token."""
+
+    email = serializers.EmailField()
+    otp = serializers.CharField(min_length=6, max_length=6)
+
+    def validate_otp(self, value: str) -> str:
+        if not value.strip().isdigit():
+            raise serializers.ValidationError("Mã OTP chỉ gồm 6 chữ số.")
+        return value.strip()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """POST /auth/password-reset/confirm/ — đặt mật khẩu mới bằng reset_token."""
+
+    reset_token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate_new_password(self, value: str) -> str:
+        # Cùng chuẩn mật khẩu với toàn hệ thống (Django validators)
+        from django.contrib.auth.password_validation import validate_password  # noqa: PLC0415
+
+        validate_password(value)
+        return value
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Mật khẩu xác nhận không khớp."}
+            )
+        return data

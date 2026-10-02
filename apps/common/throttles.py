@@ -48,3 +48,9 @@ class DocumentUploadRateThrottle(ScopedRateThrottle):
     """Upload tài liệu: 5 lần/phút — chống làm đầy ổ đĩa."""
 
     scope = "doc_upload"
+
+
+class PasswordResetThrottle(ScopedRateThrottle):
+    """Yêu cầu OTP quên mật khẩu: 3 lần/giờ — chống spam email / dò tài khoản."""
+
+    scope = "pw_reset"

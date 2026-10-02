@@ -342,6 +342,7 @@ REST_FRAMEWORK = {
         "checkin": "3/minute",      # Điểm danh GPS: 3 lần/phút
         "feedback": "2/minute",     # Góp ý/Poll: 2 lần/phút (chống spam)
         "doc_upload": "5/minute",   # Upload tài liệu: 5 lần/phút (chống lấp kho) — throttle class đã có sẵn trong apps/common/throttles.py
+        "pw_reset": "3/hour",       # Yêu cầu OTP quên mật khẩu: 3 lần/giờ (chống spam email)
     },
 }
 
@@ -406,6 +407,24 @@ LANGUAGE_CODE = "vi"
 TIME_ZONE = "Asia/Ho_Chi_Minh"
 USE_I18N = True
 USE_TZ = True
+
+# ------------------------------------------------------------------
+# 9.5 EMAIL — tính năng Quên Mật khẩu + OTP (QA-Audit đợt 3 — TASK 2)
+# ------------------------------------------------------------------
+# Dev mặc định: console backend (OTP in ra log, không cần SMTP thật).
+# Production: đặt EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+# + EMAIL_HOST/PORT/USER/PASSWORD trong env (Render dashboard).
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587") or 587)
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").strip().lower() in (
+    "1", "true", "yes", "on",
+)
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@clbip.vn")
 
 # ------------------------------------------------------------------
 # 10. STATIC & MEDIA (WhiteNoise + Render ephemeral disk)
