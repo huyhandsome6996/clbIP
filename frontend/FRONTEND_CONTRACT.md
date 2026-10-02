@@ -184,6 +184,15 @@ new QRCode(el, {text, width, height, correctLevel})   // assets/qrcode.min.js
 9. `Admin sidebar nav` active class theo trang; member bottom-nav tương tự.
 10. Ngôn ngữ 100% tiếng Việt, giọng thân thiện Gen Z cho member, chuyên nghiệp cho admin.
 
+### 4b. Ngoại lệ được duyệt — Trang chủ member (Landing M3) — `frontend/member/home.html`
+Trang chủ thành viên được thiết kế lại theo bản thiết kế Material 3 của chủ dự án (10/2026) — KHÔNG theo khung member-shell/bottom-nav:
+- Layout: sidebar thu gọn + topbar + hero + feed 2 cột + widget. Font Plus Jakarta Sans + Material Symbols (Google Fonts).
+- CSS: `frontend/css/landing.css` là Tailwind **biên dịch TĨNH** (không có runtime `cdn.tailwindcss.com` — CSP chặn script ngoài). Thứ tự nạp: `variables.css` → `components.css` (cho Toast) → `landing.css` → `<style>` page-scoped. `data-theme="member"` vẫn giữ trên `<html>`.
+- Guard/API/Toast/Utils dùng chung như mọi trang; icon dùng Material Symbols ligature (`<span class="material-symbols-outlined">ten_icon</span>`) thay `Icons.render` (Feather) — đúng theo design.
+- Reaction ❤️/🔥, lưu bài 🔖 là **local-first** (localStorage key có prefix user id) — chờ backend reaction API; bình chọn khóa nhờ `has_voted` từ server.
+- Free-text từ backend đã qua bleach (escape `&`) → trang decode entity trước khi escape lại (helper `unesc`) để không hiện `&amp;` kép.
+- Các trang member KHÁC vẫn theo §4/§5 chuẩn (member-shell + bottom-nav).
+
 ## 5. Skeleton HTML chuẩn
 
 ### Trang ADMIN (copy đầu + cuối, thay nội dung)

@@ -345,6 +345,25 @@ class PollTests(PostBaseTests):
         self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("đã đóng", resp.data["message"])
 
+    def test_07f_has_voted_phan_hoi_dung_theo_user(self) -> None:
+        """has_voted: False trước khi vote / True sau khi vote / False với user khác."""
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.get(reverse("poll_list"))
+        poll = resp.data["data"]["items"][0]
+        self.assertIn("has_voted", poll)
+        self.assertFalse(poll["has_voted"])
+
+        self._vote(self.member, 0)
+        resp = self.client.get(reverse("poll_list"))
+        poll = resp.data["data"]["items"][0]
+        self.assertTrue(poll["has_voted"])
+
+        # User khác chưa vote → has_voted của họ vẫn False (scoping theo user)
+        self.client.force_authenticate(user=self.member_b)
+        resp = self.client.get(reverse("poll_list"))
+        poll = resp.data["data"]["items"][0]
+        self.assertFalse(poll["has_voted"])
+
 
 class PostAuthorDisplayNameTests(APITestCase):
     """QA-Audit 2a — feed hiển thị TÊN người đăng, không lộ email (PII)."""

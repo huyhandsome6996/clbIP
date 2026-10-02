@@ -136,7 +136,7 @@
 | 67 | Admin Sự kiện (danh sách + modal chi tiết 4 tab: DAG / kinh phí / đăng ký / truyền thông) | ✅ Done | `frontend/admin/events.html` |
 | 68 | Admin Điểm danh (mở phiên GPS, nonce máy chiếu, override hàng loạt, lịch sử phiên) | ✅ Done | `frontend/admin/attendance.html` |
 | 69 | Admin Kho tài liệu (upload, tìm, preview, tải, xóa) | ✅ Done | `frontend/admin/documents.html` |
-| 70 | Member Home: banner chào + streak 🔥, thẻ thành viên mini, nhiệm vụ tuần, feed, sự kiện, poll, góp ý | ✅ Done | `frontend/member/home.html` (spec yêu cầu thêm widget "Top 3 chiến thần tuần" → chưa có; feed chưa có thả cảm xúc ❤️/🔥) |
+| 70 | Member Home (landing M3): sidebar + topbar, hero sự kiện sắp tới, 4 quick action, stories, feed ghim bài, thẻ thành viên số + QR MSSV, Top Chiến Thần, nhiệm vụ tuần, poll, hòm thư góp ý | ✅ Done | `frontend/member/home.html` (thiết kế Material 3 + `frontend/css/landing.css` Tailwind tĩnh; reaction ❤️/🔥 + lưu bài là local-first — chờ backend reaction API; `has_voted` poll từ server) |
 | 71 | Member Check-in: xin quyền GPS, radar hiển thị khoảng cách, nhập nonce, kết quả + confetti + streak | ✅ Done | `frontend/member/checkin.html` (`radar-distance`, `Celebrate.cheer()` từ `frontend/js/celebration.js`) |
 | 72 | Member Sự kiện: danh sách + tab "Vé của tôi" + vé QR kiểu ví + hủy vé | ✅ Done | `frontend/member/events.html` (spec yêu cầu đồng hồ đếm ngược "giờ G" → chưa có) |
 | 73 | Member Bảng vàng: podium Top 10 + thanh ghim vị trí "Còn X XP nữa để vào Top 10" | ✅ Done | `frontend/member/leaderboard.html` (tính gap tới Top 10 client-side) |
@@ -194,7 +194,5 @@
 
 - 🟡 #13 — Cơ cấu BCN: có API + modal, chưa có trang `/admin/board` riêng (spec màn hình 8)
 - 🟡 #21 — Xuất sổ quỹ Excel: chưa có "chữ ký điện tử" (spec màn hình 4)
-- 🟡 #57 — Đóng bình chọn: model có `is_closed`, chưa có endpoint/UI
-- 🟡 #64 — Admin Dashboard: chưa có biểu đồ Chart.js (spec màn hình 2)
 
-> Ghi chú khác (không tính vào trạng thái): frontend chưa gửi header `Idempotency-Key` khi tạo giao dịch quỹ (backend đã hỗ trợ — #17); feed chưa có thả cảm xúc; `member/documents.html` chưa có form upload dù API cho phép.
+> Ghi chú khác (không tính vào trạng thái): feed thả cảm xúc ❤️/🔥 và "lưu bài" đang là **local-first** (localStorage theo user id) — backend `Post` chưa có model reaction; UI đã sẵn sàng nối API khi có.

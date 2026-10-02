@@ -116,19 +116,23 @@
 
 ## 🅱️ PHÂN HỆ THÀNH VIÊN (7 MÀN HÌNH)
 
-### Màn hình 11 — Trang Chủ & Social Feed
+### Màn hình 11 — Trang Chủ & Social Feed (Landing M3)
 - **URL thực tế:** `/frontend/member/home.html`
-- **Vai trò:** MEMBER (BCN xem được nhưng nội dung member-oriented)
+- **Vai trò:** MEMBER (BCN/ADMIN bị điều hướng về dashboard theo phân hệ)
+- **Thiết kế:** Material 3 Expressive theo bản thiết kế của chủ dự án (10/2026): sidebar thu gọn được + topbar + hero spotlight + quick actions + stories + feed 2 cột + widget. Font Plus Jakarta Sans + Material Symbols; CSS Tailwind biên dịch TĨNH tại `frontend/css/landing.css` (CSP chặn script CDN nên KHÔNG nạp Tailwind runtime). Guard/API/Toast dùng chung theo FRONTEND_CONTRACT.
 - **Luồng chính:**
-  1. Đăng nhập xong → banner chào cá nhân hóa + chip 🔥 Streak: `GET /api/v1/gamification/me/` (`xp`, `level`, `streak_count`).
-  2. Widget **Thẻ thành viên mini**: lấy từ cùng `GET /gamification/me/` + `clbip_user_info`.
-  3. **Nhiệm vụ tuần kiếm XP**: `GET /api/v1/gamification/me/` → `weekly_quests` (tiến độ + XP tuần này).
-  4. Feed tin tức: `GET /api/v1/posts/` (bài ghim tự lên đầu nhờ `ordering = ["-is_pinned", "-created_at"]`).
-  5. Sự kiện sắp tới: `GET /api/v1/events/` → chip sự kiện.
-  6. Bình chọn: `GET /api/v1/polls/` → chọn lựa chọn → `POST /api/v1/polls/{id}/vote/` (backend chặn vote 2 lần).
-  7. Hòm thư góp ý: modal → `POST /api/v1/feedback/` (throttle 2/phút, 5 góp ý/ngày).
-- **Trạng thái rỗng/lỗi:** quest rỗng → "Chưa có nhiệm vụ tuần — quay lại sau nhé!"; feed/poll rỗng → empty state; lỗi từng khối không chặn các khối còn lại (Promise song song, bắt lỗi riêng).
-- **Chưa có so với spec:** thả cảm xúc ❤️/🔥 vào bài (model Post chưa có reaction); widget "Top 3 chiến thần chuyên cần tuần".
+  1. Đăng nhập xong → hero chào theo giờ ("Chào buổi sáng/chiều/tối, {tên}! 🚀") + pill 🔥 streak: `GET /api/v1/gamification/me/` (`xp`, `level`, `streak_count`); XP pill trên topbar.
+  2. **Hero pod "Sự kiện sắp tới"**: `GET /api/v1/events/` → sự kiện gần nhất chưa diễn ra (thời gian, địa điểm, `registered_count`, thanh tiến độ + "Chỉ còn X vé" từ `so_luong_toi_da`); CTAs → events/checkin.
+  3. **4 Quick Action**: Điểm danh GPS (sub-text "Mở cổng HH:MM" từ `GET /attendance/sessions/?trang_thai=OPEN`), Đăng ký sự kiện (đếm sự kiện sắp tới), Tải bài giảng mới (tài liệu mới nhất từ `GET /documents/`), Hòm thư CLB (modal góp ý ẩn danh `POST /feedback/`).
+  4. **Stories**: poster sự kiện (fallback gradient + icon), bấm → events.
+  5. **Feed**: `GET /api/v1/posts/` (ghim trước) — card tác giả + thời gian + badge "GHIM THÔNG BÁO" + ảnh `anh_dinh_kem` + hành động ❤️/🔥/Góp ý BCN/🔖 (xem Deviation) + ô góp ý ẩn danh trên bài đầu → `POST /feedback/`.
+  6. **Thẻ thành viên số**: họ tên, MSSV, lớp, Cấp + tên level, XP, thanh tiến độ theo `LEVEL_THRESHOLDS` backend, QR định danh render từ MSSV (`frontend/assets/qrcode.min.js`).
+  7. **Top Chiến Thần**: `GET /gamification/leaderboard/` Top 3 + thanh "Vị trí của bạn" (rank, gap vào Top 10).
+  8. **Nhiệm vụ tuần**: `weekly_quests` (điểm danh / chia sẻ tài liệu / task) + "+XP tuần này".
+  9. **Bình chọn cộng đồng**: `GET /polls/` — khóa UI ngay từ tải đầu nhờ `has_voted` (server); vote → `POST /polls/{id}/vote/`; khóa toàn bộ option khi request chạy.
+  10. Bell = thông báo đã ghim; user menu = hồ sơ + đăng xuất; footer = liên kết + modal Quy chế thành viên.
+- **Trạng thái rỗng/lỗi:** mỗi khối tự skeleton → dữ liệu → empty/error riêng (Promise.allSettled) — lỗi 1 khối không chặn khối khác.
+- **Deviation so với mockup (chủ ý, giữ tính trung thực dữ liệu):** số ❤️/🔥 không phải mock 48/115 — reaction local-first theo user; "Top Chiến Thần" là bảng vàng XP toàn CLB (backend chưa có leaderboard theo tuần); ảnh hero được vendor tại `frontend/assets/hero_bg.jpg`; nút "Tạo tin" ẩn (feed chỉ BCN đăng từ trang admin).
 
 ### Màn hình 12 — Điểm danh GPS Radar
 - **URL thực tế:** `/frontend/member/checkin.html`

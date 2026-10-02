@@ -3,475 +3,1185 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trang chủ — CLB IP ĐHSP Huế</title>
+  <title>Trang chủ — Cổng sinh viên CLB IP ĐHSP Huế</title>
+  <meta name="description" content="Cổng sinh viên CLB Tin học Thực hành — Trường ĐH Sư phạm, ĐH Huế: bảng tin, sự kiện, điểm danh GPS, bảng vàng XP và kho học liệu.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+  <!-- Toast dùng chung (variables + components) — nạp TRƯỚC landing.css để bị preflight override đúng tầng -->
   <link rel="stylesheet" href="/frontend/css/variables.css">
-  <link rel="stylesheet" href="/frontend/css/base.css">
   <link rel="stylesheet" href="/frontend/css/components.css">
-  <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
-  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <!-- landing.css = Tailwind biên dịch TĨNH từ bản thiết kế — CSP-safe (không nạp runtime CDN) -->
+  <link rel="stylesheet" href="/frontend/css/landing.css">
   <style>
-    /* ---- page-scoped styles (không đụng css dùng chung) ---- */
-    .section-title {
-      display: flex; align-items: center; gap: 8px;
-      font-size: var(--text-sm); font-weight: 800;
-      text-transform: uppercase; letter-spacing: 0.12em;
-      color: var(--tx-muted); margin: 0 0 var(--s-3);
-    }
-    .section-title svg { color: var(--c-indigo); flex: none; }
-    .glass-card { padding: var(--s-5); }
+    /* ===== page-scoped (không đụng css dùng chung) ===== */
+    html, body { margin: 0; padding: 0; }
+    body { overscroll-behavior: none; }
+    ::-webkit-scrollbar { display: none; }
+    * { scrollbar-width: none; }
 
-    /* quest row */
-    .quest-row {
-      display: flex; align-items: center; gap: var(--s-3);
-      padding: 10px 12px; border-radius: var(--r-control);
-      background: rgba(255,255,255,0.045);
-      border: 1px solid var(--border-color);
-    }
-    .quest-ico {
-      width: 34px; height: 34px; flex: none; border-radius: 10px;
-      display: grid; place-items: center;
-      background: var(--c-accent-soft); color: #B4B8FF;
-    }
-    .quest-done { border-color: rgba(34,197,94,.4); }
-    .quest-done .quest-ico { background: rgba(22,163,74,.18); color: #7EE2A0; }
+    /* Tailwind v3 không có spacing 13/15 — định nghĩa đúng scale 0.25rem */
+    .w-13 { width: 3.25rem; }  .h-13 { height: 3.25rem; }
+    .w-15 { width: 3.75rem; }  .h-15 { height: 3.75rem; }
+    .scrollbar-none::-webkit-scrollbar { display: none; }
 
-    /* post */
-    .post-card { padding: var(--s-4); border-radius: var(--r-card); background: rgba(255,255,255,0.045); border: 1px solid var(--border-color); }
-    .post-card + .post-card { margin-top: var(--s-3); }
-    .post-title { font-weight: 700; font-size: var(--text-md); margin: 6px 0 4px; line-height: 1.35; }
-    .post-content { font-size: var(--text-sm); color: var(--tx-secondary); line-height: 1.6; overflow-wrap: anywhere; }
-    .post-content p { margin: 0 0 8px; }
-    .post-content p:last-child { margin-bottom: 0; }
-    .post-content a { color: #A5B4FC; }
-    .post-meta { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--tx-muted); margin-top: 10px; }
-
-    /* event chip */
-    .event-chip {
-      display: flex; align-items: center; gap: var(--s-3);
-      padding: 12px; border-radius: var(--r-card);
-      background: rgba(255,255,255,0.045); border: 1px solid var(--border-color);
+    /* Sidebar: mobile drawer (<1024px) — desktop giữ nguyên bản thiết kế */
+    .burger-btn { display: none; }
+    #mobile-scrim {
+      position: fixed; inset: 0; z-index: 45;
+      background: rgba(19, 27, 46, 0.45); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity .25s ease;
     }
-    .event-chip + .event-chip { margin-top: var(--s-3); }
-    .event-ico { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--c-accent-soft); color: #B4B8FF; }
-
-    /* poll */
-    .poll-opt {
-      display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
-      width: 100%; text-align: left;
-      padding: 11px 14px; border-radius: var(--r-control);
-      background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
-      color: var(--tx-primary); font-size: var(--text-sm); font-weight: 600;
-      cursor: pointer; transition: border-color var(--dur-fast), background var(--dur-fast);
+    #mobile-scrim.show { opacity: 1; pointer-events: auto; }
+    @media (max-width: 1023.5px) {
+      .burger-btn { display: inline-flex; }
+      #main-sidebar { transform: translateX(-100%); transition: transform .3s ease; }
+      #main-sidebar.nav-open { transform: translateX(0); box-shadow: 16px 0 48px rgba(19,27,46,.18); }
+      #content-area { padding-left: 0 !important; }
     }
-    .poll-opt:hover:not(:disabled) { border-color: var(--c-indigo); background: rgba(99,102,241,0.12); }
-    .poll-opt:disabled { cursor: default; opacity: 0.85; }
-    .poll-opt.chosen { border-color: #22C55E; background: rgba(34,197,94,0.12); }
-    .poll-votes { font-size: var(--text-xs); color: var(--tx-muted); font-variant-numeric: tabular-nums; flex: none; }
 
-    /* FAB góp ý ẩn danh */
-    .fab {
-      position: fixed;
-      bottom: calc(var(--bottomnav-h) + 20px);
-      right: 16px; z-index: var(--z-dropdown);
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 12px 18px; border: 0; cursor: pointer;
-      border-radius: var(--r-pill);
-      background: linear-gradient(135deg, var(--c-indigo), var(--c-violet));
-      color: #fff; font-weight: 700; font-size: var(--text-sm);
-      box-shadow: var(--shadow-glow);
-      transition: transform var(--dur-fast) var(--ease-out);
+    /* Skeleton theo ngôn ngữ thiết kế (surface-container) */
+    .skel { position: relative; overflow: hidden; border-radius: 10px; background: #e2e7ff; }
+    .skel::after {
+      content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+      animation: skelMove 1.4s infinite;
     }
-    .fab:hover { transform: translateY(-2px); }
-    @media (min-width: 1024px) { .fab { right: calc(50% - 280px + 16px); } }
+    @keyframes skelMove { 100% { transform: translateX(100%); } }
+
+    /* Dropdown (bell / user) */
+    .dd {
+      position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
+      min-width: 264px; max-width: 320px; display: none;
+      background: #ffffff; border: 1px solid rgba(199,196,215,.5);
+      border-radius: 16px; box-shadow: 0 12px 40px rgba(19,27,46,.14);
+      padding: 8px;
+    }
+    .dd.open { display: block; }
+    .dd-item { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left;
+      padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 18px; color: #131b2e; }
+    .dd-item:hover { background: #f2f3ff; }
+    .dd-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      color: #767586; padding: 6px 12px 4px; }
+
+    /* Modal góp ý / quy chế — thiết kế đồng bộ (glass + M3) */
+    .lp-backdrop {
+      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px;
+      background: rgba(19,27,46,.5); backdrop-filter: blur(6px);
+    }
+    .lp-modal {
+      width: 100%; max-width: 520px; max-height: 86dvh; overflow: auto;
+      background: linear-gradient(160deg, #ffffff, #f2f3ff);
+      border: 1px solid rgba(199,196,215,.6); border-radius: 24px;
+      box-shadow: 0 24px 80px rgba(40,48,68,.35); padding: 24px;
+    }
+    .lp-input {
+      width: 100%; border: 1px solid #c7c4d7; border-radius: 14px; background: #ffffff;
+      padding: 12px 14px; font-size: 14px; color: #131b2e; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .lp-input:focus { border-color: #4648d4; box-shadow: 0 0 0 3px rgba(70,72,212,.15); }
+    .lp-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #464554; margin-bottom: 6px; }
+    .lp-error { color: #93000a; font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
+    .lp-error.show { display: block; }
+
+    /* Reaction / bookmark states (localStorage — local-first, chờ backend reaction) */
+    .rx-on { background: rgba(255,218,214,.55) !important; color: #93000a; }
+    .rx-fire-on { background: #ffe4c7 !important; color: #9a3412; }
+    .bm-on { color: #4648d4; }
+    .bm-on .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+
+    /* Bình chọn — ngôn ngữ thiết kế mới */
+    .poll-opt2 {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+      text-align: left; padding: 12px 14px; border-radius: 14px; cursor: pointer;
+      background: #f2f3ff; border: 1px solid rgba(199,196,215,.45);
+      color: #131b2e; font-size: 14px; font-weight: 600;
+      transition: border-color .15s, background .15s;
+    }
+    .poll-opt2:hover:not(:disabled) { border-color: #4648d4; background: #e2e7ff; }
+    .poll-opt2:disabled { cursor: default; }
+    .poll-opt2.chosen { border-color: #008096; background: #acedff33; }
+    .poll-votes2 { font-size: 12px; color: #767586; font-variant-numeric: tabular-nums; flex: none; }
+
+    /* Ảnh fallback: gradient + icon khi poster/ảnh lỗi hoặc trống */
+    .imgwrap { position: relative; overflow: hidden; background: linear-gradient(135deg, #4648d4, #8455ef); }
+    .imgwrap .imgwrap-ico {
+      position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85);
+    }
+    .imgwrap img { position: relative; width: 100%; height: 100%; object-fit: cover; }
   </style>
 </head>
-<body>
-  <div class="member-shell">
-    <header class="member-header">
-      <div class="flex items-center gap-3">
-        <span class="avatar" id="me-avatar"></span>
-        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
+<body class="bg-background font-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
+
+<!-- ================= COLLAPSIBLE LEFT SIDEBAR ================= -->
+<aside id="main-sidebar" class="fixed top-0 left-0 h-screen z-50 bg-surface-container-lowest/95 backdrop-blur-xl border-r border-outline-variant/30 transition-all duration-300 ease-in-out flex flex-col justify-between shadow-[4px_0_24px_rgba(70,72,212,0.06)] w-72">
+  <!-- Brand & toggle -->
+  <div class="p-4 border-b border-surface-container/80 flex items-center justify-between gap-3 min-h-[76px]">
+    <div class="flex items-center gap-3 overflow-hidden">
+      <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(70,72,212,0.35)]">
+        <span class="text-on-primary font-headline-sm text-headline-sm font-extrabold tracking-wider">IP</span>
       </div>
-      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
-    </header>
-
-    <section class="flex items-center justify-between gap-3 wrap">
-      <h1 class="page-title" id="welcome-title" style="margin:0">Chào bạn 👋</h1>
-      <span class="streak-chip" id="streak-chip" hidden>🔥 Streak — ngày</span>
-    </section>
-
-    <!-- Thẻ thành viên mini -->
-    <section class="glass glass-accent glass-card" id="member-card">
-      <div class="skeleton-row">
-        <div class="skeleton skeleton-avatar"></div>
-        <div class="skeleton-lines"><div class="skeleton" style="width:50%"></div><div class="skeleton"></div></div>
+      <div class="sidebar-text flex flex-col min-w-0 transition-opacity duration-200">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="font-headline-sm text-headline-sm font-bold text-on-surface leading-tight tracking-tight">CLB IP</span>
+          <span class="px-1.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] tracking-wide uppercase font-bold">ĐHSP Huế</span>
+        </div>
+        <span class="font-label-sm text-[11px] text-outline tracking-normal truncate">Code your Future • Khoa Tin học</span>
       </div>
-    </section>
-
-    <!-- Nhiệm vụ tuần -->
-    <section>
-      <h2 class="section-title"><span id="ic-target"></span>Nhiệm vụ tuần</h2>
-      <div class="glass glass-card" id="quests-box">
-        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:55%"></div><div class="skeleton" style="width:80%"></div></div></div>
-      </div>
-    </section>
-
-    <!-- Feed bảng tin -->
-    <section>
-      <h2 class="section-title"><span id="ic-megaphone"></span>Bảng tin CLB</h2>
-      <div class="glass glass-card" id="posts-box">
-        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:65%"></div><div class="skeleton"></div><div class="skeleton" style="width:90%"></div></div></div>
-      </div>
-    </section>
-
-    <!-- Sự kiện sắp diễn ra -->
-    <section>
-      <h2 class="section-title"><span id="ic-calendar"></span>Sự kiện sắp diễn ra</h2>
-      <div id="events-box">
-        <div class="glass glass-card"><div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div></div>
-      </div>
-    </section>
-
-    <!-- Bình chọn cộng đồng -->
-    <section>
-      <h2 class="section-title"><span id="ic-poll"></span>Bình chọn cộng đồng</h2>
-      <div class="glass glass-card" id="poll-box">
-        <div class="skeleton-row"><div class="skeleton-lines"><div class="skeleton" style="width:70%"></div><div class="skeleton" style="width:85%"></div></div></div>
-      </div>
-    </section>
-
-    <div style="height:8px"></div>
+    </div>
+    <button aria-label="Toggle sidebar" title="Thu gọn / Mở rộng Sidebar" type="button"
+      class="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-variant text-on-surface-variant flex items-center justify-center transition-colors shrink-0" id="sidebar-toggle-btn">
+      <span class="material-symbols-outlined text-[20px] transition-transform duration-300" id="toggle-icon">chevron_left</span>
+    </button>
   </div>
 
-  <!-- Nút nổi góp ý ẩn danh -->
-  <button class="fab" id="btn-feedback">
-    <span id="fab-icon"></span>Góp ý ẩn danh
-  </button>
+  <!-- Nav -->
+  <nav class="p-3 flex-1 overflow-y-auto space-y-1.5" aria-label="Điều hướng chính">
+    <div class="sidebar-text px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-outline">Điều hướng</div>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold shadow-[0_4px_14px_rgba(70,72,212,0.28)] transition-all" href="/frontend/member/home.html" aria-current="page">
+      <span class="material-symbols-outlined text-[22px] shrink-0" style="font-variation-settings: 'FILL' 1;">home</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Trang chủ</span>
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/events.html">
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-secondary group-hover:scale-110 transition-transform">confirmation_number</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Sự kiện &amp; Vé</span>
+      <span class="sidebar-text ml-auto px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold">Mới</span>
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/checkin.html">
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-tertiary group-hover:scale-110 transition-transform">radar</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Điểm danh GPS</span>
+      <span class="sidebar-text ml-auto w-2 h-2 rounded-full bg-tertiary animate-ping"></span>
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/leaderboard.html">
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-amber-500 group-hover:scale-110 transition-transform">military_tech</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Đua Top Bảng Vàng</span>
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/documents.html">
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-primary-container group-hover:scale-110 transition-transform">menu_book</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Kho Học Liệu</span>
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/events.html">
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-on-surface-variant group-hover:scale-110 transition-transform">calendar_month</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Lịch Sinh Hoạt</span>
+    </a>
+    <button class="w-full group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" type="button" id="nav-feedback-btn">
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-error group-hover:scale-110 transition-transform">mark_chat_unread</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Hòm Thư</span>
+    </button>
+  </nav>
 
-  <nav class="bottom-nav" id="bottom-nav"></nav>
+  <!-- Mini profile card -->
+  <div class="p-3 border-t border-surface-container/80 bg-surface-container-low/50">
+    <a href="/frontend/member/profile.html" class="p-2 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center gap-3 hover:shadow-md transition-shadow">
+      <div class="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-primary via-secondary to-tertiary shrink-0">
+        <div class="w-full h-full rounded-full bg-primary flex items-center justify-center">
+          <span class="text-on-primary text-[13px] font-bold" id="sb-avatar">…</span>
+        </div>
+      </div>
+      <div class="sidebar-text flex-1 min-w-0">
+        <p class="font-label-md text-label-md text-on-surface font-bold truncate" id="sb-name">Đang tải…</p>
+        <div class="flex items-center gap-1.5">
+          <span class="font-label-sm text-[11px] text-secondary font-bold truncate" id="sb-level">…</span>
+          <span class="text-outline text-[10px]">•</span>
+          <span class="font-label-sm text-[11px] text-tertiary font-semibold" id="sb-xp">…</span>
+        </div>
+      </div>
+    </a>
+  </div>
+</aside>
+<div id="mobile-scrim" aria-hidden="true"></div>
 
-  <script src="/frontend/js/api.js"></script>
-  <script src="/frontend/js/icons.js"></script>
-  <script src="/frontend/js/toast.js"></script>
-  <script src="/frontend/js/utils.js"></script>
-  <script src="/frontend/js/auth.js"></script>
-  <script src="/frontend/js/celebration.js"></script>
-  <script>
-    (function () {
-      "use strict";
+<!-- ================= TOPBAR + CONTENT ================= -->
+<div class="transition-all duration-300 ease-in-out pl-72 flex flex-col min-h-screen" id="content-area">
+  <header class="sticky top-0 z-40 bg-surface-container-lowest/85 backdrop-blur-xl border-b border-outline-variant/30 h-16 flex items-center px-4 sm:px-6 justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <button class="burger-btn w-9 h-9 rounded-full bg-surface-container-high text-on-surface-variant items-center justify-center" id="btn-burger" aria-label="Mở menu điều hướng" type="button">
+        <span class="material-symbols-outlined text-[20px]">menu</span>
+      </button>
+      <div class="hidden sm:flex items-center gap-2 text-on-surface-variant font-label-md text-label-md min-w-0">
+        <span class="material-symbols-outlined text-[18px] text-primary">space_dashboard</span>
+        <span class="whitespace-nowrap">Cổng sinh viên</span>
+        <span class="text-outline">/</span>
+        <span class="text-on-surface font-bold whitespace-nowrap">Trang chủ Bảng tin CLB IP</span>
+      </div>
+      <div class="sm:hidden font-label-md text-label-md font-bold text-on-surface truncate">Bảng tin CLB IP</div>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0 relative">
+      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container/70 shadow-[0_2px_8px_rgba(186,26,26,0.08)]" id="pill-streak" hidden>
+        <span class="font-label-md text-label-md">🔥</span>
+        <span class="font-label-md text-label-md text-on-error-container font-semibold whitespace-nowrap" id="pill-streak-text">… ngày chuyên cần</span>
+      </div>
+      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tertiary-fixed shadow-[0_2px_8px_rgba(0,101,119,0.08)]" id="pill-xp" hidden>
+        <span class="font-label-md text-label-md">⚡</span>
+        <span class="font-label-md text-label-md text-on-tertiary-fixed font-bold whitespace-nowrap" id="pill-xp-text">… XP</span>
+      </div>
+      <div class="relative">
+        <button aria-label="Thông báo" type="button" class="relative w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-variant hover:text-on-surface flex items-center justify-center text-on-surface-variant transition-colors" id="btn-bell">
+          <span class="material-symbols-outlined text-[20px]">notifications</span>
+          <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-surface-container-lowest hidden" id="bell-dot"></span>
+        </button>
+        <div class="dd" id="dd-bell" role="menu" aria-label="Thông báo đã ghim">
+          <div class="dd-title">Thông báo đã ghim</div>
+          <div id="dd-bell-items"><div class="dd-item text-on-surface-variant">Đang tải…</div></div>
+        </div>
+      </div>
+      <div class="relative">
+        <button type="button" class="flex items-center gap-2 pl-1 py-1 pr-2 rounded-full bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer" id="btn-user" aria-haspopup="menu">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-on-primary font-bold text-xs" id="topbar-avatar">…</div>
+          <span class="hidden md:inline font-label-md text-label-md text-on-surface font-medium pr-1" id="topbar-name">…</span>
+        </button>
+        <div class="dd" id="dd-user" role="menu" aria-label="Tài khoản">
+          <div class="dd-title" id="dd-user-name">Tài khoản</div>
+          <a class="dd-item" href="/frontend/member/profile.html" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-primary">person</span> Hồ sơ của tôi
+          </a>
+          <button class="dd-item" type="button" id="btn-logout" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-error">logout</span> Đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
 
-      /* ============ Modal helper (FRONTEND_CONTRACT §7) ============ */
-      function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
-        const backdrop = document.createElement("div");
-        backdrop.className = "modal-backdrop";
-        backdrop.innerHTML = `
-          <div class="modal" role="dialog" aria-modal="true" aria-label="${Utils.escapeHtml(title)}">
-            <div class="modal-head"><h3>${Utils.escapeHtml(title)}</h3>
-              <button class="modal-close">${Icons.render("x", 20)}</button></div>
-            <div class="modal-body">${bodyHTML}</div>
-            ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
-          </div>`;
-        const close = () => backdrop.remove();
-        backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-        backdrop.querySelector(".modal-close").addEventListener("click", close);
-        document.body.appendChild(backdrop);
-        if (onMount) onMount(backdrop, close);
-        return { el: backdrop, close };
-      }
+  <!-- ================= MAIN BODY ================= -->
+  <main class="w-full flex-1 bg-background relative overflow-hidden">
+    <div class="pointer-events-none absolute -top-40 -left-40 w-96 h-96 rounded-full bg-primary/5 blur-3xl"></div>
+    <div class="pointer-events-none absolute top-1/3 -right-40 w-96 h-96 rounded-full bg-secondary/5 blur-3xl"></div>
+    <div class="flex flex-col w-full">
+      <div class="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-      /* ============ Nav member (FRONTEND_CONTRACT §6) ============ */
-      function renderMemberNav(active) {
-        const items = [
-          ["home", "home", "Nhà", "/frontend/member/home.html"],
-          ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
-          ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
-          ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
-          ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
-          ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
-        ];
-        document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
-          `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
-            ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
-        ).join("");
-        document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
-        document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
-        const me = Auth.cachedUser();
-        const av = document.getElementById("me-avatar");
-        if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
-        const nm = document.getElementById("me-name");
-        if (nm && me) nm.textContent = me.ho_ten || me.email;
-        const lv = document.getElementById("me-level");
-        if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
-      }
-
-      /* Tên gọi thân thiện: "Nguyễn Nhật Nam" → "Nam" */
-      function firstName(user) {
-        const name = user?.ho_ten || user?.email || "";
-        const parts = String(name).trim().split(/\s+/);
-        return parts[parts.length - 1] || "bạn";
-      }
-
-      /* ============ 1. Nhiệm vụ tuần (shape động → render defensive) ============ */
-      function renderQuests(wq) {
-        const box = document.getElementById("quests-box");
-        if (!wq) {
-          Utils.empty(box, { icon: "target", title: "Chưa có nhiệm vụ tuần", desc: "Quay lại sau để nhận nhiệm vụ mới nhé!" });
-          return;
-        }
-        /* Trường hợp A: mảng nhiệm vụ [{tên, phần thưởng XP, trạng thái}] — key động */
-        if (Array.isArray(wq)) {
-          if (wq.length === 0) {
-            Utils.empty(box, { icon: "target", title: "Chưa có nhiệm vụ tuần", desc: "Quay lại sau để nhận nhiệm vụ mới nhé!" });
-            return;
-          }
-          box.innerHTML = wq.map((q) => {
-            const name = Utils.escapeHtml(q.ten_nhiem_vu || q.ten || q.name || q.title || "Nhiệm vụ");
-            const reward = q.phan_thuong_xp ?? q.reward_xp ?? q.reward ?? q.xp;
-            const done = q.hoan_thanh ?? q.is_done ?? q.completed ?? (q.status === "DONE" || q.status === "hoan_thanh");
-            const rewardTxt = reward !== undefined && reward !== null ? `+${Utils.escapeHtml(String(reward))} XP` : "";
-            return `
-              <div class="quest-row${done ? " quest-done" : ""}">
-                <span class="quest-ico">${Icons.render(done ? "check" : "target", 17)}</span>
-                <div class="flex-1">
-                  <div class="small bold">${name}</div>
-                  ${rewardTxt ? `<div class="xs muted">Phần thưởng: ${rewardTxt}</div>` : ""}
+        <!-- 1. HERO SPOTLIGHT -->
+        <section class="relative w-full rounded-3xl p-6 sm:p-8 lg:p-10 bg-gradient-to-r from-primary via-primary-container to-secondary shadow-xl text-on-primary overflow-hidden">
+          <div class="absolute inset-0 pointer-events-none z-0">
+            <img alt="" id="hero-bg" class="w-full h-full object-cover" src="/frontend/assets/hero_bg.jpg" onerror="this.remove()">
+            <div class="absolute inset-0 bg-gradient-to-r from-primary/90 via-primary-container/85 to-secondary/90 backdrop-blur-[2px]"></div>
+          </div>
+          <div class="pointer-events-none absolute -right-12 -top-12 w-80 h-80 rounded-full bg-tertiary-fixed-dim/20 blur-3xl"></div>
+          <div class="pointer-events-none absolute left-1/3 -bottom-16 w-72 h-72 rounded-full bg-secondary-fixed/20 blur-2xl"></div>
+          <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div class="max-w-2xl space-y-4">
+              <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-lowest/15 backdrop-blur-md shadow-sm" id="hero-streak-pill" hidden>
+                <span class="text-base">🔥</span>
+                <span class="font-label-md text-label-md text-on-primary font-bold tracking-wide" id="hero-streak-text">Chuỗi chuyên cần</span>
+              </div>
+              <h1 class="font-headline-xl text-headline-xl text-on-primary font-extrabold tracking-tight" id="hero-greeting">Chào bạn! 🚀</h1>
+              <p class="font-body-lg text-body-lg text-inverse-on-surface opacity-95 leading-relaxed" id="hero-sub">
+                Đang tải tin tức mới nhất từ CLB…
+              </p>
+              <div class="flex flex-wrap items-center gap-3 pt-2">
+                <a class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-surface-container-lowest text-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-surface-container-low transition-all" href="/frontend/member/events.html">
+                  <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">confirmation_number</span>
+                  <span>Xem &amp; Đăng ký vé ngay</span>
+                </a>
+                <a class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-surface-container-lowest/20 backdrop-blur-md text-on-primary font-label-lg text-label-lg font-semibold hover:bg-surface-container-lowest/30 transition-all" href="/frontend/member/checkin.html">
+                  <span class="material-symbols-outlined text-[20px]">fmd_good</span>
+                  <span>Check-in sự kiện</span>
+                </a>
+              </div>
+            </div>
+            <!-- Data pod: sự kiện sắp diễn ra -->
+            <div class="shrink-0 flex items-center justify-center lg:justify-end">
+              <div class="w-full sm:w-auto p-5 rounded-2xl bg-surface-container-lowest/10 backdrop-blur-xl flex flex-col gap-3 min-w-[240px]" id="hero-pod">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="font-label-sm text-label-sm uppercase tracking-wider text-inverse-on-surface opacity-90">Sự kiện sắp tới</span>
+                  <span class="px-2 py-0.5 rounded-full bg-tertiary text-on-tertiary font-label-sm text-label-sm font-bold" id="pod-time">--:--</span>
                 </div>
-                ${Utils.badge(done ? "Hoàn thành" : "Đang làm", done ? "success" : "accent")}
-              </div>`;
-          }).join("");
-          return;
-        }
-        /* Trường hợp B (shape thật hiện tại): object counter */
-        const xpWeek = Number(wq.xp_this_week || 0);
-        const quests = [
-          ["compass", "Điểm danh sinh hoạt", wq.attendance_count],
-          ["book-open", "Chia sẻ tài liệu", wq.document_shared],
-          ["check-square", "Hoàn thành task sự kiện", wq.task_completed],
-        ];
-        box.innerHTML = `
-          <div class="flex items-center justify-between mb-4">
-            <span class="xs muted">Tuần bắt đầu ${Utils.escapeHtml(Utils.fmtDate(wq.week_start))}</span>
-            ${Utils.badge(`+${xpWeek} XP tuần này`, "accent")}
-          </div>
-          ${quests.map(([ic, label, val]) => `
-            <div class="quest-row" style="margin-bottom:8px">
-              <span class="quest-ico">${Icons.render(ic, 17)}</span>
-              <div class="flex-1">
-                <div class="small bold">${Utils.escapeHtml(label)}</div>
-                <div class="xs muted">Số lần thực hiện trong tuần</div>
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-xl bg-surface-container-lowest/20 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-tertiary-fixed text-[28px]">devices</span>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-label-lg text-label-lg text-on-primary font-bold truncate" id="pod-place">Đang tải sự kiện…</p>
+                    <p class="font-body-sm text-body-sm text-inverse-on-surface opacity-80" id="pod-count">…</p>
+                  </div>
+                </div>
+                <div class="w-full bg-surface-container-lowest/20 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-tertiary-fixed h-full rounded-full transition-all duration-500" id="pod-bar" style="width:0%"></div>
+                </div>
+                <span class="font-label-sm text-label-sm text-right text-tertiary-fixed font-semibold" id="pod-left">…</span>
               </div>
-              <span class="bold">${Utils.escapeHtml(String(val ?? 0))}</span>
-            </div>`).join("")}`;
-      }
-
-      /* ============ 2. Feed bảng tin ============ */
-      function renderPosts(items) {
-        const box = document.getElementById("posts-box");
-        if (!items.length) {
-          Utils.empty(box, { icon: "inbox", title: "Chưa có tin tức nào", desc: "Bài viết từ Ban chủ nhiệm sẽ xuất hiện ở đây." });
-          return;
-        }
-        box.innerHTML = items.map((p) => {
-          const meta = Utils.escapeHtml(p.created_by || "Ban chủ nhiệm");
-          /* noi_dung đã được backend sanitize (bleach) → chèn trực tiếp */
-          return `
-            <article class="post-card">
-              ${p.is_pinned ? Utils.badge("📌 Ban chủ nhiệm ghim", "accent") : ""}
-              <div class="post-title">${Utils.escapeHtml(p.tieu_de)}</div>
-              <div class="post-content">${p.noi_dung || ""}</div>
-              <div class="post-meta">${Icons.render("user", 12)} ${meta} · ${Utils.escapeHtml(Utils.timeAgo(p.created_at))}</div>
-            </article>`;
-        }).join("");
-      }
-
-      /* ============ 3. Sự kiện sắp diễn ra (3 đầu) ============ */
-      function renderEvents(items) {
-        const box = document.getElementById("events-box");
-        if (!items.length) {
-          box.innerHTML = `<div class="glass glass-card" id="events-empty"></div>`;
-          Utils.empty(document.getElementById("events-empty"), { icon: "calendar", title: "Chưa có sự kiện nào", desc: "Sự kiện mới của CLB sẽ hiện ở đây, theo dõi nhé!" });
-          return;
-        }
-        box.innerHTML = `<div class="glass glass-card">${items.slice(0, 3).map((ev) => `
-          <div class="event-chip">
-            <span class="event-ico">${Icons.render("calendar", 19)}</span>
-            <div class="flex-1" style="min-width:0">
-              <div class="small bold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Utils.escapeHtml(ev.ten_hoat_dong)}</div>
-              <div class="xs muted">${Utils.escapeHtml(Utils.fmtDateTime(ev.thoi_gian_bat_dau))}</div>
             </div>
-            <button class="btn btn-violet btn-sm" data-event-go="${ev.id}">Xem &amp; Đăng ký</button>
-          </div>`).join("")}</div>`;
-        box.querySelectorAll("[data-event-go]").forEach((btn) =>
-          btn.addEventListener("click", () => { window.location.href = "/frontend/member/events.html"; })
-        );
-      }
-
-      /* ============ 4. Bình chọn cộng đồng ============ */
-      const POLL_KEY = (id) => `clbip_poll_voted_${id}`;
-
-      function renderPoll(poll) {
-        const box = document.getElementById("poll-box");
-        if (!poll) {
-          Utils.empty(box, { icon: "bar-chart", title: "Chưa có bình chọn nào", desc: "Khi BCN mở bình chọn, nó sẽ hiện ngay tại đây." });
-          return;
-        }
-        const voted = localStorage.getItem(POLL_KEY(poll.id));
-        const closed = !!poll.is_closed;
-        const locked = voted !== null || closed;
-        const total = poll.total_votes || 0;
-
-        const optionsHtml = (poll.options || []).map((opt, i) => {
-          const count = Number((poll.votes || {})[String(i)] || 0);
-          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-          const showResult = locked;
-          const chosen = voted === String(i);
-          return `
-            <button class="poll-opt${chosen ? " chosen" : ""}" data-poll="${poll.id}" data-idx="${i}" ${locked ? "disabled" : ""}>
-              <span>${chosen ? Icons.render("check", 15) : ""} ${Utils.escapeHtml(opt)}</span>
-              <span class="poll-votes">${showResult ? `${count} phiếu · ${pct}%` : ""}</span>
-            </button>`;
-        }).join("");
-
-        box.innerHTML = `
-          <div class="flex items-center justify-between gap-2 mb-4 wrap">
-            <div class="bold">${Utils.escapeHtml(poll.question)}</div>
-            ${closed ? Utils.badge("Đã đóng", "neutral") : (voted !== null ? Utils.badge("Bạn đã bình chọn", "success") : Utils.badge(`${total} phiếu`, "neutral"))}
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px">${optionsHtml}</div>
-          ${locked ? "" : `<div class="xs muted mt-4">Chọn một phương án — mỗi người chỉ được bình chọn một lần nhé!</div>`}`;
+        </section>
 
-        box.querySelectorAll(".poll-opt:not(:disabled)").forEach((btn) =>
-          btn.addEventListener("click", () => votePoll(poll, Number(btn.dataset.idx), btn))
-        );
+        <!-- 2. QUICK ACTIONS -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <a class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4" href="/frontend/member/checkin.html" id="qa-gps">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center group-hover:scale-105 transition-transform">
+              <span class="material-symbols-outlined text-[26px]">radar</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-primary transition-colors">Điểm danh GPS</span>
+              </div>
+              <p class="font-body-sm text-body-sm text-tertiary font-semibold flex items-center gap-1 mt-0.5">
+                <span class="w-2 h-2 rounded-full bg-tertiary inline-block animate-pulse"></span>
+                <span id="qa-gps-sub">Đang tải phiên…</span>
+              </p>
+            </div>
+          </a>
+          <a class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4" href="/frontend/member/events.html" id="qa-events">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center group-hover:scale-105 transition-transform">
+              <span class="material-symbols-outlined text-[26px]">confirmation_number</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-secondary transition-colors">Đăng ký sự kiện</span>
+              <p class="font-body-sm text-body-sm text-secondary font-semibold mt-0.5" id="qa-events-sub">Đang tải…</p>
+            </div>
+          </a>
+          <a class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4" href="/frontend/member/documents.html" id="qa-docs">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-surface-container-highest text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
+              <span class="material-symbols-outlined text-[26px]">menu_book</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-primary transition-colors">Tải bài giảng mới</span>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 truncate" id="qa-docs-sub">Đang tải…</p>
+            </div>
+          </a>
+          <button class="group p-5 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm hover:shadow-md transition-all flex items-center gap-4 text-left w-full" type="button" id="qa-feedback">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-error-container text-on-error-container flex items-center justify-center group-hover:scale-105 transition-transform">
+              <span class="material-symbols-outlined text-[26px]">mark_chat_unread</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <span class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-error transition-colors">Hòm thư CLB</span>
+              <p class="font-body-sm text-body-sm text-error font-semibold mt-0.5">Góp ý &amp; Bình chọn ẩn danh</p>
+            </div>
+          </button>
+        </section>
+
+        <!-- 3. MAIN FEED (8 cols) + WIDGETS (4 cols) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <!-- LEFT -->
+          <div class="lg:col-span-8 space-y-6">
+            <!-- Stories -->
+            <div class="w-full p-4 rounded-2xl bg-surface-container-lowest/90 backdrop-blur-md shadow-sm">
+              <div class="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-none" id="stories-row">
+                <div class="flex items-center gap-4 w-full" id="stories-inner">
+                  <div class="skel w-14 h-14 rounded-full shrink-0"></div>
+                  <div class="skel w-14 h-14 rounded-full shrink-0"></div>
+                  <div class="skel w-14 h-14 rounded-full shrink-0"></div>
+                  <div class="skel w-14 h-14 rounded-full shrink-0"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Feed -->
+            <div class="space-y-6" id="feed-box" aria-live="polite">
+              <article class="rounded-3xl bg-surface-container-lowest/95 backdrop-blur-md shadow-sm overflow-hidden flex flex-col p-6 space-y-4" aria-hidden="true">
+                <div class="flex items-center gap-3">
+                  <div class="skel w-11 h-11 rounded-2xl"></div>
+                  <div class="flex-1 space-y-2"><div class="skel h-4 w-1/3"></div><div class="skel h-3 w-1/4"></div></div>
+                </div>
+                <div class="space-y-2"><div class="skel h-5 w-3/4"></div><div class="skel h-4 w-full"></div><div class="skel h-4 w-5/6"></div></div>
+                <div class="skel h-48 w-full rounded-2xl"></div>
+              </article>
+            </div>
+          </div>
+
+          <!-- RIGHT WIDGETS -->
+          <div class="lg:col-span-4 space-y-6">
+            <!-- Widget 1: Thẻ thành viên số -->
+            <div class="w-full rounded-3xl p-6 bg-gradient-to-br from-surface-container-highest via-surface-container to-surface-variant shadow-md relative overflow-hidden" id="member-card">
+              <div class="pointer-events-none absolute -top-16 -right-16 w-44 h-44 rounded-full bg-primary/20 blur-xl"></div>
+              <div class="pointer-events-none absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-secondary/20 blur-xl"></div>
+              <div class="relative z-10 flex flex-col justify-between gap-6">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-extrabold">Thẻ thành viên số</span>
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface font-extrabold mt-0.5">CLB IP ĐH Sư phạm Huế</h3>
+                  </div>
+                  <span class="material-symbols-outlined text-primary text-[28px]">contactless</span>
+                </div>
+                <div class="space-y-1">
+                  <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wide">Họ và tên thành viên</p>
+                  <p class="font-headline-md text-headline-md text-on-surface font-black tracking-tight uppercase" id="card-name">…</p>
+                  <p class="font-body-sm text-body-sm text-on-surface-variant font-medium" id="card-meta">MSSV: …</p>
+                </div>
+                <div class="pt-3 flex items-end justify-between gap-3">
+                  <div class="space-y-1 min-w-0">
+                    <span class="inline-block px-2.5 py-1 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-bold tracking-wide" id="card-level">Cấp …</span>
+                    <p class="font-label-sm text-label-sm text-secondary font-bold pt-1" id="card-xp">⚡ … XP Tích luỹ</p>
+                    <div class="w-32 bg-surface-container-lowest rounded-full h-1.5 overflow-hidden">
+                      <div class="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all duration-500" id="card-bar" style="width:0%"></div>
+                    </div>
+                    <p class="font-label-sm text-[11px] text-on-surface-variant" id="card-remain">…</p>
+                  </div>
+                  <div class="w-14 h-14 p-1 rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-center shrink-0" id="card-qr" title="Mã QR định danh thành viên"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Widget 2: Leaderboard -->
+            <div class="w-full rounded-3xl p-6 bg-surface-container-lowest/90 backdrop-blur-md shadow-sm space-y-5" id="leaderboard-card">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-secondary text-[22px]" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+                  <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Top Chiến Thần</h3>
+                </div>
+                <a class="font-label-sm text-label-sm text-primary font-bold hover:underline" href="/frontend/member/leaderboard.html">Xem tất cả</a>
+              </div>
+              <div class="space-y-3" id="lb-list">
+                <div class="skel h-16 w-full rounded-2xl"></div>
+                <div class="skel h-16 w-full rounded-2xl"></div>
+                <div class="skel h-16 w-full rounded-2xl"></div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-container-high/60 flex flex-col gap-1.5" id="lb-me" hidden>
+                <div class="flex items-center justify-between">
+                  <span class="font-label-sm text-label-sm font-bold text-on-surface" id="lb-me-rank">Vị trí của bạn</span>
+                  <span class="font-label-sm text-label-sm font-bold text-primary" id="lb-me-xp">…</span>
+                </div>
+                <div class="w-full bg-surface-container rounded-full h-2 overflow-hidden">
+                  <div class="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all duration-500" id="lb-me-bar" style="width:0%"></div>
+                </div>
+                <p class="font-label-sm text-label-sm text-on-surface-variant" id="lb-me-note">…</p>
+              </div>
+            </div>
+
+            <!-- Widget 3: Nhiệm vụ -->
+            <div class="w-full rounded-3xl p-6 bg-surface-container-lowest/90 backdrop-blur-md shadow-sm space-y-4" id="quests-card">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary text-[22px]">task_alt</span>
+                  <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Nhiệm vụ tuần này</h3>
+                </div>
+                <span class="font-label-sm text-label-sm text-outline font-semibold" id="q-count">…</span>
+              </div>
+              <div class="space-y-3" id="q-list">
+                <div class="skel h-14 w-full rounded-2xl"></div>
+                <div class="skel h-14 w-full rounded-2xl"></div>
+                <div class="skel h-14 w-full rounded-2xl"></div>
+              </div>
+              <p class="font-label-sm text-label-sm text-secondary font-bold" id="q-xp-week" hidden>+… XP tuần này</p>
+            </div>
+
+            <!-- Widget 4: Bình chọn cộng đồng -->
+            <div class="w-full rounded-3xl p-6 bg-surface-container-lowest/90 backdrop-blur-md shadow-sm space-y-4" id="poll-card">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-tertiary text-[22px]">how_to_vote</span>
+                  <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Bình chọn cộng đồng</h3>
+                </div>
+                <span class="font-label-sm text-label-sm text-outline font-semibold" id="poll-meta">…</span>
+              </div>
+              <div class="space-y-3" id="poll-body">
+                <div class="skel h-12 w-full rounded-2xl"></div>
+                <div class="skel h-12 w-full rounded-2xl"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="w-full bg-surface-container-lowest/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(19,27,46,0.02)] border-t border-outline-variant/30 mt-auto">
+    <div class="max-w-[1400px] mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+        <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold shadow-[0_2px_8px_rgba(70,72,212,0.25)]">IP</div>
+        <div>
+          <p class="font-headline-sm text-headline-sm text-on-surface font-bold">Câu lạc bộ Tin học Thực hành (IP Club)</p>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">Khoa Tin học • Trường Đại học Sư phạm - Đại học Huế</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center justify-center gap-6">
+        <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="/frontend/member/events.html">Lịch sinh hoạt</a>
+        <a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="/frontend/member/documents.html">Kho học liệu</a>
+        <button class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" type="button" id="footer-feedback-btn">Đóng góp ý kiến</button>
+        <button class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" type="button" id="btn-rules">Quy chế thành viên</button>
+      </div>
+      <div class="text-center md:text-right">
+        <p class="font-label-sm text-label-sm text-outline">© 2026 IP Club - DHSP Hue. All rights reserved.</p>
+        <p class="font-label-sm text-label-sm text-primary font-semibold">Code your Future, Build the Community</p>
+      </div>
+    </div>
+  </footer>
+</div>
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/icons.js"></script>
+<script src="/frontend/js/toast.js"></script>
+<script src="/frontend/js/utils.js"></script>
+<script src="/frontend/js/auth.js"></script>
+<script src="/frontend/js/celebration.js"></script>
+<script src="/frontend/assets/qrcode.min.js"></script>
+<script>
+  (function () {
+    "use strict";
+
+    /* ================= Helpers ================= */
+    const $ = (id) => document.getElementById(id);
+    /* Backend làm sạch free-text bằng bleach.clean (strip tag + escape &amp;) —
+       decode entity TRƯỚC khi escape lại theo context trang, tránh hiện "&amp;" kép. */
+    const _dec = document.createElement("textarea");
+    const unesc = (s) => { _dec.innerHTML = String(s == null ? "" : s); return _dec.value; };
+    const esc = (s) => Utils.escapeHtml(unesc(s));
+    /* Thang XP theo đúng backend LEVEL_THRESHOLDS (apps/gamification/services.py) */
+    const LEVEL_THRESHOLDS = [0, 100, 250, 500, 900, 1400, 2000, 2800, 3800, 5000];
+    const LEVEL_TITLES = ["Tân Binh", "Dev Tập Sự", "Coder Nghiệp Dư", "Lập Trình Viên", "Kỹ Sư Tập Sự", "Dev Thần Tốc", "Kiến Trúc Sư", "Chuyên Gia Thuật Toán", "Huyền Thoại CLB", "Ngôi Sao IP"];
+    const levelTitle = (lv) => LEVEL_TITLES[Math.max(0, Math.min(LEVEL_TITLES.length - 1, (Number(lv) || 1) - 1))];
+    const firstName = (user) => {
+      const name = user?.ho_ten || user?.email || "";
+      const parts = String(name).trim().split(/\s+/);
+      return parts[parts.length - 1] || "bạn";
+    };
+    const greeting = () => {
+      const h = new Date().getHours();
+      if (h < 12) return "Chào buổi sáng";
+      if (h < 18) return "Chào buổi chiều";
+      return "Chào buổi tối";
+    };
+    /* localStorage theo user — máy dùng chung không còn sót trạng thái giữa 2 tài khoản */
+    const uid = () => (Auth.cachedUser()?.id ?? "anon");
+    const rxKey = (id) => `clbip_rx_u${uid()}_${id}`;
+    const savedKey = (id) => `clbip_saved_u${uid()}_${id}`;
+    const pollVotedKey = (id) => `clbip_poll_voted_u${uid()}_${id}`;
+
+    /* Nút loading riêng cho ngôn ngữ M3 (nút pill không dùng spinner Utils.btnLoading) */
+    function setBtnLoading(btn, text) {
+      if (!btn) return () => {};
+      const old = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="font-label-sm text-label-sm font-bold">${esc(text || "Đang gửi…")}</span>`;
+      return () => { btn.disabled = false; btn.innerHTML = old; };
+    }
+
+    function emptyBox(el, icon, title, desc) {
+      if (!el) return;
+      el.innerHTML = `
+        <div class="flex flex-col items-center justify-center text-center py-8 px-4 gap-2">
+          <span class="material-symbols-outlined text-[40px] text-outline">${esc(icon)}</span>
+          <p class="font-label-lg text-label-lg text-on-surface font-bold">${esc(title)}</p>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">${esc(desc)}</p>
+        </div>`;
+    }
+    function errorBox(el, title) {
+      emptyBox(el, "cloud_off", title || "Không tải được dữ liệu", "Kiểm tra kết nối rồi tải lại trang nhé!");
+    }
+
+    /* ================= Sidebar: collapse + mobile drawer ================= */
+    const sidebar = $("main-sidebar");
+    const contentArea = $("content-area");
+    const toggleBtn = $("sidebar-toggle-btn");
+    const toggleIcon = $("toggle-icon");
+    const scrim = $("mobile-scrim");
+    let isCollapsed = false;
+
+    function applyCollapseState(collapsed) {
+      const texts = document.querySelectorAll(".sidebar-text");
+      if (collapsed) {
+        sidebar.classList.remove("w-72"); sidebar.classList.add("w-20");
+        contentArea.classList.remove("pl-72"); contentArea.classList.add("pl-20");
+        toggleIcon.textContent = "chevron_right";
+        toggleBtn.title = "Mở rộng Sidebar";
+        texts.forEach((el) => el.classList.add("hidden"));
+      } else {
+        sidebar.classList.remove("w-20"); sidebar.classList.add("w-72");
+        contentArea.classList.remove("pl-20"); contentArea.classList.add("pl-72");
+        toggleIcon.textContent = "chevron_left";
+        toggleBtn.title = "Thu gọn Sidebar";
+        texts.forEach((el) => el.classList.remove("hidden"));
       }
+    }
+    toggleBtn.addEventListener("click", () => { isCollapsed = !isCollapsed; applyCollapseState(isCollapsed); });
 
-      async function votePoll(poll, idx, btn) {
-        const undo = Utils.btnLoading(btn, "Đang gửi...");
+    function closeDrawer() { sidebar.classList.remove("nav-open"); scrim.classList.remove("show"); }
+    $("btn-burger").addEventListener("click", () => { sidebar.classList.add("nav-open"); scrim.classList.add("show"); });
+    scrim.addEventListener("click", closeDrawer);
+    sidebar.querySelectorAll("a").forEach((a) => a.addEventListener("click", closeDrawer));
+
+    /* ================= Dropdowns (bell / user) ================= */
+    function closeAllDd() { document.querySelectorAll(".dd.open").forEach((d) => d.classList.remove("open")); }
+    function bindDropdown(btnId, ddId) {
+      const btn = $(btnId), dd = $(ddId);
+      if (!btn || !dd) return;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const willOpen = !dd.classList.contains("open");
+        closeAllDd();
+        if (willOpen) dd.classList.add("open");
+      });
+      dd.addEventListener("click", (e) => e.stopPropagation());
+    }
+    bindDropdown("btn-bell", "dd-bell");
+    bindDropdown("btn-user", "dd-user");
+    document.addEventListener("click", closeAllDd);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllDd(); });
+    $("btn-logout").addEventListener("click", () => Auth.logout());
+
+    /* ================= Modals (góp ý ẩn danh / quy chế) ================= */
+    function openLpModal({ title, bodyHTML, onMount }) {
+      const backdrop = document.createElement("div");
+      backdrop.className = "lp-backdrop";
+      backdrop.innerHTML = `
+        <div class="lp-modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">${esc(title)}</h3>
+            <button type="button" aria-label="Đóng" class="lp-close w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+          ${bodyHTML}
+        </div>`;
+      const close = () => { backdrop.remove(); document.removeEventListener("keydown", onEsc); };
+      const onEsc = (e) => { if (e.key === "Escape") close(); };
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+      backdrop.querySelector(".lp-close").addEventListener("click", close);
+      document.addEventListener("keydown", onEsc);
+      document.body.appendChild(backdrop);
+      if (onMount) onMount(backdrop, close);
+      return { el: backdrop, close };
+    }
+
+    function openFeedbackModal() {
+      openLpModal({
+        title: "Góp ý ẩn danh 💌",
+        bodyHTML: `
+          <div class="space-y-3">
+            <label class="lp-label" for="fb-content">Nội dung góp ý</label>
+            <textarea id="fb-content" class="lp-input" rows="4" maxlength="1000"
+              placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
+            <p class="lp-error" id="fb-error"></p>
+            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary-container transition-all" id="fb-submit">
+              <span class="material-symbols-outlined text-[18px]">send</span><span>Gửi góp ý</span>
+            </button>
+          </div>`,
+        onMount(backdrop, close) {
+          const ta = backdrop.querySelector("#fb-content");
+          const errEl = backdrop.querySelector("#fb-error");
+          const btn = backdrop.querySelector("#fb-submit");
+          ta.focus();
+          btn.addEventListener("click", async () => {
+            const noi_dung = ta.value.trim();
+            errEl.classList.remove("show");
+            if (!noi_dung) {
+              errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+              errEl.classList.add("show");
+              return;
+            }
+            const undo = setBtnLoading(btn, "Đang gửi…");
+            try {
+              await ApiClient.post("/feedback/", { noi_dung });
+              close();
+              Toast.success("Góp ý đã gửi ẩn danh 💌");
+            } catch (err) {
+              undo();
+              errEl.textContent = err?.message || "Không gửi được góp ý, thử lại nhé!";
+              errEl.classList.add("show");
+              Toast.error(err?.message || "Không gửi được góp ý");
+            }
+          });
+        },
+      });
+    }
+    $("qa-feedback").addEventListener("click", openFeedbackModal);
+    $("nav-feedback-btn").addEventListener("click", openFeedbackModal);
+    $("footer-feedback-btn").addEventListener("click", openFeedbackModal);
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest('[data-act="feedback"]');
+      if (btn) openFeedbackModal();
+    });
+
+    $("btn-rules").addEventListener("click", () => {
+      openLpModal({
+        title: "Quy chế thành viên CLB IP",
+        bodyHTML: `
+          <div class="space-y-3 font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            <p><strong class="text-on-surface">1. Tinh thần tham gia:</strong> thành viên tích cực tham gia sinh hoạt, sự kiện và điểm danh GPS đúng hạn; vắng mặt xin phép trước qua Hòm thư của CLB.</p>
+            <p><strong class="text-on-surface">2. Học tập &amp; chia sẻ:</strong> khuyến khích chia sẻ học liệu lên Kho Học Liệu (+100 XP), tôn trọng bản quyền tác giả, không đăng nội dung vi phạm pháp luật.</p>
+            <p><strong class="text-on-surface">3. Văn hóa CLB:</strong> tôn trọng nhau, không xúc phạm cá nhân/tổ chức; thảo luận trên bảng tin bằng ngôn từ văn minh.</p>
+            <p><strong class="text-on-surface">4. Điểm danh &amp; XP:</strong> XP và huy hiệu ghi nhận qua điểm danh GPS, chia sẻ tài liệu, hoàn thành task sự kiện. Gian lận vị trí/người thay điểm danh sẽ bị hủy kết quả và kỷ luật.</p>
+            <p><strong class="text-on-surface">5. Quỹ CLB:</strong> hoạt động minh bạch — sổ quỹ được BCN cập nhật và thành viên có quyền theo dõi qua các báo cáo định kỳ.</p>
+            <p><strong class="text-on-surface">6. Thôi hoạt động:</strong> thành viên bảo lưu/thôi hoạt động liên hệ BCN; dữ liệu XP được lưu trong niên kỳ.</p>
+          </div>`,
+      });
+    });
+
+    /* ================= Identity (sidebar + topbar + thẻ) ================= */
+    function renderIdentity(user) {
+      const name = user?.ho_ten || user?.email || "Thành viên";
+      const init = Utils.initials(name);
+      $("sb-avatar").textContent = init;
+      $("topbar-avatar").textContent = init;
+      $("sb-name").textContent = name;
+      $("topbar-name").textContent = firstName(user);
+      $("dd-user-name").textContent = name;
+      $("card-name").textContent = name;
+      const mssv = user?.mssv ? `MSSV: ${user.mssv}` : "Thành viên CLB IP";
+      $("card-meta").textContent = user?.lop ? `${mssv} • ${user.lop}` : mssv;
+      /* QR định danh từ MSSV (assets/qrcode.min.js — CSP 'self') */
+      if (user?.mssv && typeof QRCode !== "undefined") {
         try {
-          const updated = await ApiClient.post(`/polls/${poll.id}/vote/`, { option_index: idx });
-          localStorage.setItem(POLL_KEY(poll.id), String(idx));
-          Toast.success("Đã bình chọn! Cảm ơn bạn đã góp tiếng nói 🗳️");
-          renderPoll(updated && updated.id ? updated : poll);
-        } catch (err) {
-          Toast.error(err?.message || "Bình chọn thất bại");
-          undo();
-        }
+          $("card-qr").innerHTML = "";
+          new QRCode($("card-qr"), { text: String(user.mssv), width: 48, height: 48, correctLevel: QRCode.CorrectLevel.M });
+        } catch (e) { /* QR fail → giữ ô trống, không chặn trang */ }
       }
+    }
 
-      /* ============ 5. Thẻ thành viên mini + streak ============ */
-      function renderMemberCard(me, user) {
-        const box = document.getElementById("member-card");
-        const xp = Number(me?.xp ?? user?.xp_points ?? 0);
-        const level = Number(me?.level ?? user?.current_level ?? 1);
-        const pct = ((xp % 200) / 200) * 100;               // 200 XP / level
-        const remain = Math.max(200 - (xp % 200), 0);
-        const name = user?.ho_ten || user?.email || "?";
-        const streak = Number(me?.streak_count ?? user?.streak_count ?? 0);
+    function renderGamification(me) {
+      const xp = Number(me?.xp ?? 0);
+      const level = Number(me?.level ?? 1);
+      const streak = Number(me?.streak_count ?? 0);
+      $("sb-level").textContent = `Lv.${level} ${levelTitle(level)}`;
+      $("sb-xp").textContent = `${Utils.fmtNum(xp)} XP`;
+      $("pill-xp").hidden = false;
+      $("pill-xp-text").textContent = `${Utils.fmtNum(xp)} XP`;
+      if (streak > 0) {
+        $("pill-streak").hidden = false;
+        $("pill-streak-text").textContent = `${streak} ngày chuyên cần`;
+        $("hero-streak-pill").hidden = false;
+        $("hero-streak-text").textContent = `Chuỗi ${streak} ngày chuyên cần • Điểm danh hôm nay để giữ chuỗi nhé!`;
+      }
+      /* thẻ thành viên — thanh tiến độ theo ngưỡng level thật của backend */
+      $("card-level").textContent = `Cấp ${level} • ${levelTitle(level)}`;
+      $("card-xp").textContent = `⚡ ${Utils.fmtNum(xp)} XP Tích luỹ`;
+      const base = LEVEL_THRESHOLDS[Math.min(level - 1, LEVEL_THRESHOLDS.length - 1)] ?? 0;
+      const next = LEVEL_THRESHOLDS[Math.min(level, LEVEL_THRESHOLDS.length - 1)] ?? (base + 1000);
+      const pct = next > base ? Math.min(100, Math.max(0, ((xp - base) / (next - base)) * 100)) : 100;
+      $("card-bar").style.width = `${pct.toFixed(1)}%`;
+      const remain = Math.max(next - xp, 0);
+      $("card-remain").textContent = level >= LEVEL_THRESHOLDS.length
+        ? "Cấp tối đa — huyền thoại CLB! 🏆"
+        : `Còn ${Utils.fmtNum(remain)} XP lên Cấp ${level + 1}`;
+    }
+    function gamificationFail() {
+      $("sb-level").textContent = "Ban chủ nhiệm / Thành viên";
+      $("sb-xp").textContent = "—";
+      $("card-level").textContent = "CLB IP ĐHSP Huế";
+      $("card-xp").textContent = "⚡ XP không khả dụng";
+      $("card-remain").textContent = "Không tải được XP lúc này";
+    }
 
-        /* streak chip */
-        const chip = document.getElementById("streak-chip");
-        chip.hidden = false;
-        chip.textContent = `🔥 Streak ${streak} ngày`;
-
-        const avName = Utils.initials(name);
-        const avatarHtml = user?.avatar
-          ? `<img src="${Utils.escapeHtml(user.avatar)}" alt="">`
-          : avName;
-
-        box.innerHTML = `
-          <div class="flex items-center gap-4">
-            <div class="level-ring" style="--pct:${pct.toFixed(1)}">
-              <span class="ring"></span>
-              <span class="avatar avatar-lg violet">${avatarHtml}</span>
+    /* ================= Hero + quick actions (events) ================= */
+    function upcomingEvents(items) {
+      const now = Date.now();
+      const future = items.filter((e) => e.thoi_gian_bat_dau && new Date(e.thoi_gian_bat_dau).getTime() >= now);
+      future.sort((a, b) => new Date(a.thoi_gian_bat_dau) - new Date(b.thoi_gian_bat_dau));
+      return future;
+    }
+    function renderHero(items) {
+      const next = upcomingEvents(items)[0] || null;
+      if (!next) {
+        $("hero-sub").textContent = "Chưa có sự kiện nào sắp diễn ra — theo dõi bảng tin để không bỏ lỡ hoạt động mới của CLB nhé!";
+        $("pod-time").textContent = "--:--";
+        $("pod-place").textContent = "Chưa có sự kiện";
+        $("pod-count").textContent = "Sự kiện mới sẽ hiện ở đây";
+        $("pod-bar").style.width = "0%";
+        $("pod-left").textContent = "—";
+        return;
+      }
+      const when = `${Utils.fmtDate(next.thoi_gian_bat_dau)} lúc ${Utils.fmtTime(next.thoi_gian_bat_dau)}`;
+      $("hero-sub").innerHTML = `Sự kiện <span class="font-semibold text-tertiary-fixed">${esc(next.ten_hoat_dong)}</span> diễn ra vào <strong class="text-on-primary">${esc(when)}</strong> tại ${esc(next.dia_diem || "địa điểm sẽ thông báo")}! Đừng quên đăng ký và chuẩn bị vé số nhé.`;
+      $("pod-time").textContent = Utils.fmtTime(next.thoi_gian_bat_dau) || "--:--";
+      $("pod-place").textContent = next.dia_diem || next.ten_hoat_dong;
+      const reg = Number(next.registered_count ?? 0);
+      const cap = Number(next.so_luong_toi_da ?? 0);
+      $("pod-count").textContent = `${Utils.fmtNum(reg)} thành viên đăng ký`;
+      if (cap > 0) {
+        const pct = Math.min(100, Math.round((reg / cap) * 100));
+        $("pod-bar").style.width = `${pct}%`;
+        const left = Math.max(cap - reg, 0);
+        $("pod-left").textContent = left > 0 ? `Chỉ còn ${Utils.fmtNum(left)} vé` : "Đã hết vé";
+      } else {
+        $("pod-bar").style.width = "100%";
+        $("pod-left").textContent = "Đăng ký tự do";
+      }
+    }
+    function heroFail() {
+      $("hero-sub").textContent = "Không tải được sự kiện lúc này — thử tải lại trang nhé!";
+      $("pod-place").textContent = "Không khả dụng";
+      $("pod-count").textContent = "—";
+      $("pod-left").textContent = "—";
+    }
+    function renderQuickEvents(items) {
+      const n = upcomingEvents(items).length;
+      $("qa-events-sub").textContent = n > 0 ? `${n} sự kiện sắp diễn ra` : "Xem lịch sự kiện CLB";
+    }
+    function renderStories(items) {
+      const row = $("stories-inner");
+      if (!items.length) {
+        emptyBox(row, "celebration", "Chưa có hoạt động nào", "Hoạt động của CLB sẽ hiện thành story tại đây!");
+        return;
+      }
+      const stories = items.slice(0, 6).map((ev) => {
+        const label = ev.ten_hoat_dong || "Sự kiện";
+        const poster = ev.poster
+          ? `<img class="w-14 h-14 rounded-full object-cover group-hover:scale-105 transition-transform" loading="lazy" alt="${esc(label)}" src="${esc(ev.poster)}" onerror="this.remove()">`
+          : `<span class="material-symbols-outlined text-[22px] text-on-primary">celebration</span>`;
+        return `
+          <a class="flex flex-col items-center gap-2 shrink-0 cursor-pointer group" href="/frontend/member/events.html" title="${esc(label)}">
+            <div class="p-0.5 rounded-full bg-gradient-to-tr from-primary via-secondary to-tertiary">
+              <div class="w-15 h-15 rounded-full p-0.5 bg-gradient-to-tr from-primary to-secondary flex items-center justify-center overflow-hidden">${poster}</div>
             </div>
-            <div class="flex-1" style="min-width:0">
-              <div class="flex items-center gap-2 wrap">
-                <span class="bold" style="font-size:var(--text-lg)">Level ${level}</span>
-                ${Utils.badge(`${Utils.fmtNum(xp)} XP`, "accent")}
+            <span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface font-medium text-center w-16 truncate">${esc(label)}</span>
+          </a>`;
+      }).join("");
+      row.innerHTML = stories;
+    }
+    /* ================= Feed (bảng tin) ================= */
+    function commentRow(user) {
+      const init = Utils.initials(user?.ho_ten || user?.email || "?");
+      return `
+        <div class="flex items-center gap-3 pt-2">
+          <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold text-xs shrink-0">${esc(init)}</div>
+          <form class="flex-1 relative" data-comment-form novalidate>
+            <input class="w-full pl-4 pr-12 py-2.5 rounded-full bg-surface-container-low font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Viết góp ý ẩn danh cho BCN CLB…" maxlength="1000" aria-label="Nội dung góp ý ẩn danh">
+            <button class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-colors" type="submit" aria-label="Gửi góp ý">
+              <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+            </button>
+          </form>
+        </div>`;
+    }
+
+    function postCard(p, user, isFirst) {
+      const author = p.created_by || "Ban chủ nhiệm";
+      const pinned = !!p.is_pinned;
+      const img = p.anh_dinh_kem
+        ? `<div class="px-6 pt-4">
+            <div class="relative w-full rounded-2xl overflow-hidden aspect-[16/9] shadow-inner bg-surface-container imgwrap">
+              <span class="imgwrap-ico material-symbols-outlined text-[40px]">image</span>
+              <img class="w-full h-full object-cover" loading="lazy" alt="${esc(p.tieu_de)}" src="${esc(p.anh_dinh_kem)}" onerror="this.remove()">
+            </div>
+          </div>`
+        : "";
+      const liked = localStorage.getItem(rxKey(p.id)) === "like";
+      const fired = localStorage.getItem(rxKey(p.id)) === "fire";
+      const saved = localStorage.getItem(savedKey(p.id)) === "1";
+      return `
+        <article class="rounded-3xl bg-surface-container-lowest/95 backdrop-blur-md shadow-sm overflow-hidden flex flex-col" data-post="${esc(p.id)}">
+          <div class="p-6 pb-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold shadow-md">${esc(Utils.initials(author))}</div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-headline-sm text-headline-sm text-on-surface font-bold">${esc(author)}</span>
+                </div>
+                <div class="flex items-center gap-2 text-on-surface-variant">
+                  <span class="font-body-sm text-body-sm">${esc(Utils.timeAgo(p.created_at))}</span>
+                  ${pinned ? `<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded-md bg-primary-fixed text-on-primary-fixed font-bold uppercase"><span class="material-symbols-outlined text-[13px]">push_pin</span> Ghim thông báo</span>` : ""}
+                </div>
               </div>
-              <div class="xs muted mt-2 mb-2">Còn ${Utils.fmtNum(remain)} XP nữa thăng Level ${level + 1} — cố lên! ⚡</div>
-              <div class="progress"><span style="width:${Math.min(pct, 100).toFixed(1)}%"></span></div>
             </div>
+          </div>
+          <div class="px-6 space-y-3">
+            <h2 class="font-headline-md text-headline-md text-on-surface font-bold leading-snug">${esc(p.tieu_de)}</h2>
+            <div class="font-body-md text-body-md text-on-surface-variant leading-relaxed">${p.noi_dung || ""}</div>
+          </div>
+          ${img}
+          <div class="p-6 pt-4 flex flex-col gap-4">
+            <div class="flex items-center justify-between pt-2 flex-wrap gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container/40 text-on-error-container transition-colors hover:bg-error-container${liked ? " rx-on" : ""}" data-act="like" data-id="${esc(p.id)}" type="button" aria-pressed="${liked}">
+                  <span class="text-base">❤️</span><span class="font-label-md text-label-md font-bold">${liked ? "1" : ""}</span>
+                </button>
+                <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface transition-colors hover:bg-surface-variant${fired ? " rx-fire-on" : ""}" data-act="fire" data-id="${esc(p.id)}" type="button" aria-pressed="${fired}">
+                  <span class="text-base">🔥</span><span class="font-label-md text-label-md font-bold">${fired ? "1" : ""}</span>
+                </button>
+                <button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface-variant transition-colors hover:text-on-surface" data-act="feedback" type="button">
+                  <span class="material-symbols-outlined text-[18px]">chat_bubble_outline</span><span class="font-label-md text-label-md font-semibold">Góp ý BCN</span>
+                </button>
+              </div>
+              <button class="w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center transition-colors ${saved ? "bm-on text-primary" : "text-on-surface-variant hover:text-primary"}" data-act="save" data-id="${esc(p.id)}" type="button" aria-pressed="${saved}" aria-label="Lưu bài viết">
+                <span class="material-symbols-outlined text-[20px]">${saved ? "bookmark" : "bookmark_border"}</span>
+              </button>
+            </div>
+            ${isFirst ? commentRow(user) : ""}
+          </div>
+        </article>`;
+    }
+
+    function renderPosts(items, user) {
+      const box = $("feed-box");
+      if (!items.length) {
+        emptyBox(box, "inbox", "Chưa có tin tức nào", "Bài viết từ Ban chủ nhiệm sẽ xuất hiện ngay tại đây!");
+        return;
+      }
+      box.innerHTML = items.slice(0, 5).map((p, i) => postCard(p, user, i === 0)).join("");
+    }
+    function feedFail() {
+      errorBox($("feed-box"), "Lỗi tải bảng tin");
+    }
+
+    /* Delegation: reaction / save / comment */
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest('[data-act="like"],[data-act="fire"]');
+      if (btn) {
+        const id = btn.dataset.id;
+        const type = btn.dataset.act;
+        const cur = localStorage.getItem(rxKey(id));
+        const next = cur === type ? null : type;
+        if (next) localStorage.setItem(rxKey(id), next); else localStorage.removeItem(rxKey(id));
+        const card = btn.closest("article");
+        const likeBtn = card?.querySelector('[data-act="like"]');
+        const fireBtn = card?.querySelector('[data-act="fire"]');
+        if (likeBtn && fireBtn) {
+          const nowLiked = next === "like", nowFired = next === "fire";
+          likeBtn.classList.toggle("rx-on", nowLiked);
+          likeBtn.setAttribute("aria-pressed", String(nowLiked));
+          likeBtn.lastElementChild.textContent = nowLiked ? "1" : "";
+          fireBtn.classList.toggle("rx-fire-on", nowFired);
+          fireBtn.setAttribute("aria-pressed", String(nowFired));
+          fireBtn.lastElementChild.textContent = nowFired ? "1" : "";
+        }
+        return;
+      }
+      const saveBtn = e.target.closest('[data-act="save"]');
+      if (saveBtn) {
+        const id = saveBtn.dataset.id;
+        const on = localStorage.getItem(savedKey(id)) === "1";
+        if (on) localStorage.removeItem(savedKey(id)); else localStorage.setItem(savedKey(id), "1");
+        saveBtn.classList.toggle("bm-on", !on);
+        saveBtn.classList.toggle("text-primary", !on);
+        saveBtn.classList.toggle("text-on-surface-variant", on);
+        saveBtn.setAttribute("aria-pressed", String(!on));
+        const ic = saveBtn.querySelector(".material-symbols-outlined");
+        if (ic) ic.textContent = !on ? "bookmark" : "bookmark_border";
+      }
+    });
+
+    document.addEventListener("submit", async (e) => {
+      const form = e.target.closest("[data-comment-form]");
+      if (!form) return;
+      e.preventDefault();
+      const input = form.querySelector("input");
+      const btn = form.querySelector("button[type=submit]");
+      const noi_dung = (input?.value || "").trim();
+      if (!noi_dung) { Toast.warning("Bạn chưa nhập nội dung góp ý."); return; }
+      const undo = setBtnLoading(btn, "…");
+      try {
+        await ApiClient.post("/feedback/", { noi_dung });
+        if (input) input.value = "";
+        Toast.success("Góp ý đã gửi ẩn danh 💌");
+      } catch (err) {
+        Toast.error(err?.message || "Không gửi được góp ý");
+      } finally {
+        undo();
+      }
+    });
+
+    /* ================= Widget: Leaderboard ================= */
+    const MEDALS = ["👑", "🥈", "🥉"];
+    const MEDAL_AV_BG = ["bg-secondary-fixed text-on-secondary-fixed", "bg-primary-fixed text-on-primary-fixed", "bg-tertiary-fixed text-on-tertiary-fixed"];
+    function renderLeaderboard(lb) {
+      const list = $("lb-list");
+      const top = (lb?.top_10 || []).slice(0, 3);
+      if (!top.length) {
+        emptyBox(list, "military_tech", "Bảng vàng chưa có dữ liệu", "Kiếm XP từ hoạt động CLB để lên bảng nhé!");
+        return;
+      }
+      list.innerHTML = top.map((m, i) => `
+        <div class="p-3 rounded-2xl ${i === 0 ? "bg-surface-container-low" : "bg-surface-container-low/70"} flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-7 text-center font-headline-sm text-headline-sm font-black ${i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : "text-amber-700"}">${MEDALS[i] || i + 1}</div>
+            <div class="w-10 h-10 rounded-full ${MEDAL_AV_BG[i]} flex items-center justify-center font-bold font-label-md text-label-md shrink-0">${esc(Utils.initials(m.name || "?"))}</div>
+            <div class="min-w-0">
+              <p class="font-label-lg text-label-lg text-on-surface font-bold truncate">${esc(m.name || "Thành viên ẩn danh")}</p>
+              <p class="font-body-sm text-body-sm text-on-surface-variant">Hạng ${esc(m.rank ?? i + 1)} bảng vàng XP</p>
+            </div>
+          </div>
+          <span class="font-label-md text-label-md text-secondary font-extrabold whitespace-nowrap">${Utils.fmtNum(Number(m.xp || 0))} XP</span>
+        </div>`).join("");
+
+      const me = lb?.my_position;
+      if (me && me.rank) {
+        $("lb-me").hidden = false;
+        $("lb-me-rank").textContent = `Vị trí của bạn: Hạng #${me.rank}`;
+        $("lb-me-xp").textContent = "⚡ " + Utils.fmtNum(Number(lb?.top_10?.[0]?.xp ?? 0)) + " XP Top 1";
+        if (me.in_top_k) {
+          $("lb-me-bar").style.width = "100%";
+          $("lb-me-note").innerHTML = `🎉 Bạn đã ở trong <strong class="text-on-surface font-bold">Top 10</strong> rồi, giữ vững phong độ nhé!`;
+        } else {
+          const gap = Number(me.xp_gap_to_top_k || 0);
+          const myXp = Number(me.xp ?? 0);
+          const pct = Math.min(90, Math.round((myXp / Math.max(myXp + gap, 1)) * 100));
+          $("lb-me-bar").style.width = `${pct}%`;
+          $("lb-me-note").innerHTML = gap > 0
+            ? `🔥 Chỉ còn <strong class="text-on-surface font-bold">${Utils.fmtNum(gap)} XP</strong> nữa để vươn vào Top 10!`
+            : "Cố lên chút nữa là vào Top 10 thôi! 💪";
+        }
+      } else {
+        $("lb-me").hidden = true;
+      }
+    }
+    function leaderboardFail() {
+      errorBox($("lb-list"), "Lỗi tải bảng vàng");
+    }
+
+    /* ================= Widget: Nhiệm vụ tuần ================= */
+    function renderQuests(me) {
+      const wq = me?.weekly_quests;
+      const list = $("q-list");
+      if (!wq || typeof wq !== "object" || Array.isArray(wq)) {
+        emptyBox(list, "task_alt", "Chưa có nhiệm vụ tuần", "Quay lại sau để nhận nhiệm vụ mới nhé!");
+        $("q-count").textContent = "—";
+        return;
+      }
+      const quests = [
+        { icon: "radar", name: "Điểm danh sinh hoạt", val: Number(wq.attendance_count || 0), href: "/frontend/member/checkin.html", reward: "Mỗi lượt điểm danh đều có XP" },
+        { icon: "menu_book", name: "Chia sẻ tài liệu", val: Number(wq.document_shared || 0), href: "/frontend/member/documents.html", reward: "+100 XP mỗi tài liệu" },
+        { icon: "code", name: "Hoàn thành task sự kiện", val: Number(wq.task_completed || 0), href: "/frontend/member/events.html", reward: "XP theo từng task" },
+      ];
+      const done = quests.filter((q) => q.val >= 1).length;
+      $("q-count").textContent = `${done}/${quests.length} xong`;
+      list.innerHTML = quests.map((q) => {
+        const ok = q.val >= 1;
+        return `
+          <div class="p-3.5 rounded-2xl bg-surface-container-low flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${ok ? "bg-tertiary-fixed text-on-tertiary-fixed" : "bg-primary-fixed text-on-primary-fixed"}">
+                <span class="material-symbols-outlined text-[18px]">${ok ? "check" : q.icon}</span>
+              </div>
+              <div class="min-w-0">
+                <p class="font-label-md text-label-md text-on-surface font-bold ${ok ? "line-through opacity-70" : ""}">${esc(q.name)}</p>
+                <p class="font-label-sm text-label-sm font-bold ${ok ? "text-tertiary" : "text-primary"}">${ok ? `Đã làm ${q.val} lần tuần này` : q.reward}</p>
+              </div>
+            </div>
+            ${ok
+              ? `<span class="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-semibold whitespace-nowrap">Đã xong</span>`
+              : `<a class="px-3 py-1 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-bold shadow-sm hover:bg-primary-container transition-colors whitespace-nowrap" href="${q.href}">Làm ngay</a>`}
           </div>`;
+      }).join("");
+      const xpWeek = Number(wq.xp_this_week || 0);
+      if (xpWeek > 0) {
+        $("q-xp-week").hidden = false;
+        $("q-xp-week").textContent = `+${Utils.fmtNum(xpWeek)} XP tuần này • Tuần bắt đầu ${Utils.fmtDate(wq.week_start)}`;
       }
+    }
+    function questsFail() {
+      errorBox($("q-list"), "Lỗi tải nhiệm vụ");
+    }
 
-      /* ============ 6. Góp ý ẩn danh ============ */
-      function openFeedbackModal() {
-        openModal({
-          title: "Góp ý ẩn danh 💌",
-          bodyHTML: `
-            <div class="form-group">
-              <label class="form-label" for="fb-content">Nội dung góp ý</label>
-              <textarea class="form-textarea" id="fb-content" maxlength="1000"
-                placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
-              <div class="form-hint">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi.</div>
-              <div class="form-error hidden" id="fb-error"></div>
-            </div>`,
-          footerHTML: `<button class="btn btn-violet w-100" id="fb-submit">${Icons.render("send", 16)} Gửi góp ý</button>`,
-          onMount(backdrop, close) {
-            const ta = backdrop.querySelector("#fb-content");
-            const errEl = backdrop.querySelector("#fb-error");
-            const btn = backdrop.querySelector("#fb-submit");
-            ta.focus();
-            btn.addEventListener("click", async () => {
-              const noi_dung = ta.value.trim();
-              errEl.classList.add("hidden");
-              if (!noi_dung) {
-                errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
-                errEl.classList.remove("hidden");
-                return;
-              }
-              const undo = Utils.btnLoading(btn, "Đang gửi...");
-              try {
-                await ApiClient.post("/feedback/", { noi_dung });
-                close();
-                Toast.success("Góp ý đã gửi ẩn danh 💌");
-              } catch (err) {
-                Toast.error(err?.message || "Không gửi được góp ý");
-                undo();
-              }
-            });
-          },
+    /* ================= Widget: Bình chọn ================= */
+    function renderPoll(poll) {
+      const body = $("poll-body");
+      const meta = $("poll-meta");
+      if (!poll) {
+        emptyBox(body, "how_to_vote", "Chưa có bình chọn nào", "Khi BCN mở bình chọn, nó sẽ hiện ngay tại đây.");
+        meta.textContent = "—";
+        return;
+      }
+      const voted = localStorage.getItem(pollVotedKey(poll.id));
+      const closed = !!poll.is_closed;
+      const votedServer = !!poll.has_voted; // server chốt — không phụ thuộc localStorage
+      const locked = voted !== null || closed || votedServer;
+      const total = Number(poll.total_votes || 0);
+      meta.textContent = closed ? "Đã đóng" : (voted !== null || votedServer) ? "Bạn đã bình chọn" : total > 0 ? `${total} phiếu` : "Mới";
+
+      body.innerHTML = `
+        <p class="font-label-lg text-label-lg text-on-surface font-bold leading-snug">${esc(poll.question)}</p>
+        <div class="space-y-2.5 pt-1">
+          ${(poll.options || []).map((opt, i) => {
+            const count = Number((poll.votes || {})[String(i)] || 0);
+            const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+            const chosen = voted === String(i);
+            return `
+              <button class="poll-opt2${chosen ? " chosen" : ""}" data-poll="${esc(poll.id)}" data-idx="${i}" ${locked ? "disabled" : ""} type="button">
+                <span class="flex items-center gap-1.5 min-w-0"><span class="truncate">${chosen ? '<span class="material-symbols-outlined text-[15px]">check</span>' : ""}${esc(opt)}</span></span>
+                <span class="poll-votes2">${locked ? `${count} phiếu · ${pct}%` : ""}</span>
+              </button>`;
+          }).join("")}
+        </div>
+        ${locked ? "" : `<p class="font-label-sm text-label-sm text-on-surface-variant">Chọn một phương án — mỗi người chỉ được bình chọn một lần nhé!</p>`}`;
+
+      body.querySelectorAll(".poll-opt2:not(:disabled)").forEach((btn) =>
+        btn.addEventListener("click", () => votePoll(poll, Number(btn.dataset.idx), btn))
+      );
+    }
+    async function votePoll(poll, idx, btn) {
+      /* Khóa TOÀN BỘ option khi request đang chạy — chống vote 2 lần gây 409 oan */
+      const all = btn.closest("#poll-body").querySelectorAll(".poll-opt2");
+      all.forEach((b) => { b.disabled = true; });
+      const undo = setBtnLoading(btn, "Đang gửi…");
+      try {
+        const updated = await ApiClient.post(`/polls/${poll.id}/vote/`, { option_index: idx });
+        localStorage.setItem(pollVotedKey(poll.id), String(idx));
+        Toast.success("Đã bình chọn! Cảm ơn bạn đã góp tiếng nói 🗳️");
+        renderPoll(updated && updated.id ? updated : poll);
+      } catch (err) {
+        undo();
+        all.forEach((b) => { if (b !== btn) b.disabled = false; });
+        Toast.error(err?.message || "Bình chọn thất bại");
+      }
+    }
+    function pollFail() {
+      errorBox($("poll-body"), "Lỗi tải bình chọn");
+    }
+
+    /* ================= Bell: thông báo đã ghim ================= */
+    function renderBellPinned(items) {
+      const pinned = items.filter((p) => p.is_pinned).slice(0, 3);
+      const box = $("dd-bell-items");
+      if (!pinned.length) {
+        box.innerHTML = `<div class="dd-item text-on-surface-variant">Chưa có thông báo mới — mọi thứ đang ổn 🙂</div>`;
+        return;
+      }
+      $("bell-dot").classList.remove("hidden");
+      box.innerHTML = pinned.map((p) => `
+        <div class="dd-item">
+          <span class="material-symbols-outlined text-[18px] text-primary shrink-0">push_pin</span>
+          <span class="min-w-0"><span class="block font-bold truncate">${esc(p.tieu_de)}</span>
+          <span class="block text-outline">${esc(Utils.timeAgo(p.created_at))}</span></span>
+        </div>`).join("");
+    }
+
+    /* ================= INIT ================= */
+    function bindQuickDocs(items) {
+      const el = $("qa-docs-sub");
+      if (items.length && items[0].tieu_de) el.textContent = items[0].tieu_de;
+      else el.textContent = "Khám phá kho học liệu";
+    }
+    function bindQuickSessions(items) {
+      const el = $("qa-gps-sub");
+      const open = items[0];
+      if (open) {
+        el.textContent = "Mở cổng " + (Utils.fmtTime(open.mo_phien_at) || "đang diễn ra");
+      } else {
+        el.textContent = "Chưa có phiên mở";
+      }
+    }
+
+    async function init(user) {
+      $("hero-greeting").textContent = `${greeting()}, ${user?.ho_ten || "bạn"}! 🚀`;
+      renderIdentity(user);
+
+      const meP = ApiClient.get("/gamification/me/")
+        .then((me) => { renderGamification(me); renderQuests(me); })
+        .catch(() => { gamificationFail(); questsFail(); });
+
+      const postsP = ApiClient.getList("/posts/")
+        .then(({ items }) => { renderPosts(items, user); renderBellPinned(items); })
+        .catch(() => {
+          feedFail();
+          $("dd-bell-items").innerHTML = `<div class="dd-item text-on-surface-variant">Không tải được thông báo</div>`;
         });
-      }
 
-      /* ============ INIT ============ */
-      async function init(user) {
-        /* icon tĩnh */
-        document.getElementById("ic-target").innerHTML = Icons.render("target", 15);
-        document.getElementById("ic-megaphone").innerHTML = Icons.render("bell", 15);
-        document.getElementById("ic-calendar").innerHTML = Icons.render("calendar", 15);
-        document.getElementById("ic-poll").innerHTML = Icons.render("bar-chart", 15);
-        document.getElementById("fab-icon").innerHTML = Icons.render("message", 17);
+      const evP = ApiClient.getList("/events/")
+        .then(({ items }) => { renderHero(items); renderStories(items); renderQuickEvents(items); })
+        .catch(() => { heroFail(); renderQuickEvents([]); });
 
-        document.getElementById("welcome-title").textContent = `Chào, ${firstName(user)} 👋`;
+      const lbP = ApiClient.get("/gamification/leaderboard/")
+        .then((lb) => renderLeaderboard(lb))
+        .catch(() => leaderboardFail());
 
-        /* gamification: xp / level / streak / weekly_quests */
-        let me = null;
-        try { me = await ApiClient.get("/gamification/me/"); }
-        catch (err) { Toast.error(err?.message || "Không tải được thông tin gamification"); }
-        renderMemberCard(me, user);
-        renderQuests(me?.weekly_quests);
+      const pollP = ApiClient.getList("/polls/")
+        .then(({ items }) => renderPoll(items[0] || null))
+        .catch(() => pollFail());
 
-        /* feed + events + polls chạy song song */
-        const postsP = ApiClient.getList("/posts/").then(({ items }) => renderPosts(items))
-          .catch((err) => { Toast.error(err?.message || "Không tải được bảng tin"); Utils.empty(document.getElementById("posts-box"), { icon: "alert-triangle", title: "Lỗi tải bảng tin" }); });
-        const eventsP = ApiClient.getList("/events/").then(({ items }) => renderEvents(items))
-          .catch((err) => { Toast.error(err?.message || "Không tải được sự kiện"); Utils.empty(document.getElementById("events-box"), { icon: "alert-triangle", title: "Lỗi tải sự kiện" }); });
-        const pollsP = ApiClient.getList("/polls/").then(({ items }) => renderPoll(items[0] || null))
-          .catch((err) => { Toast.error(err?.message || "Không tải được bình chọn"); Utils.empty(document.getElementById("poll-box"), { icon: "alert-triangle", title: "Lỗi tải bình chọn" }); });
+      const docsP = ApiClient.getList("/documents/")
+        .then(({ items }) => bindQuickDocs(items))
+        .catch(() => { $("qa-docs-sub").textContent = "Khám phá kho học liệu"; });
 
-        document.getElementById("btn-feedback").addEventListener("click", openFeedbackModal);
+      const sessP = ApiClient.getList("/attendance/sessions/", { trang_thai: "OPEN" })
+        .then(({ items }) => bindQuickSessions(items))
+        .catch(() => { $("qa-gps-sub").textContent = "Chưa có phiên mở"; });
 
-        await Promise.allSettled([postsP, eventsP, pollsP]);
-      }
+      await Promise.allSettled([meP, postsP, evP, lbP, pollP, docsP, sessP]);
+    }
 
-      renderMemberNav("home");
-      Auth.requireRole(["MEMBER"]).then(init).catch(() => {});
-    })();
-  </script>
+    Auth.requireRole(["MEMBER"]).then(init).catch(() => {});
+  })();
+</script>
 </body>
 </html>

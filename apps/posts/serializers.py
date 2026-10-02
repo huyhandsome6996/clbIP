@@ -108,18 +108,28 @@ class FeedbackListSerializer(serializers.ModelSerializer):
 # CommunityPoll
 # ----------------------------------------------------------------------
 class PollSerializer(serializers.ModelSerializer):
-    """Bình chọn: options + votes (dict index→số phiếu) + tổng phiếu."""
+    """Bình chọn: options + votes (dict index→số phiếu) + tổng phiếu + has_voted."""
 
     total_votes = serializers.SerializerMethodField()
+    has_voted = serializers.SerializerMethodField()
 
     class Meta:
         model = CommunityPoll
-        fields = ["id", "question", "options", "votes", "is_closed", "total_votes", "created_at"]
+        fields = ["id", "question", "options", "votes", "is_closed", "total_votes", "has_voted", "created_at"]
         read_only_fields = fields
 
     def get_total_votes(self, obj: CommunityPoll) -> int:
         """Tổng số phiếu đã ghi nhận = sum(votes.values())."""
         return sum((obj.votes or {}).values())
+
+    def get_has_voted(self, obj: CommunityPoll) -> bool:
+        """User hiện tại đã bình chọn chưa — để frontend khóa UI ngay từ lần
+        tải đầu trên mọi trình duyệt (không phụ thuộc localStorage)."""
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not getattr(user, "is_authenticated", False):
+            return False
+        return str(user.pk) in (obj.voted_user_ids or [])
 
 
 class PollVoteSerializer(serializers.Serializer):
