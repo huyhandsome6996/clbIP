@@ -17,7 +17,7 @@
 | 2 | Làm mới token tự động đúng 1 lần khi 401 (single-flight) + rotation/blacklist | ✅ Done | `frontend/js/api.js` `ApiClient.refreshToken()` · `POST /api/v1/auth/token/refresh/` · `core/settings.py` SIMPLE_JWT `ROTATE_REFRESH_TOKENS/BLACKLIST_AFTER_ROTATION` |
 | 3 | RBAC 3 vai trò ADMIN / BCN / MEMBER trên toàn bộ API | ✅ Done | `core/permissions.py` (`IsBCNOrAdmin`, `IsOwnerOrBCN`) · `get_permissions()` trong mọi `apps/*/views.py` |
 | 4 | Điều hướng theo role sau đăng nhập + gác trang (requireRole, đẩy về đúng trang nhà) | ✅ Done | `frontend/js/auth.js` `ROLE_HOME` / `requireRole()` · `frontend/index.html` |
-| 5 | Quên mật khẩu — modal gửi mã OTP về email | ❌ Missing | `frontend/login.html` không có link/modal quên mật khẩu; `apps/authentication/urls.py` không có endpoint reset/OTP |
+| 5 | Quên mật khẩu — modal gửi mã OTP về email | ✅ Done | 3 endpoint `/auth/password-reset/{request,verify,confirm}/` (`PasswordResetService` — OTP 6 số TTL 10 phút, throttle 3/giờ, chặn dò OTP 5 lần, blacklist refresh token cũ) + modal 3 bước trong `frontend/login.html` |
 
 ### B. Quản lý thành viên (10)
 
@@ -59,7 +59,7 @@
 | 29 | Hủy vé đăng ký | ✅ Done | `POST /api/v1/events/{id}/cancel-registration/` |
 | 30 | "Vé của tôi" — danh sách vé của chính thành viên | ✅ Done | `GET /api/v1/events/my-tickets/` · tab "🎟️ Vé của tôi" trong `frontend/member/events.html` |
 | 31 | Danh sách đăng ký của sự kiện (BCN xem mã vé từng người) | ✅ Done | `GET /api/v1/events/{id}/registrations/` · tab "Đăng ký" trong `frontend/admin/events.html` |
-| 32 | Quét / xác minh mã vé QR tại cửa hội trường | ❌ Missing | Không có endpoint verify `ma_ve`, không có UI scan; BCN chỉ thấy mã vé dạng text trong bảng đăng ký (`frontend/admin/events.html`) |
+| 32 | Quét / xác minh mã vé QR tại cửa hội trường | ✅ Done | `POST /events/{id}/verify-ticket/` (`EventService.verify_ticket` — atomic + select_for_update, 409 khi quét lại) + trang quét camera `frontend/admin/ticket_scanner.html` (Html5-QRCode, nhập tay fallback) |
 
 ### E. Điểm danh GPS (7)
 
@@ -113,7 +113,7 @@
 |---|-----------|:----------:|------------|
 | 55 | Tạo bình chọn nhiều lựa chọn (BCN, ≥2 lựa chọn) | ✅ Done | `POST /api/v1/polls/` · `PollService.create_poll` · modal "Tạo bình chọn" `frontend/admin/dashboard.html` |
 | 56 | Bình chọn + chặn vote 2 lần + hiển thị kết quả | ✅ Done | `POST /api/v1/polls/{id}/vote/` · `CommunityPoll.voted_user_ids` (`apps/posts/models.py`) · widget poll `frontend/member/home.html` + dashboard |
-| 57 | Đóng bình chọn (`is_closed`) | 🟡 Partial | Model có trường `is_closed` (`apps/posts/models.py`) nhưng **chưa có endpoint/UI để đóng** bình chọn |
+| 57 | Đóng bình chọn (`is_closed`) | ✅ Done | `PATCH /polls/{id}/close/` (`PollService.close_poll` — BCN/ADMIN, đóng 2 lần → 400) + nút 'Đóng bình chọn' trên dashboard; vote sau khi đóng → 409 |
 | 58 | Gửi góp ý ẩn danh (throttle 2/phút + hạn mức 5 góp ý/ngày) | ✅ Done | `POST /api/v1/feedback/` · `FeedbackRateThrottle` + `FeedbackService` (5/ngày) · modal `frontend/member/home.html` |
 | 59 | BCN đọc hòm thư góp ý KHÔNG lộ người gửi | ✅ Done | `GET /api/v1/feedback/` · `FeedbackListSerializer` không serialize sender (`FeedbackEntry` lưu sender nội bộ chỉ để chống spam) |
 
@@ -130,7 +130,7 @@
 | # | Tính năng | Trạng thái | Minh chứng |
 |---|-----------|:----------:|------------|
 | 63 | Trang đăng nhập + hub điều hướng `index.html` theo token/role | ✅ Done | `frontend/login.html` (validate lỗi tiếng Việt, toggle password) · `frontend/index.html` |
-| 64 | Admin Dashboard KPI + bảng tin + poll + hòm thư góp ý | 🟡 Partial | `frontend/admin/dashboard.html` — KPI thật (`/members/`, `/funds/stats/`, `/events/?trang_thai=OPEN_REGISTRATION`, `/attendance/sessions/?trang_thai=OPEN`); spec màn hình 2 yêu cầu **biểu đồ Chart.js** → chưa có chart |
+| 64 | Admin Dashboard KPI + bảng tin + poll + hòm thư góp ý + biểu đồ | ✅ Done | KPI thật + Chart.js v4: Line 'Xu hướng tài chính' + Bar 'Chuyên cần hàng tuần' từ `GET /common/stats/trend/` (`TrendStatsService`) |
 | 65 | Admin Quản lý thành viên (bảng, lọc, tìm, thêm, import/export, hồ sơ 360°, BCN) | ✅ Done | `frontend/admin/members.html` |
 | 66 | Admin Quỹ (KPI + cảnh báo, phiếu thu/chi, khóa sổ, xuất Excel) | ✅ Done | `frontend/admin/funds.html` |
 | 67 | Admin Sự kiện (danh sách + modal chi tiết 4 tab: DAG / kinh phí / đăng ký / truyền thông) | ✅ Done | `frontend/admin/events.html` |
@@ -186,14 +186,12 @@
 
 | Nhóm | Tổng | ✅ Done | 🟡 Partial | ❌ Missing |
 |------|:----:|:-------:|:---------:|:---------:|
-| Cốt lõi (A–G) | **51** | 47 | 2 | 2 |
-| Mở rộng (H–N) | **46** | 44 | 2 | 0 |
-| **TỔNG** | **97** | **91** | **4** | **2** |
+| Cốt lõi (A–G) | **51** | 49 | 2 | 0 |
+| Mở rộng (H–N) | **46** | 46 | 0 | 0 |
+| **TỔNG** | **97** | **95** | **2** | **0** |
 
 ### Danh sách mục ❌ Missing / 🟡 Partial (tra cứu nhanh)
 
-- ❌ #5 — Quên mật khẩu / OTP email (spec màn hình 1)
-- ❌ #32 — Quét/xác minh vé QR tại cửa hội trường (spec màn hình 13)
 - 🟡 #13 — Cơ cấu BCN: có API + modal, chưa có trang `/admin/board` riêng (spec màn hình 8)
 - 🟡 #21 — Xuất sổ quỹ Excel: chưa có "chữ ký điện tử" (spec màn hình 4)
 - 🟡 #57 — Đóng bình chọn: model có `is_closed`, chưa có endpoint/UI
