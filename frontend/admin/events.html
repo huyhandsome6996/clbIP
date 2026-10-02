@@ -802,6 +802,10 @@
         return;
       }
       box.innerHTML = `
+        <div class="flex items-center justify-between gap-2 wrap mb-2">
+          <span class="small muted">${Icons.render("qr", 14)} Check-in tại cổng bằng mã QR in trên vé.</span>
+          <a class="btn btn-outline btn-sm" href="/frontend/admin/ticket_scanner.html?event=${state.current.id}">${Icons.render("qr", 15)} Quét QR vé tại cổng</a>
+        </div>
         <div class="table-wrap"><table class="table">
           <thead><tr><th>Thành viên</th><th>Mã vé</th><th>Trạng thái</th><th>Đăng ký lúc</th></tr></thead>
           <tbody>

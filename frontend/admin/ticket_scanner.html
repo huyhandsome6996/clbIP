@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="admin">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quét vé — Quản trị CLB IP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/css/variables.css">
+  <link rel="stylesheet" href="/frontend/css/base.css">
+  <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  <style>
+    /* ===== Style riêng trang Quét vé (chỉ dùng biến có sẵn trong variables.css) ===== */
+    .page-toolbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+      margin-bottom: var(--s-5);
+    }
+    .page-toolbar h2 { font-size: var(--text-xl); letter-spacing: -0.02em; }
+    .page-toolbar .sub { color: var(--tx-muted); font-size: var(--text-sm); margin-top: 2px; }
+    .toolbar-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+    .toolbar-actions .form-select { min-width: 280px; }
+
+    .scan-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: var(--s-4);
+      align-items: start;
+    }
+    .scan-col { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
+
+    /* Camera */
+    .reader-wrap {
+      position: relative;
+      border: 1px solid var(--border-color);
+      border-radius: var(--r-card);
+      overflow: hidden;
+      background: var(--bg-subtle);
+      min-height: 260px;
+    }
+    #reader { min-height: 260px; }
+    #reader video { width: 100% !important; display: block; }
+    .reader-hint {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: var(--s-2); color: var(--tx-muted); text-align: center; padding: var(--s-4);
+      font-size: var(--text-sm);
+    }
+    .reader-hint.hidden { display: none; }
+    .reader-hint svg { width: 34px; height: 34px; opacity: .6; }
+    .camera-error {
+      background: var(--c-danger-soft); color: #991B1B;
+      padding: 10px 14px; border-radius: var(--r-control);
+      font-size: var(--text-sm); font-weight: 500; margin-top: var(--s-3);
+    }
+    .cam-controls { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-3); flex-wrap: wrap; }
+
+    /* Thẻ kết quả 3 trạng thái */
+    .result-card {
+      display: flex; align-items: flex-start; gap: var(--s-3);
+      padding: var(--s-4); border-radius: var(--r-card);
+    }
+    .res-ok    { background: var(--c-success-soft); color: #14532D; }
+    .res-warn  { background: var(--c-warning-soft); color: #92400E; }
+    .res-err   { background: var(--c-danger-soft);  color: #991B1B; }
+    .res-pending { background: var(--bg-subtle); color: var(--tx-secondary); }
+    .res-icon { font-size: 26px; line-height: 1.1; flex: none; }
+    .res-title { font-weight: 800; font-size: var(--text-md); letter-spacing: -0.01em; }
+    .res-sub { font-size: var(--text-sm); margin-top: 2px; }
+    .res-rows { display: flex; flex-direction: column; gap: 4px; margin-top: var(--s-2); font-size: var(--text-sm); }
+    .res-rows > div { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+    .res-rows .k { min-width: 110px; font-weight: 600; opacity: .75; }
+    .result-idle { padding: var(--s-6); text-align: center; color: var(--tx-muted); font-size: var(--text-sm); }
+
+    /* Lịch sử quét */
+    .history-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; }
+    .count-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid var(--border-color); border-radius: var(--r-pill);
+      padding: 2px 10px; font-size: var(--text-xs); font-weight: 600;
+      background: var(--bg-subtle); color: var(--tx-secondary);
+    }
+    .history-list { display: flex; flex-direction: column; margin-top: var(--s-2); }
+    .history-row {
+      display: flex; align-items: center; gap: var(--s-3);
+      padding: 10px 2px; border-bottom: 1px solid var(--border-color);
+    }
+    .history-row:last-child { border-bottom: 0; }
+    .h-time { flex: none; color: var(--tx-muted); }
+    .h-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .h-main .mono { overflow-wrap: anywhere; }
+    .history-empty { padding: var(--s-5); text-align: center; color: var(--tx-muted); font-size: var(--text-sm); }
+
+    @media (max-width: 960px) {
+      .scan-grid { grid-template-columns: 1fr; }
+      .toolbar-actions .form-select { min-width: 0; width: 100%; }
+      .toolbar-actions { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="admin-shell" id="shell">
+  <aside class="admin-sidebar">
+    <div class="side-brand">
+      <span class="logo" id="brand-logo"></span>
+      <div><div class="t1">CLB IP ĐHSP Huế</div><div class="t2">Quản trị 2.0</div></div>
+    </div>
+    <nav class="side-nav" id="side-nav"><!-- JS render nav --></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost w-100" id="btn-logout" style="color:var(--tx-sidebar)">Đăng xuất</button>
+    </div>
+  </aside>
+  <div class="scrim hidden" id="scrim"></div>
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="flex items-center gap-3">
+        <button class="btn btn-ghost burger" id="btn-burger" aria-label="Mở menu"><span id="burger-icon"></span></button>
+        <h1 style="font-size:var(--text-lg)">Quét vé sự kiện</h1>
+      </div>
+      <div class="flex items-center gap-3" id="topbar-user"><!-- avatar + tên --></div>
+    </header>
+    <main class="admin-content">
+      <div class="page-toolbar">
+        <div>
+          <h2>Quét QR vé tại cổng</h2>
+          <p class="sub">Check-in thành viên bằng camera điện thoại hoặc nhập mã vé tay. Chỉ BCN/ADMIN.</p>
+        </div>
+        <div class="toolbar-actions">
+          <select class="form-select" id="event-select" aria-label="Chọn sự kiện">
+            <option value="">Đang tải sự kiện...</option>
+          </select>
+          <button class="btn btn-outline" id="btn-reload-events" aria-label="Tải lại danh sách sự kiện" title="Tải lại danh sách sự kiện"></button>
+        </div>
+      </div>
+
+      <div class="scan-grid">
+        <!-- Cột trái: camera + nhập tay -->
+        <div class="scan-col">
+          <section class="card card-pad">
+            <div class="flex items-center justify-between gap-2 wrap">
+              <h3 style="font-size:var(--text-md)">Camera quét QR</h3>
+              <span class="badge badge-neutral" id="camera-status">Camera tắt</span>
+            </div>
+            <div class="reader-wrap mt-4">
+              <div id="reader" aria-label="Vùng hiển thị camera quét QR"></div>
+              <div class="reader-hint" id="reader-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="17" y2="14"/><line x1="21" y1="14" x2="21" y2="14"/><line x1="14" y1="21" x2="14" y2="21"/><line x1="17" y1="17" x2="21" y2="17"/><line x1="21" y1="21" x2="21" y2="21"/></svg>
+                <div>Camera chưa bật. Nhấn <strong>"Bật camera"</strong> rồi hướng vào mã QR trên vé.</div>
+                <div class="xs">Camera cần HTTPS hoặc localhost. Nếu không dùng được, hãy nhập mã tay bên dưới.</div>
+              </div>
+            </div>
+            <div class="camera-error hidden" id="camera-error" role="alert"></div>
+            <div class="cam-controls">
+              <button class="btn btn-primary" id="btn-cam-start"></button>
+              <button class="btn btn-outline" id="btn-cam-stop" disabled></button>
+            </div>
+          </section>
+
+          <section class="card card-pad">
+            <h3 style="font-size:var(--text-md)">Nhập mã vé tay</h3>
+            <form id="manual-form" class="mt-4" novalidate>
+              <div class="form-group">
+                <label class="form-label" for="manual-code">Mã vé</label>
+                <input class="form-input mono" id="manual-code" type="text" autocomplete="off" spellcheck="false"
+                       placeholder="VE-XXXXXXXXXXXX" aria-label="Mã vé">
+                <p class="form-hint">Dự phòng khi camera bị từ chối hoặc mã QR không đọc được. Nội dung quét QR cũng chính là mã vé.</p>
+              </div>
+              <button type="submit" class="btn btn-primary" id="btn-manual-verify"></button>
+            </form>
+          </section>
+        </div>
+
+        <!-- Cột phải: kết quả + lịch sử -->
+        <div class="scan-col">
+          <section class="card card-pad">
+            <h3 style="font-size:var(--text-md)" class="mb-2">Kết quả xác minh</h3>
+            <div id="result-box" aria-live="polite">
+              <div class="result-idle">Chưa có kết quả nào. Quét QR hoặc nhập mã vé để kiểm tra.</div>
+            </div>
+          </section>
+
+          <section class="card card-pad">
+            <div class="history-head">
+              <h3 style="font-size:var(--text-md)">Lịch sử quét <span class="xs muted">(phiên này)</span></h3>
+              <button class="btn btn-ghost btn-sm" id="btn-clear-history"></button>
+            </div>
+            <div class="flex items-center gap-2 wrap mt-2">
+              <span class="count-chip" id="count-ok">Hợp lệ: 0</span>
+              <span class="count-chip" id="count-warn">Trùng lặp: 0</span>
+              <span class="count-chip" id="count-err">Lỗi: 0</span>
+            </div>
+            <div class="history-list" id="scan-history" aria-live="polite">
+              <div class="history-empty">Chưa quét vé nào trong phiên này.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/icons.js"></script>
+<script src="/frontend/js/toast.js"></script>
+<script src="/frontend/js/utils.js"></script>
+<script src="/frontend/js/auth.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ================= Hằng số & trạng thái phiên ================= */
+  const CAM_LOCK_MS = 2000;      // khóa giữa 2 lần quét CÙNG mã để tránh gửi request liên tục
+  const HISTORY_MAX = 50;        // số dòng lịch sử giữ trong phiên
+  const VE_STATUS = {            // nhãn trạng thái vé (khớp model backend)
+    REGISTERED: "Đã đăng ký",
+    APPROVED: "Đã duyệt",
+    CHECKED_IN: "Đã check-in",
+    CANCELLED: "Đã hủy",
+  };
+
+  const state = {
+    events: [],
+    eventId: null,
+    scanner: null,        // thể hiện Html5Qrcode
+    cameraOn: false,
+    starting: false,
+    verifying: false,     // khóa: CHỈ 1 request verify tại 1 thời điểm
+    lastCode: "",
+    lastCodeAt: 0,
+    history: [],          // [{at, code, name, kind: ok|warn|err, reason}]
+  };
+
+  /* ================= Nav + khung trang (y hệt events.html) ================= */
+  function renderAdminNav(active) {
+    document.getElementById("brand-logo").innerHTML = Icons.render("zap", 20);
+    const items = [
+      ["dashboard", "layout", "Dashboard", "/frontend/admin/dashboard.html"],
+      ["members", "users", "Thành viên", "/frontend/admin/members.html"],
+      ["funds", "wallet", "Quỹ CLB", "/frontend/admin/funds.html"],
+      ["events", "calendar", "Sự kiện", "/frontend/admin/events.html"],
+      ["attendance", "compass", "Điểm danh", "/frontend/admin/attendance.html"],
+      ["documents", "book-open", "Tài liệu", "/frontend/admin/documents.html"],
+    ];
+    document.getElementById("side-nav").innerHTML =
+      '<div class="nav-label">Quản lý</div>' +
+      items
+        .map(([k, ic, label, href]) =>
+          `<a class="nav-item${k === active ? " active" : ""}" href="${href}">${Icons.render(ic, 18)}<span>${label}</span></a>`
+        )
+        .join("");
+    const user = Auth.cachedUser();
+    document.getElementById("topbar-user").innerHTML =
+      `<span class="small bold">${Utils.escapeHtml(user?.ho_ten || user?.email || "")}</span>
+       <span class="avatar avatar-sm" title="${Utils.escapeHtml(user?.role || "")}">${Utils.initials(user?.ho_ten || user?.email)}</span>`;
+    document.getElementById("burger-icon").innerHTML = Icons.render("menu", 20);
+    document.getElementById("btn-burger").addEventListener("click", () => {
+      document.getElementById("shell").classList.add("nav-open");
+      document.getElementById("scrim").classList.remove("hidden");
+    });
+    document.getElementById("scrim").addEventListener("click", () => {
+      document.getElementById("shell").classList.remove("nav-open");
+      document.getElementById("scrim").classList.add("hidden");
+    });
+    document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
+  }
+
+  /* ================= Dropdown sự kiện (cùng endpoint với events.html) ================= */
+  async function loadEvents() {
+    const sel = document.getElementById("event-select");
+    const btn = document.getElementById("btn-reload-events");
+    sel.disabled = true;
+    sel.innerHTML = `<option value="">Đang tải sự kiện...</option>`;
+    const undo = Utils.btnLoading(btn, "");
+    try {
+      // GET /events/ — y hệt endpoint + shape {items, pagination} mà events.html đang dùng
+      const first = await ApiClient.getList("/events/", { page: 1, page_size: 100 });
+      let items = [...first.items];
+      const totalPages = first.pagination?.total_pages || 1;
+      // Nạp thêm trang nếu sự kiện > 100 (tối đa 5 trang cho dropdown)
+      for (let p = 2; p <= Math.min(totalPages, 5); p++) {
+        const more = await ApiClient.getList("/events/", { page: p, page_size: 100 });
+        items = items.concat(more.items);
+      }
+      state.events = items;
+      if (!items.length) {
+        sel.innerHTML = `<option value="">Chưa có sự kiện nào</option>`;
+        Toast.info("Chưa có sự kiện nào. Hãy tạo sự kiện ở trang Sự kiện trước khi quét vé.");
+        return;
+      }
+      sel.innerHTML =
+        `<option value="">— Chọn sự kiện —</option>` +
+        items
+          .map((ev) => `<option value="${ev.id}">${Utils.escapeHtml(ev.ten_hoat_dong)} · ${Utils.fmtDateTime(ev.thoi_gian_bat_dau)}</option>`)
+          .join("");
+      // Ưu tiên ?event=<id> trên URL (link từ tab Đăng ký trang Sự kiện)
+      const preset = Number(Utils.getQueryParam("event"));
+      if (preset && items.some((ev) => ev.id === preset)) {
+        sel.value = String(preset);
+      } else if (items.length === 1) {
+        sel.value = String(items[0].id);
+      }
+      state.eventId = sel.value ? Number(sel.value) : null;
+    } catch (err) {
+      console.error(err);
+      sel.innerHTML = `<option value="">Không tải được danh sách sự kiện</option>`;
+      Toast.error(err.message || "Không tải được danh sách sự kiện.");
+    } finally {
+      sel.disabled = false;
+      undo();
+    }
+  }
+
+  /* ================= Camera (html5-qrcode v2) ================= */
+  function camErrMsg(err) {
+    const name = String(err?.name || "") + " " + String(err?.message || "");
+    if (/NotAllowed|Permission/i.test(name)) {
+      return "Quyền truy cập camera bị từ chối. Hãy cấp quyền trong trình duyệt, hoặc dùng ô nhập mã vé tay bên dưới.";
+    }
+    if (/NotFound|Overconstrained/i.test(name)) {
+      return "Không tìm thấy camera tương thích trên thiết bị này. Hãy dùng ô nhập mã vé tay bên dưới.";
+    }
+    if (/NotReadable|TrackStart|Insecure/i.test(name)) {
+      return "Camera đang bị ứng dụng khác dùng hoặc trang không phải HTTPS/localhost. Hãy dùng ô nhập mã vé tay bên dưới.";
+    }
+    return "Không bật được camera: " + (err?.message || "lỗi không xác định") + ". Hãy dùng ô nhập mã vé tay bên dưới.";
+  }
+
+  function showCamError(msg) {
+    const box = document.getElementById("camera-error");
+    box.textContent = msg;
+    box.classList.remove("hidden");
+  }
+  function hideCamError() {
+    document.getElementById("camera-error").classList.add("hidden");
+  }
+
+  function syncCamUI() {
+    const on = state.cameraOn;
+    document.getElementById("btn-cam-start").disabled = on;
+    document.getElementById("btn-cam-stop").disabled = !on;
+    const badge = document.getElementById("camera-status");
+    badge.textContent = on ? "Đang quét" : "Camera tắt";
+    badge.className = on ? "badge badge-success" : "badge badge-neutral";
+    document.getElementById("reader-hint").classList.toggle("hidden", on);
+  }
+
+  async function startCamera() {
+    if (state.cameraOn || state.starting) return;
+    if (typeof Html5Qrcode === "undefined") {
+      const msg = "Không tải được thư viện quét QR (CDN bị chặn hoặc mất mạng). Hãy dùng ô nhập mã vé tay bên dưới.";
+      showCamError(msg);
+      Toast.error(msg);
+      return;
+    }
+    state.starting = true;
+    hideCamError();
+    const undo = Utils.btnLoading(document.getElementById("btn-cam-start"), "Đang bật camera...");
+    try {
+      if (!state.scanner) state.scanner = new Html5Qrcode("reader", { verbose: false });
+      await state.scanner.start(
+        { facingMode: "environment" },                 // camera sau — BCN cầm điện thoại quét
+        { fps: 10, qrbox: 250 },                       // fps 10, khung QR ~250px
+        (decodedText) => onDecoded(decodedText),
+        () => { /* lỗi từng khung hình (chưa thấy QR) — bỏ qua im lặng */ }
+      );
+      state.cameraOn = true;
+      Toast.info("Camera đã bật. Hướng vào mã QR trên vé.");
+    } catch (err) {
+      console.error("Lỗi bật camera:", err);
+      const msg = camErrMsg(err);
+      showCamError(msg);
+      Toast.error(msg);
+      document.getElementById("manual-code").focus();
+    } finally {
+      state.starting = false;
+      undo();
+      syncCamUI();
+    }
+  }
+
+  async function stopCamera() {
+    if (!state.scanner || !state.cameraOn) return;
+    const undo = Utils.btnLoading(document.getElementById("btn-cam-stop"), "Đang tắt...");
+    try {
+      await state.scanner.stop();
+      state.scanner.clear();
+    } catch (err) {
+      console.warn("Lỗi tắt camera:", err);
+    }
+    state.cameraOn = false;
+    state.lastCode = "";
+    state.lastCodeAt = 0;
+    undo();
+    syncCamUI();
+  }
+
+  /* ================= Luồng xác minh vé ================= */
+  function onDecoded(decodedText) {
+    const code = String(decodedText || "").trim();
+    if (!code) return;
+    const now = Date.now();
+    if (state.verifying) return; // đang chờ kết quả → bỏ qua mọi mã quét thêm
+    if (code === state.lastCode && now - state.lastCodeAt < CAM_LOCK_MS) return; // cùng mã quét liên tục
+    state.lastCode = code;
+    state.lastCodeAt = now;
+    verifyTicket(code);
+  }
+
+  async function verifyTicket(rawCode) {
+    const code = String(rawCode || "").trim();
+    if (!code) { Toast.warning("Mã vé trống — hãy quét QR hoặc nhập mã vé."); return; }
+    if (!state.eventId) {
+      Toast.warning("Vui lòng chọn sự kiện trước khi quét vé.");
+      document.getElementById("event-select").focus();
+      return;
+    }
+    if (state.verifying) return; // CHỈ 1 request verify tại 1 thời điểm
+
+    state.verifying = true;
+    document.getElementById("btn-manual-verify").disabled = true;
+    showPending(code);
+    try {
+      const data = (await ApiClient.post(`/events/${state.eventId}/verify-ticket/`, { ma_ve: code })) || {};
+      const name = data.member_name || "Thành viên";
+      showResult("ok", {
+        title: `✅ Đã xác nhận — ${name}`,
+        maVe: data.ma_ve || code,
+        rows: [
+          ["Thành viên", name],
+          ["Check-in lúc", Utils.fmtDateTime(data.checked_in_at)],
+          ["Trạng thái", VE_STATUS[data.trang_thai] || data.trang_thai || "Đã check-in"],
+        ],
+      });
+      pushHistory(code, name, "ok", "");
+      Toast.success(`Đã check-in: ${name}`, "Vé hợp lệ");
+    } catch (err) {
+      const status = err?.status || 0;
+      const apiMsg = err?.message || "Mã vé không hợp lệ.";
+      if (status === 409) {
+        // Vé đã quét trước đó (DuplicateDataException) — hiện vàng
+        const d = err?.payload?.data || {};
+        const name = d.member_name || "";
+        showResult("warn", {
+          title: "⚠️ Vé này đã được quét trước đó",
+          maVe: code,
+          rows: name ? [["Thành viên", name]] : [],
+          sub: apiMsg,
+        });
+        pushHistory(code, name, "warn", apiMsg);
+        Toast.warning("Vé này đã được quét trước đó.", "Trùng lặp");
+      } else if (status === 0 || status >= 500) {
+        // Lỗi mạng/máy chủ — đỏ nhưng nói đúng nguyên nhân
+        showResult("err", {
+          title: "❌ Không kiểm tra được vé",
+          maVe: code,
+          sub: apiMsg,
+          rows: [],
+        });
+        pushHistory(code, "", "err", apiMsg);
+        Toast.error(apiMsg, status === 0 ? "Lỗi kết nối" : "Lỗi máy chủ");
+      } else {
+        // 400 vé đã hủy / 404 mã không tồn tại / 403 không đủ quyền...
+        showResult("err", {
+          title: "❌ Mã vé không hợp lệ",
+          maVe: code,
+          sub: apiMsg,
+          rows: [],
+        });
+        pushHistory(code, "", "err", apiMsg);
+        Toast.error(apiMsg, "Vé không hợp lệ");
+      }
+    } finally {
+      state.verifying = false;
+      document.getElementById("btn-manual-verify").disabled = false;
+    }
+  }
+
+  /* ================= Render kết quả + lịch sử ================= */
+  function showPending(code) {
+    document.getElementById("result-box").innerHTML = `
+      <div class="result-card res-pending">
+        <span class="spinner"></span>
+        <div>
+          <div class="res-title">Đang xác minh...</div>
+          <div class="res-sub mono">${Utils.escapeHtml(code)}</div>
+        </div>
+      </div>`;
+  }
+
+  function showResult(kind, { title, maVe = "", sub = "", rows = [] } = {}) {
+    const cls = kind === "ok" ? "res-ok" : kind === "warn" ? "res-warn" : "res-err";
+    const rowsHTML = rows
+      .map(([k, v]) => `<div><span class="k">${Utils.escapeHtml(k)}</span><span class="v">${Utils.escapeHtml(v)}</span></div>`)
+      .join("");
+    document.getElementById("result-box").innerHTML = `
+      <div class="result-card ${cls}">
+        <div class="res-icon">${kind === "ok" ? "✅" : kind === "warn" ? "⚠️" : "❌"}</div>
+        <div style="min-width:0">
+          <div class="res-title">${Utils.escapeHtml(title)}</div>
+          ${sub ? `<div class="res-sub">${Utils.escapeHtml(sub)}</div>` : ""}
+          <div class="mono res-sub">${Utils.escapeHtml(maVe)}</div>
+          ${rowsHTML ? `<div class="res-rows">${rowsHTML}</div>` : ""}
+        </div>
+      </div>`;
+  }
+
+  function pushHistory(code, name, kind, reason) {
+    state.history.unshift({ at: new Date().toISOString(), code, name, kind, reason });
+    if (state.history.length > HISTORY_MAX) state.history.length = HISTORY_MAX;
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const ok = state.history.filter((h) => h.kind === "ok").length;
+    const warn = state.history.filter((h) => h.kind === "warn").length;
+    const err = state.history.filter((h) => h.kind === "err").length;
+    document.getElementById("count-ok").textContent = `Hợp lệ: ${ok}`;
+    document.getElementById("count-warn").textContent = `Trùng lặp: ${warn}`;
+    document.getElementById("count-err").textContent = `Lỗi: ${err}`;
+
+    const list = document.getElementById("scan-history");
+    if (!state.history.length) {
+      list.innerHTML = `<div class="history-empty">Chưa quét vé nào trong phiên này.</div>`;
+      return;
+    }
+    list.innerHTML = state.history
+      .map((h) => {
+        const [label, tone] = h.kind === "ok" ? ["Hợp lệ", "success"] : h.kind === "warn" ? ["Trùng lặp", "warning"] : ["Lỗi", "danger"];
+        const note = h.kind === "ok" ? h.name : (h.name || h.reason || "—");
+        return `<div class="history-row">
+          <span class="h-time mono xs">${Utils.fmtTime(h.at)}</span>
+          <span class="h-main">
+            <span class="mono small">${Utils.escapeHtml(h.code)}</span>
+            <span class="xs muted">${Utils.escapeHtml(note)}</span>
+          </span>
+          ${Utils.badge(label, tone)}
+        </div>`;
+      })
+      .join("");
+  }
+
+  /* ================= Khởi tạo ================= */
+  async function init() {
+    renderAdminNav("events");
+    document.getElementById("btn-cam-start").innerHTML = `${Icons.render("play", 16)} Bật camera`;
+    document.getElementById("btn-cam-stop").innerHTML = `${Icons.render("x", 16)} Dừng camera`;
+    document.getElementById("btn-reload-events").innerHTML = Icons.render("refresh", 16);
+    document.getElementById("btn-manual-verify").innerHTML = `${Icons.render("shield", 16)} Xác minh`;
+    document.getElementById("btn-clear-history").innerHTML = `${Icons.render("trash", 14)} Xóa lịch sử`;
+
+    document.getElementById("btn-cam-start").addEventListener("click", startCamera);
+    document.getElementById("btn-cam-stop").addEventListener("click", stopCamera);
+    document.getElementById("btn-reload-events").addEventListener("click", loadEvents);
+    document.getElementById("event-select").addEventListener("change", (e) => {
+      state.eventId = e.target.value ? Number(e.target.value) : null;
+    });
+    document.getElementById("manual-form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const input = document.getElementById("manual-code");
+      const code = input.value.trim();
+      if (!code) { Toast.warning("Vui lòng nhập mã vé."); input.focus(); return; }
+      verifyTicket(code);
+    });
+    document.getElementById("btn-clear-history").addEventListener("click", () => {
+      state.history = [];
+      renderHistory();
+      Toast.info("Đã xóa lịch sử quét của phiên.");
+    });
+    // Rời trang → cố gắng nhả camera để không kẹt đèn camera
+    window.addEventListener("pagehide", () => {
+      if (state.scanner && state.cameraOn) {
+        try { state.scanner.stop().then(() => state.scanner.clear()).catch(() => {}); } catch { /* bỏ qua */ }
+      }
+    });
+
+    await loadEvents();
+  }
+
+  // Guard quyền: chỉ BCN/ADMIN — y hệt events.html
+  Auth.requireRole(["ADMIN", "BCN"])
+    .then(() => init())
+    .catch(() => { /* requireRole đã tự redirect */ });
+})();
+</script>
+</body>
+</html>
