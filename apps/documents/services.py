@@ -48,8 +48,11 @@ class DocumentService:
                  Traversal, tránh lộ tên gốc nhạy cảm).
     """
 
-    # Tầng 1: whitelist đuôi cho phép
-    ALLOWED_EXTENSIONS: set = {".pdf", ".docx", ".pptx", ".xlsx", ".png", ".jpg", ".jpeg"}
+    # Tầng 1: whitelist đuôi cho phép (.doc/.xls thêm theo QA-Audit đợt 3 TASK 5
+    # — form chia sẻ tài liệu cho thành viên cần nhận file Office cổ điển)
+    ALLOWED_EXTENSIONS: set = {
+        ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".xls", ".png", ".jpg", ".jpeg"
+    }
 
     # Tầng 2: dung lượng tối đa 15MB cho tài liệu
     MAX_SIZE_BYTES: int = 15 * 1024 * 1024
@@ -61,6 +64,8 @@ class DocumentService:
         (b"\xff\xd8\xff", {".jpg", ".jpeg"}),
         # DOCX/PPTX/XLSX đều là container ZIP (OOXML)
         (b"PK\x03\x04", {".docx", ".pptx", ".xlsx"}),
+        # DOC/XLS cổ điển dùng chung OLE2 Compound File signature
+        (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", {".doc", ".xls"}),
     ]
 
     # Content-Type phục vụ download (chống MIME sniffing — Security §8)
@@ -70,8 +75,10 @@ class DocumentService:
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".doc": "application/msword",
         ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".xls": "application/vnd.ms-excel",
     }
 
     # Repository Pattern (DIP): truy vấn CSDL ủy quyền cho IDocumentRepository
@@ -103,7 +110,7 @@ class DocumentService:
         ext: str = os.path.splitext(django_file.name or "")[1].lower()
         if ext not in cls.ALLOWED_EXTENSIONS:
             raise FileValidationException(
-                "Định dạng không được phép. Chỉ chấp nhận: PDF, DOCX, PPTX, XLSX, PNG, JPG, JPEG.",
+                "Định dạng không được phép. Chỉ chấp nhận: PDF, DOC, DOCX, PPTX, XLS, XLSX, PNG, JPG, JPEG.",
                 errors={"extension": ext},
             )
 

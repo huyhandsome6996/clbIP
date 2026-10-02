@@ -661,3 +661,60 @@ class DocumentSanitizationTests(ThrottleFreeMixin, APITestCase):
         self.assertNotIn("<script>", doc.tieu_de)
         self.assertNotIn("<script>", doc.mo_ta)
         self.assertIn("Giao Trinh Python", doc.tieu_de)
+
+
+class DocumentLegacyOfficeUploadTests(ThrottleFreeMixin, APITestCase):
+    """QA-Audit đợt 3 — TASK 5 (P2): nhận .doc/.xls cho form chia sẻ tài liệu."""
+
+    def setUp(self) -> None:
+        self.member = User.objects.create_user(email="doc2@clb.vn", password="TestPass123!")
+        MemberProfile.objects.create(user=self.member, ho_ten="Nguyễn Văn A")
+        self.upload_url = "/api/v1/documents/"
+
+    OLE_BYTES = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 32
+
+    def test_01_upload_doc_that_bien_201(self) -> None:
+        """.doc thật (OLE2 magic) → 201, file_type='doc'."""
+        self.client.force_authenticate(user=self.member)
+        payload = {
+            "file": SimpleUploadedFile(
+                "de-cuong.doc", self.OLE_BYTES, content_type="application/msword"
+            ),
+            "tieu_de": "Đề cương ôn tập (Word cổ)",
+            "nhom": "CHUYEN_MON",
+        }
+        resp = self.client.post(self.upload_url, payload, format="multipart")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        doc = Document.objects.get(tieu_de="Đề cương ôn tập (Word cổ)")
+        self.assertEqual(doc.file_type, "doc")
+        self.assertTrue(doc.file.name.endswith(".doc"))
+
+    def test_02_upload_xls_that_bien_201(self) -> None:
+        """.xls thật (OLE2 magic) → 201, file_type='xls'."""
+        self.client.force_authenticate(user=self.member)
+        payload = {
+            "file": SimpleUploadedFile(
+                "bang-diem.xls", self.OLE_BYTES, content_type="application/vnd.ms-excel"
+            ),
+            "tieu_de": "Bảng điểm kỳ 2025-2026",
+            "nhom": "NGHIEP_VU",
+        }
+        resp = self.client.post(self.upload_url, payload, format="multipart")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        doc = Document.objects.get(tieu_de="Bảng điểm kỳ 2025-2026")
+        self.assertEqual(doc.file_type, "xls")
+
+    def test_03_exe_doi_duoi_doc_bi_tu_magic_bytes(self) -> None:
+        """.exe đổi đuôi .doc → 400 (magic MZ không khớp OLE2)."""
+        self.client.force_authenticate(user=self.member)
+        payload = {
+            "file": SimpleUploadedFile(
+                "virus.doc", b"MZ\x90\x00binary-pe-payload", content_type="application/msword"
+            ),
+            "tieu_de": "Tệp giả mạo",
+            "nhom": "CHUYEN_MON",
+        }
+        resp = self.client.post(self.upload_url, payload, format="multipart")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Nội dung tệp không khớp định dạng", resp.data["message"])
+        self.assertEqual(Document.objects.count(), 0)

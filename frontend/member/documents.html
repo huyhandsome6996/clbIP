@@ -36,6 +36,26 @@
     .doc-meta { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--tx-muted); flex-wrap: wrap; }
     .doc-meta svg { width: 13px; height: 13px; }
     .pdf-frame { width: 100%; height: min(70vh, 560px); border: 1px solid var(--border-color); border-radius: 12px; background: #fff; }
+    /* Page-scoped: header trang + form upload tài liệu (đồng bộ .file-input-zone của admin) */
+    .doc-page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+    .doc-page-head .page-title { margin: 0; }
+    .doc-page-head .btn { flex: none; }
+    .file-input-zone {
+      display: block;
+      border: 1.5px dashed var(--border-strong);
+      border-radius: var(--r-control);
+      padding: var(--s-4);
+      text-align: center;
+      color: var(--tx-muted);
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+    }
+    .file-input-zone:hover { border-color: var(--c-accent); background: var(--c-accent-soft); }
+    .file-input-zone.has-file { border-color: var(--c-success); color: var(--c-success); font-weight: 600; }
+    .file-input-zone input[type="file"] { display: none; }
+    .file-input-zone svg { width: 26px; height: 26px; display: block; margin: 0 auto 6px; }
+    @media (max-width: 480px) { .doc-page-head .btn { width: 100%; } }
   </style>
 </head>
 <body>
@@ -49,7 +69,10 @@
     </header>
 
     <main>
-      <h1 class="page-title">Kho tài liệu 📚</h1>
+      <div class="doc-page-head">
+        <h1 class="page-title">Kho tài liệu 📚</h1>
+        <button class="btn btn-primary" id="btn-share-doc" type="button">📤 Chia sẻ tài liệu (+100 XP)</button>
+      </div>
       <p class="muted small mt-2">Tài liệu của CLB, tìm phát ra liền — tự động gợi ý siêu nhanh (Trie O(L))!</p>
 
       <!-- TOOLBAR: searchbar + autocomplete + nhóm -->
@@ -356,9 +379,192 @@
       }
     }
 
+    /* ---------- Chia sẻ tài liệu (+100 XP) ---------- */
+    const UPLOAD_ACCEPT = ".pdf,.docx,.xlsx,.pptx,.doc,.xls";
+    const UPLOAD_ACCEPT_LIST = UPLOAD_ACCEPT.split(",").map((s) => s.trim().replace(".", "").toLowerCase());
+    const UPLOAD_MAX_BYTES = 15 * 1024 * 1024; // khớp DocumentService.MAX_SIZE_BYTES (backend)
+    // Lỗi hardening file từ backend (extension/size/magic_head) không trùng tên field → đổ về ô file
+    const FILE_ERROR_ALIASES = ["file", "extension", "size", "magic_head"];
+
+    function showFieldError(root, key, msg) {
+      const errEl = root.querySelector(`[data-err-for="${key}"]`);
+      if (!errEl) return;
+      errEl.textContent = msg;
+      errEl.classList.remove("hidden");
+      const input = root.querySelector(`[data-field="${key}"]`);
+      if (input) input.setAttribute("aria-invalid", "true");
+    }
+    function clearFieldErrors(root) {
+      Utils.qsa(".form-error[data-err-for]", root).forEach((el) => { el.textContent = ""; el.classList.add("hidden"); });
+      Utils.qsa("[data-field][aria-invalid]", root).forEach((el) => el.removeAttribute("aria-invalid"));
+    }
+
+    function openUploadModal() {
+      openModal({
+        title: "Chia sẻ tài liệu",
+        bodyHTML: `
+          <form id="up-form" novalidate>
+            <div class="form-group">
+              <label class="form-label" for="up-tieu-de">Tiêu đề tài liệu <span class="req">*</span></label>
+              <input class="form-input" id="up-tieu-de" data-field="tieu_de" type="text" maxlength="255"
+                     placeholder="VD: Đề cương ôn tập OOP giữa kỳ" autocomplete="off">
+              <p class="form-error hidden" data-err-for="tieu_de"></p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="up-nhom">Nhóm tài liệu <span class="req">*</span></label>
+              <select class="form-select" id="up-nhom" data-field="nhom">
+                <option value="">— Chọn nhóm —</option>
+                <option value="CHUYEN_MON">Chuyên môn</option>
+                <option value="NGHIEP_VU">Nghiệp vụ</option>
+                <option value="KY_NANG">Kỹ năng</option>
+              </select>
+              <p class="form-error hidden" data-err-for="nhom"></p>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tệp tài liệu <span class="req">*</span></label>
+              <label class="file-input-zone" for="up-file" id="up-file-zone">
+                <span id="up-file-zone-icon"></span>
+                <span id="up-file-zone-text">Bấm để chọn tệp — PDF, DOCX, XLSX, PPTX, DOC, XLS (tối đa 15MB)</span>
+                <input type="file" id="up-file" data-field="file" accept="${UPLOAD_ACCEPT}">
+              </label>
+              <p class="form-error hidden" data-err-for="file"></p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="up-mota">Mô tả <span class="xs muted" style="font-weight:400">(tùy chọn)</span></label>
+              <textarea class="form-textarea" id="up-mota" data-field="mo_ta" rows="3"
+                        placeholder="Mô tả ngắn về nội dung tài liệu…"></textarea>
+              <p class="form-error hidden" data-err-for="mo_ta"></p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="up-tags">Tags <span class="xs muted" style="font-weight:400">(tùy chọn — ngăn cách bằng dấu phẩy)</span></label>
+              <input class="form-input" id="up-tags" data-field="tags" type="text" placeholder="VD: OOP, Đề thi, Web" autocomplete="off">
+              <p class="form-error hidden" data-err-for="tags"></p>
+            </div>
+          </form>`,
+        footerHTML: `
+          <button class="btn btn-ghost" data-close type="button">Hủy</button>
+          <button class="btn btn-primary" id="up-submit" type="button">${Icons.render("upload", 16)} Chia sẻ ngay</button>`,
+        onMount(backdrop, close) {
+          const form = backdrop.querySelector("#up-form");
+          const fileInput = backdrop.querySelector("#up-file");
+          const zone = backdrop.querySelector("#up-file-zone");
+          const zoneText = backdrop.querySelector("#up-file-zone-text");
+          const submitBtn = backdrop.querySelector("#up-submit");
+          const defaultZoneText = zoneText.textContent;
+          backdrop.querySelector("#up-file-zone-icon").innerHTML = Icons.render("upload", 26);
+
+          const resetForm = () => {
+            form.reset();
+            fileInput.value = "";
+            zone.classList.remove("has-file");
+            zoneText.textContent = defaultZoneText;
+            clearFieldErrors(backdrop);
+          };
+          const closeAndReset = () => { resetForm(); close(); };
+          // Nút X + click nền do openModal tự gắn close() → observer đảm bảo reset MỌI đường đóng
+          const obs = new MutationObserver(() => {
+            if (!document.body.contains(backdrop)) { resetForm(); obs.disconnect(); }
+          });
+          obs.observe(document.body, { childList: true, subtree: true });
+
+          // Chọn file xong → hiện tên + kích thước; chặn >15MB / sai đuôi NGAY LẬP TỨC (trước khi gửi)
+          const clearZone = () => { zone.classList.remove("has-file"); zoneText.textContent = defaultZoneText; };
+          fileInput.addEventListener("change", () => {
+            const f = fileInput.files && fileInput.files[0];
+            const fileErr = backdrop.querySelector('[data-err-for="file"]');
+            fileErr.classList.add("hidden");
+            fileInput.removeAttribute("aria-invalid");
+            if (!f) { clearZone(); return; }
+            const ext = (f.name.split(".").pop() || "").toLowerCase();
+            if (!UPLOAD_ACCEPT_LIST.includes(ext)) {
+              Toast.error(`Định dạng .${ext} chưa được hỗ trợ — chỉ nhận: ${UPLOAD_ACCEPT_LIST.map((e2) => "." + e2).join(", ")}.`);
+              fileInput.value = "";
+              clearZone();
+              return;
+            }
+            if (f.size > UPLOAD_MAX_BYTES) {
+              Toast.error(`Tệp "${f.name}" nặng ${fmtSize(f.size)} — vượt giới hạn 15MB. Hãy nén hoặc chọn tệp nhỏ hơn nhé!`);
+              fileInput.value = "";
+              clearZone();
+              return;
+            }
+            zone.classList.add("has-file");
+            zoneText.textContent = `${f.name} · ${fmtSize(f.size)}`;
+          });
+
+          const validate = () => {
+            clearFieldErrors(backdrop);
+            const errs = [];
+            if (!backdrop.querySelector("#up-tieu-de").value.trim()) errs.push(["tieu_de", "Vui lòng nhập tiêu đề tài liệu."]);
+            if (!backdrop.querySelector("#up-nhom").value) errs.push(["nhom", "Vui lòng chọn nhóm tài liệu."]);
+            const f = fileInput.files && fileInput.files[0];
+            if (!f) {
+              errs.push(["file", "Vui lòng chọn tệp để tải lên."]);
+            } else {
+              const ext = (f.name.split(".").pop() || "").toLowerCase();
+              if (!UPLOAD_ACCEPT_LIST.includes(ext)) {
+                errs.push(["file", `Định dạng .${ext} chưa được hỗ trợ (nhận: ${UPLOAD_ACCEPT_LIST.map((e2) => "." + e2).join(", ")}).`]);
+              } else if (f.size > UPLOAD_MAX_BYTES) {
+                errs.push(["file", `Tệp nặng ${fmtSize(f.size)} — vượt giới hạn 15MB.`]);
+              }
+            }
+            errs.forEach(([k, m]) => showFieldError(backdrop, k, m));
+            return errs.length === 0;
+          };
+
+          let submitting = false; // chống double-submit
+          const onSubmit = async () => {
+            if (submitting) return;
+            if (!validate()) return;
+            const file = fileInput.files[0];
+            const tieuDe = backdrop.querySelector("#up-tieu-de").value.trim();
+            const nhom = backdrop.querySelector("#up-nhom").value;
+            const moTa = backdrop.querySelector("#up-mota").value.trim();
+            const tags = backdrop.querySelector("#up-tags").value.trim();
+
+            const fd = new FormData();
+            fd.append("tieu_de", tieuDe);
+            fd.append("nhom", nhom);
+            fd.append("file", file);
+            if (moTa) fd.append("mo_ta", moTa);
+            if (tags) fd.append("tags", tags);
+            // KHÔNG gửi pham_vi — backend tự ép PUBLIC_MEMBER cho thành viên
+
+            submitting = true;
+            const undo = Utils.btnLoading(submitBtn, "Đang tải lên...");
+            try {
+              await ApiClient.post("/documents/", fd); // FormData → ApiClient tự bỏ Content-Type
+              closeAndReset();
+              Toast.success("+ 100 XP cho việc chia sẻ tài liệu! 🎉");
+              state.page = 1;
+              loadDocuments(1); // reload danh sách theo pattern hiện có của trang
+            } catch (err) {
+              Toast.error(err.message || "Không tải lên được tài liệu.");
+              // 400 chi tiết theo field → hiện inline dưới từng field
+              if (err.errors && typeof err.errors === "object") {
+                Object.entries(err.errors).forEach(([key, val]) => {
+                  const msg = Array.isArray(val) ? val.map(String).join(" ") : String(val);
+                  const target = FILE_ERROR_ALIASES.includes(key) ? "file" : key;
+                  // Giá trị kỹ thuật (".doc", hex magic_head, số byte) → toast đã nói rồi, khỏi inline
+                  if (target === "file" && !msg.includes(" ") && msg.length < 24) return;
+                  showFieldError(backdrop, target, msg);
+                });
+              }
+            } finally {
+              undo();
+              submitting = false;
+            }
+          };
+          submitBtn.addEventListener("click", onSubmit);
+          form.addEventListener("submit", (ev) => { ev.preventDefault(); onSubmit(); });
+        },
+      });
+    }
+
     /* ---------- Khởi tạo ---------- */
     async function init() {
       document.getElementById("search-icon").outerHTML = Icons.render("search", 17);
+      document.getElementById("btn-share-doc").addEventListener("click", openUploadModal);
 
       const input = document.getElementById("doc-q");
       const nhomSel = document.getElementById("doc-nhom");
