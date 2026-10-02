@@ -195,6 +195,10 @@ class EventTaskListCreateView(APIView):
         tags=["Events"],
     )
     def get(self, request, pk: int):
+        # 404 trước, 403 sau (QA-Audit P3: kế hoạch DAG chỉ dành cho BCN hoặc
+        # người tham gia sự kiện — được giao task hoặc có vé hiệu lực)
+        event = EventService.get_event_or_404(pk)
+        EventTaskService.assert_can_view_plan(request.user, event)
         plan = EventTaskService.get_execution_plan(pk)
         return Response(
             {
@@ -290,6 +294,9 @@ class TaskOrderView(APIView):
         tags=["Events"],
     )
     def get(self, request, pk: int):
+        # Ràng buộc quyền như EventTaskListCreateView.get (QA-Audit P3)
+        event = EventService.get_event_or_404(pk)
+        EventTaskService.assert_can_view_plan(request.user, event)
         plan = EventTaskService.get_execution_plan(pk)
         data = {
             "topological_order": plan["topological_order"],

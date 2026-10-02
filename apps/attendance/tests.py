@@ -34,12 +34,9 @@ FAR_LON = 107.5909
 HANOI_LAT = 21.0278
 HANOI_LON = 105.8342
 
-try:
-    import apps.gamification.services  # noqa: F401
+import apps.gamification.services  # noqa: F401 — đã triển khai, giữ cờ cho assert phân nhánh
 
-    HAS_GAMIFICATION = True
-except ImportError:
-    HAS_GAMIFICATION = False  # Agent B (gamification) viết song song
+HAS_GAMIFICATION = True
 
 
 class AttendanceTestBase(TestCase):

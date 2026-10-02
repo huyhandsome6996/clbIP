@@ -9,8 +9,12 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from apps.members.models import BoardMember, MemberProfile
+from apps.members.repositories import DjangoMemberRepository
 
 User = get_user_model()
+
+# Repository cho validate trùng lặp — ORM CHỈ nằm ở repository (QA-Audit P3)
+_member_repo = DjangoMemberRepository()
 
 
 class MemberProfileListSerializer(serializers.ModelSerializer):
@@ -71,12 +75,13 @@ class MemberCreateSerializer(serializers.Serializer):
         return value
 
     def validate_mssv(self, value: str) -> str:
-        if User.objects.filter(mssv=value.strip()).exists():
+        # ORM CHỈ nằm ở repository (QA-Audit P3) — serializer không đụng .objects
+        if _member_repo.exists_user_by_mssv(value.strip()):
             raise serializers.ValidationError(f"MSSV {value} đã tồn tại.")
         return value.strip()
 
     def validate_email_unique(self, value: str) -> str:
-        if User.objects.filter(email=value.strip().lower()).exists():
+        if _member_repo.exists_user_by_email(value.strip().lower()):
             raise serializers.ValidationError(f"Email {value} đã được sử dụng.")
         return value
 
@@ -129,9 +134,10 @@ class BoardMemberSerializer(serializers.ModelSerializer):
 
     def validate_member(self, value: MemberProfile) -> MemberProfile:
         nhiem_ky = self.initial_data.get("nhiem_ky", "2025-2026")
-        if BoardMember.objects.filter(member=value, nhiem_ky=nhiem_ky).exclude(
-            pk=self.instance.pk if self.instance else None
-        ).exists():
+        # ORM CHỈ nằm ở repository (QA-Audit P3)
+        if _member_repo.exists_board_membership(
+            value, nhiem_ky, exclude_pk=self.instance.pk if self.instance else None
+        ):
             raise serializers.ValidationError(
                 "Thành viên này đã có chức vụ trong nhiệm kỳ đã chọn."
             )

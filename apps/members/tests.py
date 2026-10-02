@@ -496,3 +496,47 @@ class MemberTrieCacheSharedVersionTests(TestCase):
         trie_2 = search_index.get_trie()
         self.assertIsNot(trie_2, trie_stale, "Counter dùng chung đổi → phải dựng lại Trie")
         self.assertIn(user2.member_profile.pk, trie_2.search_prefix("nguyen trie"))
+
+
+class MemberSanitizationTests(TestCase):
+    """QA-Audit đợt 2 (P3): ho_ten/lop hồ sơ phải sạch tag HTML ở backend."""
+
+    def setUp(self) -> None:
+        self.client = APIClient()
+        self.bcn = User.objects.create_user(
+            email="sani-bcn@clbip.vn", password="TestPass123!", role="BCN"
+        )
+
+    def test_ho_ten_bi_strip_script_khi_tao(self) -> None:
+        self.client.force_authenticate(user=self.bcn)
+        res = self.client.post(
+            "/api/v1/members/",
+            {
+                "email": "sani-mem@clbip.vn",
+                "mssv": "22A4010401",
+                "ho_ten": "<script>alert(1)</script>Nguyễn Văn Sạch",
+                "lop": "<b>22A</b>401",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        profile = MemberProfile.objects.get(user__email="sani-mem@clbip.vn")
+        self.assertNotIn("<script>", profile.ho_ten)
+        self.assertNotIn("<b>", profile.lop)
+        self.assertIn("Nguyễn Văn Sạch", profile.ho_ten)
+
+    def test_ho_ten_bi_strip_script_khi_sua(self) -> None:
+        user = User.objects.create_user(
+            email="sani-2@clbip.vn", password="TestPass123!", role="MEMBER", mssv="22A4010402"
+        )
+        profile = MemberProfile.objects.create(user=user, ho_ten="Cũ Bẩn")
+        self.client.force_authenticate(user=self.bcn)
+        res = self.client.patch(
+            f"/api/v1/members/{profile.pk}/",
+            {"ho_ten": "<img src=x onerror=alert(1)>Mới Sạch"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        profile.refresh_from_db()
+        self.assertNotIn("<img", profile.ho_ten)
+        self.assertIn("Mới Sạch", profile.ho_ten)

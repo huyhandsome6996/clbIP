@@ -78,6 +78,12 @@ class IMemberRepository(ABC):
     def exists_user_by_mssv(self, mssv: str, exclude_pk: Optional[int] = None) -> bool:
         """MSSV đã thuộc về một User nào đó chưa (tùy chọn loại trừ chính user)."""
 
+    @abstractmethod
+    def exists_board_membership(
+        self, member, nhiem_ky: str, exclude_pk: Optional[int] = None
+    ) -> bool:
+        """Thành viên đã có chức vụ khác trong cùng nhiệm kỳ chưa (tùy chọn loại trừ chính dòng)."""
+
     # ------------------------------------------------------------------
     # Tạo tài khoản + hồ sơ
     # ------------------------------------------------------------------
@@ -208,6 +214,16 @@ class DjangoMemberRepository(IMemberRepository):
     def exists_user_by_mssv(self, mssv: str, exclude_pk: Optional[int] = None) -> bool:
         """MSSV đã tồn tại chưa; `exclude_pk` để bỏ qua chính user khi update."""
         queryset = User.objects.filter(mssv=mssv)
+        if exclude_pk is not None:
+            queryset = queryset.exclude(pk=exclude_pk)
+        return queryset.exists()
+
+    def exists_board_membership(
+        self, member, nhiem_ky: str, exclude_pk: Optional[int] = None
+    ) -> bool:
+        """Trùng chức vụ trong cùng nhiệm kỳ — validate của BoardMemberSerializer.
+        ORM CHỈ nằm ở repository (QA-Audit P3: không query trong serializer)."""
+        queryset = BoardMember.objects.filter(member=member, nhiem_ky=nhiem_ky)
         if exclude_pk is not None:
             queryset = queryset.exclude(pk=exclude_pk)
         return queryset.exists()

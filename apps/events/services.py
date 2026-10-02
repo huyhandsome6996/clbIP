@@ -29,6 +29,7 @@ from apps.common.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from apps.common.sanitizers import clean_text
 from apps.authentication.models import User
 from apps.events.models import ActivityEvent, EventBudgetDetail, EventCommunication, EventRegistration, EventTask
 from apps.events.repositories import DjangoEventRepository, IEventRepository
@@ -116,6 +117,12 @@ class EventService:
         data = dict(data)
         budget_items: Optional[list] = data.pop("budget_details", None)
 
+        # Sanitize free-text (QA-Audit P3 — defense-in-depth: dữ liệu sạch
+        # ngay khi vào DB, không phụ thuộc frontend escape khi render)
+        for _field in ("ten_hoat_dong", "mo_ta", "dia_diem"):
+            if data.get(_field):
+                data[_field] = clean_text(data[_field])
+
         cls._validate_time_range(data.get("thoi_gian_bat_dau"), data.get("thoi_gian_ket_thuc"))
 
         with transaction.atomic():
@@ -142,6 +149,11 @@ class EventService:
         """
         data = dict(data)
         budget_items: Optional[list] = data.pop("budget_details", None)
+
+        # Sanitize free-text (QA-Audit P3) — chỉ các trường có trong payload
+        for _field in ("ten_hoat_dong", "mo_ta", "dia_diem"):
+            if data.get(_field):
+                data[_field] = clean_text(data[_field])
 
         cls._validate_time_range(
             data.get("thoi_gian_bat_dau", event.thoi_gian_bat_dau),
@@ -311,7 +323,12 @@ class EventService:
         validate payload — giữ nguyên thứ tự lỗi 404 → 400 như bản cũ.
         """
         with transaction.atomic():
-            item = cls._repo().create_budget_detail(event, **data)
+            cleaned = dict(data)
+            if "ten_hang_muc" in cleaned:
+                cleaned["ten_hang_muc"] = clean_text(cleaned["ten_hang_muc"])
+            if "ghi_chu" in cleaned:
+                cleaned["ghi_chu"] = clean_text(cleaned["ghi_chu"])
+            item = cls._repo().create_budget_detail(event, **cleaned)
             # Tự động tính lại tổng kinh phí dự trù
             event.tong_kinh_phi_du_tru = cls._repo().sum_budget_total(event)
             event.save(update_fields=["tong_kinh_phi_du_tru", "updated_at"])
@@ -326,7 +343,11 @@ class EventService:
         validate payload — giữ nguyên thứ tự lỗi 404 → 400 như bản cũ.
         """
         with transaction.atomic():
-            return cls._repo().create_communication(event_id=event_id, **data)
+            return cls._repo().create_communication(
+                event_id=event_id,
+                tieu_de=clean_text(data.get("tieu_de", "")),
+                **{k: v for k, v in data.items() if k != "tieu_de"},
+            )
 
 
 class EventTaskService:
@@ -424,7 +445,7 @@ class EventTaskService:
 
             task = cls._repo().create_task(
                 event=event,
-                ten_task=ten_task,
+                ten_task=clean_text(ten_task),
                 nguoi_phu_trach_id=nguoi_phu_trach_id,
                 deadline=deadline,
             )
@@ -535,6 +556,33 @@ class EventTaskService:
                 "Chỉ BCN hoặc người phụ trách mới được cập nhật task này."
             )
 
+    @classmethod
+    def assert_can_view_plan(cls, user, event: ActivityEvent) -> None:
+        """
+        Kế hoạch DAG chỉ dành cho BCN/ADMIN hoặc NGƯỜI THAM GIA sự kiện
+        (QA-Audit P3: trước đây GET /tasks/ mở cho mọi user đã đăng nhập).
+
+        "Người tham gia" = thành viên có ÍT NHẤT MỘT trong 2 điều kiện:
+            - được giao task trong sự kiện (EventTask.nguoi_phu_trach), hoặc
+            - có vé đang hiệu lực (khác CANCELLED) cho sự kiện.
+
+        Raises:
+            ForbiddenException (403): không phải BCN và không tham gia.
+        """
+        if user is not None and getattr(user, "is_bcn", False):
+            return
+
+        profile = cls._member_repo().get_by_user(user)
+        if profile is None:
+            raise ForbiddenException("Chỉ BCN hoặc người tham gia sự kiện mới xem được kế hoạch.")
+
+        repo = cls._repo()
+        if repo.member_is_assigned_to_any_task(event.pk, profile) or repo.member_has_active_registration(
+            event.pk, profile
+        ):
+            return
+        raise ForbiddenException("Chỉ BCN hoặc người tham gia sự kiện mới xem được kế hoạch.")
+
     # ------------------------------------------------------------------
     # Hoàn thành task (+ XP qua GamificationService — lazy import)
     # ------------------------------------------------------------------
@@ -593,7 +641,7 @@ class EventTaskService:
         from django.conf import settings
 
         try:
-            # Lazy import BÊN TRONG hàm — Agent B (gamification) viết song song
+            # Lazy import BÊN TRONG hàm — gamification là module phụ trợ
             from apps.gamification.services import GamificationService
 
             GamificationService.award_xp(

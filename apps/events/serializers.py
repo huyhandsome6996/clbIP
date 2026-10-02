@@ -13,7 +13,11 @@ from apps.events.models import (
     EventRegistration,
     EventTask,
 )
-from apps.members.models import MemberProfile
+from apps.events.repositories import DjangoEventRepository
+from apps.members.repositories import DjangoMemberRepository
+
+# QuerySet cho PrimaryKeyRelatedField — ORM CHỈ nằm ở repository (QA-Audit P3)
+_MEMBER_SELECTION_QUERYSET = DjangoMemberRepository().get_all()
 
 
 # ----------------------------------------------------------------------
@@ -183,7 +187,7 @@ class EventTaskSerializer(serializers.ModelSerializer):
     """
 
     nguoi_phu_trach = serializers.PrimaryKeyRelatedField(
-        queryset=MemberProfile.objects.all(),
+        queryset=_MEMBER_SELECTION_QUERYSET,
         required=False,
         allow_null=True,
     )

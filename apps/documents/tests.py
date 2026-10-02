@@ -630,3 +630,34 @@ class PersistentStorageGuardTests(ThrottleFreeMixin, APITestCase):
         ):
             resp = self._upload()
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+
+class DocumentSanitizationTests(ThrottleFreeMixin, APITestCase):
+    """QA-Audit đợt 2 (P3): tieu_de/mo_ta tài liệu phải sạch tag HTML ở backend."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.member = User.objects.create_user(
+            username="sanitizer", email="sani@clbip.test", password="TestPass123!",
+            role=User.Role.MEMBER, mssv="22A4010301",
+        )
+        MemberProfile.objects.create(user=cls.member, ho_ten="San Itizer")
+        cls.upload_url = reverse("document_list")
+
+    def test_tieu_de_mo_ta_bi_strip_script(self) -> None:
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.post(
+            self.upload_url,
+            {
+                "file": make_pdf_file("sach.pdf"),
+                "tieu_de": "<script>hack()</script>Giao Trinh Python",
+                "mo_ta": "<p>Giáo trình<script>bad()</script> cơ bản</p>",
+                "nhom": "CHUYEN_MON",
+            },
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        doc = Document.objects.get(pk=resp.data["data"]["id"])
+        self.assertNotIn("<script>", doc.tieu_de)
+        self.assertNotIn("<script>", doc.mo_ta)
+        self.assertIn("Giao Trinh Python", doc.tieu_de)

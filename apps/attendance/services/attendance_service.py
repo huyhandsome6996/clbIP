@@ -6,7 +6,7 @@ Luồng chính:
 - close_session: đóng phiên, chốt danh sách.
 - check_in:      check-in GPS qua GPSAntiCheatEngine (7 lớp anti-cheat),
                  xác định đúng giờ/muộn, tính streak 🔥, cộng XP qua
-                 GamificationService (lazy import — tích hợp song song Agent B),
+                 GamificationService (lazy import),
                  cập nhật vé EventRegistration → CHECKED_IN.
 - bulk_override: BCN cập nhật thủ công hàng loạt (hết pin, lỗi định vị...).
 """
@@ -262,7 +262,7 @@ class AttendanceService:
         """
         Gọi GamificationService.award_xp với idempotency_key chống cộng lặp.
 
-        - Lazy import BÊN TRONG hàm (Agent B viết song song — chưa có thì bỏ qua).
+        - Lazy import BÊN TRONG hàm (lỗi gamification không chặn check-in).
         - Mọi lỗi gamification KHÔNG được làm hỏng kết quả check-in.
         """
         try:

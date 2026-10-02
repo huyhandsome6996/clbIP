@@ -270,13 +270,7 @@ class EventTaskDagTests(EventTestBase):
         self.assertEqual(x_task.depends_on.count(), 0)
 
     def test_complete_task_awards_xp(self) -> None:
-        """complete_task → XpLedger ghi nhận idempotency_key=task_<id>.
-        GamificationService của Agent B viết song song — chưa có thì SKIP."""
-        try:
-            import apps.gamification.services  # noqa: F401
-        except ImportError:
-            self.skipTest("GamificationService chưa triển khai (Agent B song song)")
-
+        """complete_task → XpLedger ghi nhận idempotency_key=task_<id>."""
         from apps.gamification.models import XpLedger
 
         event = self.make_event(trang_thai="IN_PROGRESS")
@@ -506,3 +500,98 @@ class EventDetailPIITests(TestCase):
         res = self.client.get(f"/api/v1/events/{self.event.pk}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["data"].get("created_by_email"), self.bcn.email)
+
+
+class EventTaskPlanVisibilityTests(EventTestBase):
+    """
+    QA-Audit đợt 2 (P3): GET /events/<id>/tasks/ và /tasks/topological-order/
+    chỉ dành cho BCN/ADMIN hoặc NGƯỜI THAM GIA (được giao task hoặc có vé).
+    """
+
+    def _create_task_via_orm(self, event, assignee=None):
+        return EventTask.objects.create(
+            event=event, ten_task="Chuẩn bị địa điểm", nguoi_phu_trach=assignee
+        )
+
+    def test_member_khong_tham_gia_bi_chan_403(self) -> None:
+        """MEMBER không đăng ký, không được giao task → 403 (cả 2 endpoint)."""
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        self._create_task_via_orm(event, assignee=self.member_profile)
+        unrelated_user, _ = self._make_member(7)  # member KHÔNG liên quan sự kiện
+
+        self.client.force_authenticate(unrelated_user)
+        r_plan = self.client.get(f"{EVENTS_URL}{event.id}/tasks/")
+        r_order = self.client.get(f"{EVENTS_URL}{event.id}/tasks/topological-order/")
+        self.assertEqual(r_plan.status_code, 403)
+        self.assertEqual(r_order.status_code, 403)
+        self.assertIn("người tham gia", r_plan.data["message"])
+
+    def test_member_duoc_giao_task_xem_duoc(self) -> None:
+        """MEMBER được giao task trong sự kiện → 200 (người thực thi cần plan)."""
+        event = self.make_event(trang_thai="IN_PROGRESS")
+        self._create_task_via_orm(event, assignee=self.member_profile)
+
+        self.client.force_authenticate(self.member)
+        r = self.client.get(f"{EVENTS_URL}{event.id}/tasks/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("tasks", r.data["data"])
+
+    def test_member_co_ve_hieu_luc_xem_duoc(self) -> None:
+        """MEMBER đã đăng ký vé (không hủy) → 200."""
+        event = self.make_event(trang_thai="OPEN_REGISTRATION")
+        self.client.force_authenticate(self.member)
+        self.client.post(f"{EVENTS_URL}{event.id}/register/", {}, format="json")
+
+        r = self.client.get(f"{EVENTS_URL}{event.id}/tasks/")
+        self.assertEqual(r.status_code, 200)
+
+        # Hủy vé → mất quyền xem (không còn người tham gia)
+        self.client.post(f"{EVENTS_URL}{event.id}/cancel-registration/", {}, format="json")
+        r2 = self.client.get(f"{EVENTS_URL}{event.id}/tasks/")
+        self.assertEqual(r2.status_code, 403)
+
+    def test_bcn_luon_xem_duoc(self) -> None:
+        """BCN xem được kế hoạch dù không tham gia (quyền quản lý)."""
+        event = self.make_event(trang_thai="PLANNING")
+        self._create_task_via_orm(event, assignee=self.member_profile)
+
+        self.client.force_authenticate(self.bcn)
+        r = self.client.get(f"{EVENTS_URL}{event.id}/tasks/topological-order/")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.data["data"]["is_valid_dag"])
+
+
+class ServerSideSanitizationTests(EventTestBase):
+    """QA-Audit đợt 2 (P3): free-text phải được bleach sạch tag HTML ở backend."""
+
+    def test_event_mo_ta_bi_strip_script(self) -> None:
+        """Tạo sự kiện với <script> trong mo_ta/ten_hoat_dong → lưu không còn tag."""
+        self.client.force_authenticate(self.bcn)
+        payload = event_payload(
+            ten_hoat_dong="<script>alert(1)</script>Workshop An Toàn",
+            mo_ta="<p>Mô tả<script>steal()</script> hợp lệ</p>",
+        )
+        response = self.client.post(EVENTS_URL, payload, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        from apps.events.models import ActivityEvent as AE
+
+        event = AE.objects.get(pk=response.data["data"]["id"])
+        self.assertNotIn("<script>", event.ten_hoat_dong)
+        self.assertNotIn("<script>", event.mo_ta)
+        self.assertIn("Workshop An Toàn", event.ten_hoat_dong)
+        self.assertIn("Mô tả", event.mo_ta)
+
+    def test_budget_ghi_chu_bi_strip_tag(self) -> None:
+        """Hạng mục kinh phí với HTML trong ten_hang_muc → sạch tag."""
+        event = self.make_event(trang_thai="PLANNING")
+        self.client.force_authenticate(self.bcn)
+        response = self.client.post(
+            f"{EVENTS_URL}{event.id}/budget/",
+            {"ten_hang_muc": "<b>Thuê loa<img src=x onerror=alert(1)></b>", "so_tien": 500000},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertNotIn("<b>", response.data["data"]["ten_hang_muc"])
+        self.assertNotIn("<img", response.data["data"]["ten_hang_muc"])
+        self.assertIn("Thuê loa", response.data["data"]["ten_hang_muc"])

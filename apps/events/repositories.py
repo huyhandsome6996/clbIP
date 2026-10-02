@@ -173,6 +173,18 @@ class IEventRepository(ABC):
     def has_incomplete_dependencies(self, task: EventTask) -> bool:
         """Task còn TIỀN NHIỆM chưa hoàn thành (DAG — chặn complete khi vắt giáo)."""
 
+    @abstractmethod
+    def all_events(self) -> QuerySet[ActivityEvent]:
+        """QuerySet toàn bộ sự kiện — dùng cho PrimaryKeyRelatedField của DRF."""
+
+    @abstractmethod
+    def member_is_assigned_to_any_task(self, event_id: int, member) -> bool:
+        """Thành viên có được giao ÍT NHẤT MỘT task trong sự kiện không (xem DAG plan)."""
+
+    @abstractmethod
+    def member_has_active_registration(self, event_id: int, member) -> bool:
+        """Thành viên có vé đang hiệu lực (khác CANCELLED) của sự kiện không (xem DAG plan)."""
+
 
 class DjangoEventRepository(IEventRepository):
     """Triển khai cụ thể bằng Django ORM cho `IEventRepository`."""
@@ -410,3 +422,22 @@ class DjangoEventRepository(IEventRepository):
         dòng, chỉ trả True/False.
         """
         return task.depends_on.exclude(is_completed=True).exists()
+
+    def all_events(self) -> QuerySet[ActivityEvent]:
+        """QuerySet toàn bộ sự kiện — serializer khai báo PrimaryKeyRelatedField
+        cần queryset để validate pk (ORM CHỈ nằm ở repository — QA-Audit P3)."""
+        return ActivityEvent.objects.all()
+
+    def member_is_assigned_to_any_task(self, event_id: int, member) -> bool:
+        """EXISTS: thành viên được giao task nào đó của sự kiện (EventTask.nguoi_phu_trach)."""
+        return EventTask.objects.filter(
+            event_id=event_id, nguoi_phu_trach=member
+        ).exists()
+
+    def member_has_active_registration(self, event_id: int, member) -> bool:
+        """EXISTS: vé đang hiệu lực (khác CANCELLED) của thành viên tại sự kiện."""
+        return EventRegistration.objects.filter(
+            event_id=event_id, member=member
+        ).exclude(
+            trang_thai=EventRegistration.TrangThai.CANCELLED
+        ).exists()

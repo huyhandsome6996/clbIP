@@ -10,7 +10,7 @@ Lưu ý bảo mật (Server-Authoritative + chống sửa lịch sử):
 """
 from rest_framework import serializers
 
-from apps.events.models import ActivityEvent
+from apps.events.repositories import DjangoEventRepository
 from apps.funds.models import FundPeriodLock, FundTransaction
 
 
@@ -72,7 +72,7 @@ class FundTransactionCreateSerializer(serializers.ModelSerializer):
         style={"base_template": "textarea.html"},
     )
     event = serializers.PrimaryKeyRelatedField(
-        queryset=ActivityEvent.objects.all(),
+        queryset=DjangoEventRepository().all_events(),  # ORM chỉ nằm ở repository (P3)
         required=False,
         allow_null=True,
         help_text="ID sự kiện liên quan (tùy chọn).",

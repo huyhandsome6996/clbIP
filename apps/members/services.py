@@ -20,6 +20,7 @@ from apps.common.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from apps.common.sanitizers import clean_text
 from apps.members.models import MemberProfile
 from django.utils.crypto import get_random_string
 from apps.members.repositories import (
@@ -78,9 +79,10 @@ class MemberService:
             email=email,
             password=password,
             mssv=mssv,
-            ho_ten=data.get("ho_ten") or email.split("@")[0],
-            lop=data.get("lop") or "",
-            sdt=data.get("sdt") or "",
+            # Sanitize free-text (QA-Audit P3 — dữ liệu sạch ngay khi vào DB)
+            ho_ten=clean_text(data.get("ho_ten") or email.split("@")[0]),
+            lop=clean_text(data.get("lop") or ""),
+            sdt=(data.get("sdt") or "").strip(),
             gioi_tinh=data.get("gioi_tinh") or "",
             ngay_sinh=cls._parse_date(data.get("ngay_sinh")),
         )
@@ -120,7 +122,9 @@ class MemberService:
 
             for field in ("ho_ten", "lop", "sdt", "gioi_tinh", "avatar"):
                 if field in data and data[field] is not None:
-                    setattr(profile, field, data[field])
+                    # Sanitize free-text (QA-Audit P3): họ tên/lớp không cho phép HTML
+                    value = clean_text(data[field]) if field in ("ho_ten", "lop") else data[field]
+                    setattr(profile, field, value)
             if "ngay_sinh" in data:
                 profile.ngay_sinh = cls._parse_date(data.get("ngay_sinh"))
             if "trang_thai_hd" in data and data["trang_thai_hd"]:

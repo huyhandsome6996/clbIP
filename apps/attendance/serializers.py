@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.attendance.models import AttendanceRecord, AttendanceSession
-from apps.events.models import ActivityEvent
+from apps.events.repositories import DjangoEventRepository
 
 
 class AttendanceSessionSerializer(serializers.ModelSerializer):
@@ -32,7 +32,8 @@ class SessionCreateSerializer(serializers.ModelSerializer):
     """Mở phiên mới: tọa độ tâm (GPS của BCN tại chỗ) + bán kính + hiệu lực."""
 
     event = serializers.PrimaryKeyRelatedField(
-        queryset=ActivityEvent.objects.all(), required=False, allow_null=True
+        queryset=DjangoEventRepository().all_events(),  # ORM chỉ nằm ở repository (P3)
+        required=False, allow_null=True
     )
 
     class Meta:

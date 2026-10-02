@@ -27,6 +27,7 @@ from apps.common.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from apps.common.sanitizers import clean_text
 from apps.documents.models import Document
 from apps.documents.repositories import IDocumentRepository, DjangoDocumentRepository
 
@@ -207,11 +208,11 @@ class DocumentService:
             pham_vi = Document.PhamVi.PUBLIC_MEMBER
 
         doc = Document(
-            tieu_de=data.get("tieu_de", "").strip(),
+            tieu_de=clean_text(data.get("tieu_de", "")),
             nhom=data.get("nhom", Document.Nhom.CHUYEN_MON),
             pham_vi=pham_vi,
             tags=(data.get("tags", "") or "").strip(),
-            mo_ta=(data.get("mo_ta", "") or "").strip(),
+            mo_ta=clean_text(data.get("mo_ta", "") or ""),
             file=uploaded_file,
             uploaded_by=user,
         )
@@ -232,7 +233,7 @@ class DocumentService:
     @classmethod
     def _award_share_xp(cls, user, doc: Document) -> None:
         """
-        Thưởng XP chia sẻ tài liệu (+100) — HỢP ĐỒNG CHÉO-APP với Agent B.
+        Thưởng XP chia sẻ tài liệu (+100) qua GamificationService.
 
         - Lazy import bên trong hàm (gamification có thể chưa sẵn sàng).
         - Chỉ thành viên có MemberProfile mới được cộng XP.
