@@ -201,7 +201,7 @@
   }
 
   /* ================= MODAL HELPER (CONTRACT §7) ================= */
-  function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+  function openModal({ title, bodyHTML, onMount, footerHTML = "", onClose = null }) {
     const backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop";
     backdrop.innerHTML = `
@@ -211,7 +211,7 @@
         <div class="modal-body">${bodyHTML}</div>
         ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
       </div>`;
-    const close = () => backdrop.remove();
+    const close = () => { backdrop.remove(); if (onClose) onClose(); };
     backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
     backdrop.querySelector(".modal-close").addEventListener("click", close);
     document.body.appendChild(backdrop);
@@ -235,7 +235,14 @@
   const HINH_THUC = { TIEN_MAT: "Tiền mặt", CHUYEN_KHOAN: "Chuyển khoản" };
 
   /* ================= STATE ================= */
-  const state = { page: 1, loaiGd: "", fromDate: "", toDate: "" };
+  const state = { page: 1, loaiGd: "", fromDate: "", toDate: "", idempotencyKey: null };
+
+  /** Sinh khóa Idempotency-Key (UUID v4). crypto.randomUUID chỉ có ở secure
+   *  context (https/localhost) — có fallback cho trường hợp mở qua http LAN. */
+  function newIdempotencyKey() {
+    if (window.crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    return "gd-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+  }
 
   /* ================= KHỞI TẠO ================= */
   function init() {
@@ -361,6 +368,10 @@
 
   /* ================= MODAL: GHI SỔ THU / CHI ================= */
   function openCreateModal() {
+    // IDEMPOTENCY: sinh đúng 1 key cho mỗi lần MỞ modal. User retry trong cùng
+    // lần mở (lỗi mạng / 4xx / 5xx) vẫn tái dùng key này → backend trả kết quả
+    // lần đầu, KHÔNG ghi giao dịch thứ 2. Đóng modal thì reset (xem onClose).
+    state.idempotencyKey = newIdempotencyKey();
     openModal({
       title: "Ghi sổ thu / chi",
       bodyHTML: `
@@ -406,6 +417,9 @@
         </div>`,
       footerHTML: `<button class="btn btn-ghost" data-close>Đóng</button>
                    <button class="btn btn-primary" id="btn-submit-gd">${ic("check", 16)}Lưu vào sổ quỹ</button>`,
+      // Reset key khi ĐÓNG modal (nút X / Đóng / click nền / gửi thành công)
+      // → lần mở modal tiếp theo sẽ sinh key mới.
+      onClose() { state.idempotencyKey = null; },
       onMount(modal, close) {
         modal.querySelector("[data-close]").addEventListener("click", close);
         modal.querySelector("#btn-submit-gd").addEventListener("click", async () => {
@@ -427,6 +441,9 @@
               hinh_thuc: modal.querySelector("#gd-hinhthuc").value,
               ngay_gd: ngayGd || null,
               ghi_chu: modal.querySelector("#gd-ghichu").value.trim(),
+            }, {
+              // Chống ghi trùng: trùng key + cùng payload → backend trả lại phiếu lần đầu (HTTP 200)
+              headers: { "Idempotency-Key": state.idempotencyKey },
             });
             Toast.success(`Đã ghi sổ. Số dư mới: ${Utils.fmtVND(created?.so_du_sau)}`, "Ghi sổ thành công");
             close();

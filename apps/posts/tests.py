@@ -362,3 +362,53 @@ class PostAuthorDisplayNameTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         item = res.data["data"]["items"][0]
         self.assertEqual(item["created_by"], "Lê Văn Chủ Nhiệm")
+
+
+class PollCloseTests(PostBaseTests):
+    """QA-Audit đợt 3 — TASK 6A (P2): PATCH /polls/<id>/close/ (chỉ BCN/ADMIN)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.force_authenticate(user=self.bcn)
+        resp = self.client.post(
+            reverse("poll_list"),
+            {"question": "Nên chọn logo nào?", "options": ["Logo A", "Logo B"]},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_201_CREATED, resp.data
+        self.poll_id = resp.data["data"]["id"]
+        self.close_url = reverse("poll_close", kwargs={"pk": self.poll_id})
+        self.vote_url = reverse("poll_vote", kwargs={"pk": self.poll_id})
+
+    def test_6a_bcn_dong_binh_chon_200(self) -> None:
+        """BCN đóng poll → 200, is_closed=True."""
+        resp = self.client.patch(self.close_url, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data["data"]["is_closed"])
+        self.assertEqual(resp.data["message"], "Đã đóng bình chọn")
+
+    def test_6b_member_duoc_dong_403(self) -> None:
+        """MEMBER không được đóng bình chọn → 403."""
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.patch(self.close_url, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_6c_dong_lan_2_400(self) -> None:
+        """Đóng poll lần 2 → 400 'đã đóng rồi' (idempotent-strict)."""
+        self.client.patch(self.close_url, format="json")
+        resp = self.client.patch(self.close_url, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("đã đóng rồi", resp.data["message"])
+
+    def test_6d_poll_da_dong_vote_bi_chan_409(self) -> None:
+        """Poll đóng xong → member vote trả 409, phiếu không đổi."""
+        self.client.patch(self.close_url, format="json")
+        self.client.force_authenticate(user=self.member)
+        resp = self.client.post(self.vote_url, {"option_index": 0}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
+        detail = self.client.get(reverse("poll_list")).data["data"]["items"][0]
+        self.assertEqual(detail["total_votes"], 0)
+
+    def test_6e_poll_khong_ton_tai_404(self) -> None:
+        resp = self.client.patch(reverse("poll_close", kwargs={"pk": 99999}), format="json")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)

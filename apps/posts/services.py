@@ -320,3 +320,30 @@ class PollService:
         if poll is None:
             raise NotFoundException("Không tìm thấy bình chọn yêu cầu.")
         return poll
+
+    @classmethod
+    def close_poll(cls, poll_id: int, actor) -> CommunityPoll:
+        """
+        BCN/ADMIN đóng bình chọn (QA-Audit đợt 3 — TASK 6A): chặn mọi vote mới.
+
+        Idempotent-strict: poll đã đóng trước đó → 400 ValidationException
+        (caller cần biết thao tác thừa, không trả 200 kiểu idempotent-soft).
+
+        Raises:
+            NotFoundException: poll không tồn tại.
+            ValidationException: poll đã đóng rồi.
+        """
+        with transaction.atomic():
+            poll = cls._repo().get_poll_for_update(poll_id)
+            if poll is None:
+                raise NotFoundException("Không tìm thấy bình chọn yêu cầu.")
+            if poll.is_closed:
+                raise ValidationException("Bình chọn này đã đóng rồi.")
+
+            poll.is_closed = True
+            poll.save(update_fields=["is_closed", "updated_at"])
+
+        logger.info(
+            "Poll #%s '%s' đóng bởi %s", poll.pk, poll.question, getattr(actor, "email", "?")
+        )
+        return poll

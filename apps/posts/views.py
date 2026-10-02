@@ -360,3 +360,29 @@ class PollVoteView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         poll = PollService.vote(pk, serializer.validated_data["option_index"], request.user)
         return ok(PollSerializer(poll).data, message="Đã ghi nhận bình chọn")
+
+
+class PollCloseView(generics.GenericAPIView):
+    """Đóng bình chọn: PATCH /polls/<id>/close/ — chỉ BCN/ADMIN (TASK 6A)."""
+
+    permission_classes = [IsBCNOrAdmin]
+    serializer_class = PollSerializer
+
+    @extend_schema(
+        summary="Đóng bình chọn (BCN)",
+        description=(
+            "Đặt is_closed=True — thành viên không thể vote thêm (vote trên "
+            "poll đã đóng trả 409). Đóng lần 2 → 400."
+        ),
+        request=None,
+        responses={
+            200: PollSerializer,
+            400: OpenApiResponse(description="Bình chọn đã đóng rồi"),
+            403: OpenApiResponse(description="Chỉ BCN/ADMIN"),
+            404: OpenApiResponse(description="Poll không tồn tại"),
+        },
+    )
+    def patch(self, request: Request, pk: int) -> Response:
+        """PollService.close_poll (atomic + row lock) → envelope."""
+        poll = PollService.close_poll(pk, request.user)
+        return ok(PollSerializer(poll).data, message="Đã đóng bình chọn")

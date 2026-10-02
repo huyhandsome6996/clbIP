@@ -676,13 +676,19 @@
         <div class="poll-block">
           <div class="flex items-center justify-between gap-2 mb-2">
             <div class="poll-question" style="margin:0">${Utils.escapeHtml(p.question)}</div>
-            ${p.is_closed ? '<span class="badge badge-neutral">Đã kết thúc</span>' : `<span class="badge badge-info">${Utils.fmtNum(total)} phiếu</span>`}
+            ${p.is_closed
+              ? '<span class="badge badge-neutral">Đã kết thúc</span>'
+              : `<span class="badge badge-info">${Utils.fmtNum(total)} phiếu</span>`}
+            ${!p.is_closed
+              ? `<button class="btn btn-ghost btn-sm act-close-poll" data-poll="${p.id}" title="Chặn mọi vote mới">Đóng bình chọn</button>`
+              : ""}
           </div>
           ${myVote !== null && !p.is_closed ? '<p class="xs muted mb-2">Bạn đã bình chọn cho kỳ này rồi.</p>' : ""}
           ${opts}
         </div>`;
       }).join("");
       Utils.qsa(".po-vote", box).forEach((btn) => btn.addEventListener("click", () => votePoll(btn)));
+      Utils.qsa(".act-close-poll", box).forEach((btn) => btn.addEventListener("click", () => closePoll(btn)));
     } catch (err) {
       Utils.empty(box, { icon: "alert-triangle", title: "Không tải được bình chọn", desc: err.message });
     }
@@ -696,6 +702,20 @@
       await ApiClient.post(`/polls/${id}/vote/`, { option_index: index });
       localStorage.setItem("clbip_poll_voted_" + id, String(index));
       Toast.success("Cảm ơn bạn đã bình chọn!");
+      loadPolls();
+    } catch (err) {
+      Toast.error(err.message);
+      undo();
+    }
+  }
+
+  async function closePoll(btn) {
+    const id = btn.dataset.poll;
+    if (!window.confirm("Đóng bình chọn này? Thành viên sẽ không thể vote thêm.")) return;
+    const undo = Utils.btnLoading(btn, "Đang đóng...");
+    try {
+      await ApiClient.patch(`/polls/${id}/close/`);
+      Toast.success("Đã đóng bình chọn.");
       loadPolls();
     } catch (err) {
       Toast.error(err.message);

@@ -7,6 +7,7 @@ from django.urls import path
 
 from apps.posts.views import (
     FeedbackView,
+    PollCloseView,
     PollListCreateView,
     PollVoteView,
     PostDetailView,
@@ -24,4 +25,5 @@ urlpatterns = [
     # ---------- Bình chọn cộng đồng ----------
     path("polls/", PollListCreateView.as_view(), name="poll_list"),
     path("polls/<int:pk>/vote/", PollVoteView.as_view(), name="poll_vote"),
+    path("polls/<int:pk>/close/", PollCloseView.as_view(), name="poll_close"),
 ]
