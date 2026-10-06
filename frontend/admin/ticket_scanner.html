@@ -102,12 +102,18 @@
       .toolbar-actions { width: 100%; }
     }
   </style>
+  <!-- Circular Favicon for Browser Tab (Khung tròn logo CLB IP) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/frontend/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/frontend/assets/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/frontend/assets/favicon-circle.png">
+  <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
+  <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 </head>
 <body>
 <div class="admin-shell" id="shell">
   <aside class="admin-sidebar">
     <div class="side-brand">
-      <span class="logo" id="brand-logo"></span>
+      <span class="logo" id="brand-logo"><img src="/frontend/assets/logo.png" alt="Logo CLB IP"></span>
       <div><div class="t1">CLB IP ĐHSP Huế</div><div class="t2">Quản trị 2.0</div></div>
     </div>
     <nav class="side-nav" id="side-nav"><!-- JS render nav --></nav>
@@ -238,7 +244,7 @@
 
   /* ================= Nav + khung trang (y hệt events.html) ================= */
   function renderAdminNav(active) {
-    document.getElementById("brand-logo").innerHTML = Icons.render("zap", 20);
+    document.getElementById("brand-logo").innerHTML = '<img src="/frontend/assets/logo.png" alt="Logo CLB IP">';
     const items = [
       ["dashboard", "layout", "Dashboard", "/frontend/admin/dashboard.html"],
       ["members", "users", "Thành viên", "/frontend/admin/members.html"],

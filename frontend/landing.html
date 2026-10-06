@@ -1,319 +1,1183 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta content="web_standard" name="shell-type"/>
   <title>CLB IP ĐHSP Huế 2.0 — Code your Future</title>
-  <meta name="description" content="Cổng sinh viên CLB Tin học Thực hành — Trường ĐH Sư phạm, ĐH Huế: điểm danh GPS, sự kiện & vé QR, bảng vàng XP, kho học liệu và quỹ minh bạch trong một nền tảng duy nhất.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
-  <!-- Favicon inline SVG (CSP img-src cho phép data:) — không phát sinh request 404 -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234648d4'/%3E%3Cstop offset='1' stop-color='%236b38d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='41' font-family='Arial,sans-serif' font-size='26' font-weight='800' fill='white' text-anchor='middle'%3EIP%3C/text%3E%3C/svg%3E">
+  <meta name="description" content="Câu lạc bộ Tin học &amp; Sư phạm (IP Club) — Khoa Tin học, Trường Đại học Sư phạm, Đại học Huế. Nơi đam mê lập trình hòa quyện nghiệp vụ sư phạm hiện đại."/>
+  
+  <!-- Circular Favicon for Browser Tab (Khung tròn logo CLB IP) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/frontend/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/frontend/assets/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/frontend/assets/favicon-circle.png">
+  <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
+  <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
   <link rel="canonical" href="https://clbip-backend.onrender.com/">
-  <!-- Open Graph: preview khi chia sẻ Zalo/Facebook/Messenger -->
+
+  <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="CLB IP ĐHSP Huế">
   <meta property="og:title" content="CLB IP ĐHSP Huế 2.0 — Code your Future">
-  <meta property="og:description" content="Điểm danh GPS, sự kiện & vé QR, bảng vàng XP, kho học liệu và quỹ minh bạch — cổng sinh viên duy nhất của CLB Tin học Thực hành, Trường ĐH Sư phạm, ĐH Huế.">
-  <meta property="og:url" content="https://clbip-backend.onrender.com/">
-  <meta property="og:image" content="https://clbip-backend.onrender.com/frontend/assets/hero_bg.jpg">
-  <meta property="og:locale" content="vi_VN">
-  <meta name="twitter:card" content="summary_large_image">
-  <link rel="stylesheet" href="/frontend/css/landing.css">
-  <style>
-    html { scroll-behavior: smooth; }
-    body { overscroll-behavior: none; }
-    .ms-fill { font-variation-settings: 'FILL' 1; }
-    /* Hero mesh — đồng bộ ngôn ngữ hero trang member */
-    .lp-hero {
-      background:
-        radial-gradient(900px 480px at 12% -10%, rgba(132,85,239,.55), transparent 60%),
-        radial-gradient(760px 460px at 95% 18%, rgba(0,128,150,.38), transparent 55%),
-        radial-gradient(700px 520px at 55% 115%, rgba(96,99,238,.5), transparent 60%),
-        linear-gradient(135deg, #4648d4 0%, #494bd6 45%, #6b38d4 100%);
-    }
-    .lp-hero-img { mix-blend-mode: luminosity; opacity: .16; }
-    @keyframes lpFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-    .lp-float { animation: lpFloat 5.5s ease-in-out infinite; }
-    .lp-float-2 { animation: lpFloat 6.5s ease-in-out 0.8s infinite; }
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      .lp-float, .lp-float-2 { animation: none; }
-    }
-  </style>
-</head>
-<body class="bg-background font-body-md text-on-surface antialiased">
+  <meta property="og:description" content="Câu lạc bộ Tin học &amp; Sư phạm — Trường ĐH Sư phạm, ĐH Huế. Khám phá 4 mảng hoạt động, vườn ươm Olympic Tin học và cổng điều hành số 2.0.">
+  <meta property="og:image" content="/frontend/assets/logo.png">
 
-  <!-- ================= HEADER ================= -->
-  <header class="sticky top-0 z-50 bg-surface-container-lowest/90 backdrop-blur-xl border-b border-outline-variant/30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-[76px] flex items-center justify-between gap-4">
-      <a href="/" class="flex items-center gap-3 min-w-0" aria-label="CLB IP ĐHSP Huế — về đầu trang">
-        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(70,72,212,0.35)]">
-          <span class="text-on-primary font-headline-sm text-headline-sm font-extrabold tracking-wider">IP</span>
-        </div>
-        <div class="flex flex-col min-w-0">
-          <div class="flex items-center gap-1.5">
-            <span class="font-headline-sm text-headline-sm font-bold text-on-surface leading-tight tracking-tight">CLB IP</span>
-            <span class="px-1.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] tracking-wide uppercase font-bold">ĐHSP Huế</span>
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+  
+  <!-- Base stylesheet -->
+  <link rel="stylesheet" href="/frontend/css/landing.css">
+
+  <style>
+    @layer base {
+      html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
+      body { overscroll-behavior: none; }
+      main > :first-child { margin-top: 0 !important; }
+      main > :last-child { margin-bottom: 0 !important; }
+    }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f8f9ff; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; line-height: 1; }
+    .material-symbols-outlined.ms-fill { font-variation-settings: 'FILL' 1; }
+  </style>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#0A1931",
+            "background": "#f8f9ff",
+            "on-surface-variant": "#44474d",
+            "surface-container-highest": "#d3e4fe",
+            "on-secondary-container": "#002b4e",
+            "surface-container-lowest": "#ffffff",
+            "on-primary-fixed": "#0d1b33",
+            "outline-variant": "#c5c6ce",
+            "primary-fixed": "#d7e2ff",
+            "secondary-fixed": "#d2e4ff",
+            "primary-fixed-dim": "#b9c7e6",
+            "on-tertiary-fixed": "#002113",
+            "surface-container-high": "#dce9ff",
+            "on-secondary-fixed": "#001d36",
+            "tertiary-container": "#002113",
+            "surface-container-low": "#eff4ff",
+            "on-tertiary-fixed-variant": "#005236",
+            "surface-dim": "#cbdbf5",
+            "inverse-on-surface": "#eaf1ff",
+            "surface-variant": "#d3e4fe",
+            "surface-bright": "#f8f9ff",
+            "secondary": "#0061a5",
+            "surface": "#f8f9ff",
+            "on-primary-fixed-variant": "#394761",
+            "error": "#ba1a1a",
+            "on-primary-container": "#7684a1",
+            "on-tertiary-container": "#009668",
+            "tertiary-fixed-dim": "#4edea3",
+            "secondary-container": "#0095f8",
+            "on-secondary-fixed-variant": "#00497e",
+            "primary-container": "#0A1931",
+            "tertiary-fixed": "#6ffbbe",
+            "on-secondary": "#ffffff",
+            "secondary-fixed-dim": "#9fcaff",
+            "on-tertiary": "#ffffff",
+            "tertiary": "#0099FF",
+            "on-background": "#0b1c30",
+            "on-surface": "#0b1c30",
+            "inverse-surface": "#213145",
+            "outline": "#75777e",
+            "on-error": "#ffffff",
+            "on-error-container": "#93000a",
+            "on-primary": "#ffffff",
+            "surface-tint": "#515f7a",
+            "error-container": "#ffdad6",
+            "inverse-primary": "#b9c7e6",
+            "surface-container": "#e5eeff"
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1rem",
+            "3xl": "1.5rem",
+            "full": "9999px"
+          },
+          fontFamily: {
+            "label-md": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-md": ["Manrope", "sans-serif"],
+            "headline-sm": ["Manrope", "sans-serif"],
+            "display-lg-mobile": ["Manrope", "sans-serif"],
+            "headline-xl": ["Manrope", "sans-serif"],
+            "label-sm": ["Plus Jakarta Sans", "sans-serif"],
+            "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+            "body-md": ["Plus Jakarta Sans", "sans-serif"],
+            "display-lg": ["Manrope", "sans-serif"],
+            "label-lg": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-lg": ["Manrope", "sans-serif"],
+            "body-sm": ["Plus Jakarta Sans", "sans-serif"],
+            "headline-xl-mobile": ["Manrope", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-surface font-body-md text-on-surface antialiased selection:bg-secondary-fixed selection:text-on-secondary-fixed">
+
+  <!-- ================= TOP NAVIGATION ================= -->
+  <header class="fixed top-0 left-0 right-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.06)] border-b border-surface-container">
+    <div class="h-[76px] max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <a class="flex items-center gap-3 group" href="#ve-clb" aria-label="CLB IP ĐHSP Huế — Về đầu trang">
+          <!-- Official Club Logo -->
+          <div class="w-10 h-10 rounded-full p-1 bg-white border border-secondary/20 shadow-sm flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+            <img alt="CLB IP Logo" class="w-full h-full object-contain" src="/frontend/assets/logo.png"/>
           </div>
-          <span class="font-label-sm text-[11px] text-outline truncate">Code your Future • Khoa Tin học</span>
-        </div>
-      </a>
-      <nav class="hidden md:flex items-center gap-1" aria-label="Điều hướng landing">
-        <a href="#tinh-nang" class="px-3.5 py-2 rounded-lg font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">Tính năng</a>
-        <a href="#cach-hoat-dong" class="px-3.5 py-2 rounded-lg font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">Cách hoạt động</a>
-        <a href="#ve-clb" class="px-3.5 py-2 rounded-lg font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">Về CLB</a>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span class="font-headline-sm text-headline-sm text-on-surface group-hover:text-secondary transition-colors font-bold">CLB IP</span>
+              <span class="bg-surface-container-high text-secondary font-label-sm text-label-sm px-2.5 py-0.5 rounded-full font-bold">ĐH Sư Phạm Huế</span>
+            </div>
+            <span class="font-label-sm text-label-sm text-on-surface-variant hidden sm:inline-block">Informatics &amp; Pedagogy Club • Khoa Tin học</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Desktop Navigation Links -->
+      <nav class="hidden xl:flex items-center gap-6" aria-label="Điều hướng chính">
+        <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="#ve-clb">Về câu lạc bộ</a>
+        <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="#mang-hoat-dong">Mảng hoạt động</a>
+        <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="#dau-an-du-an">Dấu ấn &amp; Số liệu</a>
+        <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="#thu-vien-anh">Thư viện ảnh</a>
+        <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="#cong-so">Cổng số 2.0</a>
+        <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="#doi-ngu">Đội ngũ</a>
+        <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="#faq-section">Hỏi đáp</a>
       </nav>
-      <a id="auth-cta" href="/frontend/login.html"
-         class="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-[0_4px_14px_rgba(70,72,212,0.28)] hover:bg-primary-container transition-colors shrink-0">
-        <span aria-hidden="true" id="auth-cta-icon" class="material-symbols-outlined text-[20px]">login</span>
-        <span id="auth-cta-text">Đăng nhập</span>
+
+      <!-- Right CTAs -->
+      <div class="flex items-center gap-3">
+        <a id="auth-cta" class="inline-flex items-center gap-1.5 font-label-lg text-label-lg text-on-surface hover:text-secondary px-3.5 py-2 rounded-lg transition-colors border border-surface-container hover:bg-surface-container-low" href="/frontend/login.html">
+          <span class="material-symbols-outlined text-[20px]" id="auth-cta-icon">login</span>
+          <span id="auth-cta-text">Đăng nhập</span>
+        </a>
+        <a class="hidden sm:inline-flex items-center justify-center bg-primary-container text-on-primary font-label-lg text-label-lg px-5 py-2.5 rounded-full shadow-[0_8px_20px_rgba(0,153,255,0.25)] hover:opacity-95 hover:scale-[1.02] transition-all" href="#ung-tuyen">
+          Ứng tuyển thành viên →
+        </a>
+        <button id="mobile-menu-btn" aria-label="Mở menu điều hướng" class="xl:hidden p-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors">
+          <span class="material-symbols-outlined text-[22px]" id="mobile-menu-icon">menu</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Drawer -->
+    <div id="mobile-drawer" class="hidden xl:hidden bg-surface-container-lowest border-b border-surface-container px-6 py-4 space-y-3">
+      <a class="block font-label-lg text-label-lg text-on-surface py-2 hover:text-secondary" href="#ve-clb">Về câu lạc bộ</a>
+      <a class="block font-label-lg text-label-lg text-on-surface py-2 hover:text-secondary" href="#mang-hoat-dong">Mảng hoạt động</a>
+      <a class="block font-label-lg text-label-lg text-on-surface py-2 hover:text-secondary" href="#dau-an-du-an">Dấu ấn &amp; Số liệu</a>
+      <a class="block font-label-lg text-label-lg text-on-surface py-2 hover:text-secondary" href="#thu-vien-anh">Thư viện ảnh</a>
+      <a class="block font-label-lg text-label-lg text-on-surface py-2 hover:text-secondary" href="#cong-so">Cổng số 2.0</a>
+      <a class="block font-label-lg text-label-lg text-on-surface py-2 hover:text-secondary" href="#doi-ngu">Đội ngũ</a>
+      <a class="block font-label-lg text-label-lg text-on-surface py-2 hover:text-secondary" href="#faq-section">Hỏi đáp</a>
+      <a class="block text-center bg-primary-container text-on-primary font-label-lg text-label-lg px-4 py-2.5 rounded-xl shadow-md mt-2" href="#ung-tuyen">
+        Ứng tuyển thành viên →
       </a>
     </div>
   </header>
 
-  <main>
-    <!-- ================= HERO ================= -->
-    <section class="relative overflow-hidden lp-hero">
-      <img alt="" src="/frontend/assets/hero_bg.jpg" class="absolute inset-0 w-full h-full object-cover lp-hero-img" onerror="this.remove()">
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 lg:py-24 grid lg:grid-cols-2 gap-12 lg:gap-10 items-center">
-        <div class="text-on-primary">
-          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-inverse-surface/25 backdrop-blur border border-on-primary/20">
-            <span aria-hidden="true" class="material-symbols-outlined text-[18px] text-tertiary-fixed ms-fill">bolt</span>
-            <span class="font-label-lg text-label-lg font-bold tracking-wide">Nền tảng số của CLB Tin học Thực hành</span>
-          </div>
-          <h1 class="mt-5 font-headline-xl text-headline-xl-mobile sm:text-headline-xl lg:text-[46px] lg:leading-[54px] font-extrabold text-on-primary tracking-tight leading-[1.15]">
-            Code your Future —<br>
-            <span class="text-tertiary-fixed">cổng sinh viên</span> của CLB IP
-          </h1>
-          <p class="mt-4 max-w-xl font-body-lg text-body-lg text-on-primary/85 leading-relaxed">
-            Điểm danh GPS chống gian lận, bảng vàng XP đua top từng ngày, kho học liệu chung
-            và vé sự kiện QR — tất cả gói gọn trong một nền tảng duy nhất dành cho
-            Ban chủ nhiệm và toàn thể thành viên.
-          </p>
-          <div class="mt-7 flex flex-wrap items-center gap-3">
-            <a id="hero-cta" href="/frontend/login.html"
-               class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-surface-container-lowest text-primary font-label-lg text-label-lg font-bold shadow-[0_10px_30px_rgba(19,27,46,0.28)] hover:bg-surface-bright transition-colors">
-              <span aria-hidden="true" class="material-symbols-outlined text-[20px]">rocket_launch</span>
-              <span id="hero-cta-text">Đăng nhập ngay</span>
-            </a>
-            <a href="#tinh-nang"
-               class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-on-primary/35 text-on-primary font-label-lg text-label-lg font-bold hover:bg-on-primary/10 transition-colors">
-              Khám phá tính năng
-              <span aria-hidden="true" class="material-symbols-outlined text-[20px]">expand_more</span>
-            </a>
-          </div>
-          <div class="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 font-label-lg text-label-lg text-on-primary/80">
-            <span class="inline-flex items-center gap-1.5"><span aria-hidden="true" class="material-symbols-outlined text-[18px] text-tertiary-fixed ms-fill">local_fire_department</span> Chuỗi chuyên cần</span>
-            <span class="inline-flex items-center gap-1.5"><span aria-hidden="true" class="material-symbols-outlined text-[18px] text-tertiary-fixed ms-fill">military_tech</span> XP &amp; Huy hiệu</span>
-            <span class="inline-flex items-center gap-1.5"><span aria-hidden="true" class="material-symbols-outlined text-[18px] text-tertiary-fixed ms-fill">qr_code_2</span> Vé QR</span>
-            <span class="inline-flex items-center gap-1.5"><span aria-hidden="true" class="material-symbols-outlined text-[18px] text-tertiary-fixed ms-fill">fmd_good</span> GPS check-in</span>
-          </div>
-        </div>
+  <main class="w-full pt-[76px] bg-surface min-h-[calc(100vh-76px)]">
+    <div class="flex flex-col w-full">
 
-        <!-- Visual: thẻ thành viên + chip nổi -->
-        <div class="relative hidden lg:block" aria-hidden="true">
-          <div class="lp-float max-w-md ml-auto rounded-2xl bg-surface-container-lowest/95 backdrop-blur p-6 shadow-[0_24px_60px_rgba(19,27,46,0.35)] border border-outline-variant/40">
-            <div class="flex items-center justify-between">
-              <span class="font-label-sm text-label-sm font-bold uppercase tracking-[0.12em] text-primary">Thẻ thành viên số</span>
-              <span aria-hidden="true" class="material-symbols-outlined text-[22px] text-secondary">contactless</span>
-            </div>
-            <p class="mt-1 font-headline-sm text-headline-sm font-extrabold text-on-surface tracking-wide">CLB IP ĐH SƯ PHẠM HUẾ</p>
-            <div class="mt-5 flex items-center gap-3.5">
-              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-extrabold">NN</div>
-              <div class="min-w-0">
-                <p class="font-headline-sm text-headline-sm font-bold text-on-surface truncate">HOÀNG NHẬT NAM</p>
-                <p class="font-label-lg text-label-lg text-outline">MSSV: 21T102**** • Khóa K45 Sư phạm Tin</p>
+      <!-- ================= HERO SECTION ================= -->
+      <section id="ve-clb" class="relative w-full overflow-hidden bg-gradient-to-b from-surface-container-low via-surface to-surface pb-16 lg:pb-24 scroll-mt-24">
+        <!-- Ambient Glows -->
+        <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-secondary-fixed opacity-60 blur-3xl pointer-events-none"></div>
+        <div class="absolute top-1/4 right-0 w-[500px] h-[500px] rounded-full bg-surface-container-highest opacity-70 blur-3xl pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center pt-8 lg:pt-14">
+            
+            <!-- Left Copy (7 Cols) -->
+            <div class="lg:col-span-7 flex flex-col space-y-6 text-left">
+              <!-- Live Indicator Eyebrow Pill -->
+              <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface w-fit shadow-sm">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary-fixed-dim opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-on-tertiary-container"></span>
+                </span>
+                <span class="font-label-sm text-label-sm tracking-wider uppercase font-semibold text-secondary">
+                  CLB Học thuật &amp; Công nghệ nòng cốt • Khoa Tin học ĐHSP Huế
+                </span>
+              </div>
+
+              <!-- Main Impact Title -->
+              <h1 class="font-headline-xl text-headline-xl lg:text-[46px] lg:leading-[54px] font-extrabold tracking-tight text-on-surface">
+                Code your Future —
+                <span class="bg-gradient-to-r from-secondary to-primary-container bg-clip-text text-transparent block mt-1">
+                  Nơi Đam Mê Lập Trình
+                </span>
+                Hòa Quyện 
+                <span class="bg-gradient-to-r from-primary-container via-secondary to-secondary-container bg-clip-text text-transparent">
+                  Nghiệp Vụ Sư Phạm
+                </span>
+              </h1>
+
+              <!-- Mission Pitch -->
+              <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl leading-relaxed">
+                Câu lạc bộ Tin học &amp; Sư phạm (IP Club) là cái nôi kết nối các thế hệ sinh viên đam mê lập trình thuật toán, phát triển phần mềm và đổi mới phương pháp giảng dạy tại Trường ĐH Sư phạm, Đại học Huế. Cùng nhau kiến tạo công nghệ, truyền cảm hứng tri thức.
+              </p>
+
+              <!-- Action Buttons -->
+              <div class="flex flex-wrap items-center gap-4 pt-2">
+                <a class="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-primary-container text-on-primary font-label-lg text-label-lg shadow-lg hover:shadow-xl hover:bg-on-secondary-fixed transition-all group" href="#ung-tuyen">
+                  <span class="material-symbols-outlined text-[20px] text-secondary-fixed group-hover:rotate-12 transition-transform">rocket_launch</span>
+                  <span>Gia nhập CLB IP ngay</span>
+                </a>
+                <a class="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-surface-container text-on-surface font-label-lg text-label-lg hover:bg-surface-container-high transition-colors" href="#mang-hoat-dong">
+                  <span class="material-symbols-outlined text-[20px] text-secondary">play_circle</span>
+                  <span>Khám phá hoạt động</span>
+                </a>
+              </div>
+
+              <!-- Trust Proof Badges -->
+              <div class="pt-6 flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-surface-container">
+                  <span class="material-symbols-outlined text-[18px] text-secondary">account_balance</span>
+                  <span class="font-label-sm text-label-sm font-medium">Trực thuộc Khoa Tin học - ĐHSP Huế</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-surface-container">
+                  <span class="material-symbols-outlined text-[18px] text-secondary">military_tech</span>
+                  <span class="font-label-sm text-label-sm font-medium">50+ Giải Olympic Tin học</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-surface-container">
+                  <span class="material-symbols-outlined text-[18px] text-secondary">history_edu</span>
+                  <span class="font-label-sm text-label-sm font-medium">15+ Năm phát triển</span>
+                </div>
               </div>
             </div>
-            <div class="mt-5 rounded-xl bg-surface-container-low border border-outline-variant/30 px-4 py-3 flex items-center justify-between">
-              <div>
-                <p class="font-label-lg text-label-lg text-outline">Cấp 5 • Dev Tập Sự</p>
-                <p class="font-headline-sm text-headline-sm font-extrabold text-primary">⚡ 1,420 XP tích luỹ</p>
+
+            <!-- Right Visual Composite (5 Cols) -->
+            <div class="lg:col-span-5 relative mt-4 lg:mt-0">
+              <!-- Main Lab Photo Card -->
+              <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-surface-container-lowest border border-surface-container">
+                <img class="w-full h-[440px] object-cover" alt="Sinh viên Khoa Tin học ĐH Sư phạm Huế trong phòng máy lab hiện đại" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSHE9JirTqsLk6FYWtdndilXPLPrj_iwlO3sfxLh3YUz1SC_G9sWjVEXS7BsRynjrJoUEGyZPkawsNR_aCZf5LmO9wcEIzhlWfqKIBiezMV1Hpz0ylt0bALsICRGM3XCjhIEbd4C--mbR1Eieb6OJexa3Aipm_LFZE4YmKnDqpIjXGX0XowvKDgERmG_shfnvWRexpBUyGYFfS32DUcL_75EamERuMz2SpdZ2jDIQ"/>
+                <div class="absolute inset-0 bg-gradient-to-t from-primary-container/80 via-primary-container/20 to-transparent"></div>
+                <div class="absolute bottom-4 left-5 right-5 text-on-primary">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="w-2 h-2 rounded-full bg-tertiary-fixed"></span>
+                    <span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary-fixed">Lab Học thuật 302A</span>
+                  </div>
+                  <p class="font-headline-sm text-headline-sm font-bold text-on-primary">Môi trường ươm mầm tài năng số</p>
+                  <p class="font-body-sm text-body-sm text-surface-variant">Không gian sáng tạo, hỗ trợ code xuyên đêm và rèn giũa kỹ năng sư phạm.</p>
+                </div>
               </div>
-              <span aria-hidden="true" class="material-symbols-outlined text-[28px] text-tertiary ms-fill">verified</span>
-            </div>
-          </div>
-          <div class="lp-float-2 absolute -bottom-6 -left-2 rounded-xl bg-surface-container-lowest/95 backdrop-blur px-4 py-3 shadow-[0_16px_40px_rgba(19,27,46,0.3)] border border-outline-variant/40 flex items-center gap-3">
-            <span class="w-9 h-9 rounded-lg bg-tertiary-container text-on-tertiary-container flex items-center justify-center"><span aria-hidden="true" class="material-symbols-outlined text-[20px]">radar</span></span>
-            <div>
-              <p class="font-label-lg text-label-lg font-bold text-on-surface leading-tight">Điểm danh GPS</p>
-              <p class="font-label-lg text-label-lg text-outline leading-tight">Check-in trong bán kính cho phép</p>
-            </div>
-          </div>
-          <div class="lp-float-2 absolute -top-5 right-6 rounded-xl bg-surface-container-lowest/95 backdrop-blur px-4 py-3 shadow-[0_16px_40px_rgba(19,27,46,0.3)] border border-outline-variant/40 flex items-center gap-3">
-            <span class="w-9 h-9 rounded-lg bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center"><span aria-hidden="true" class="material-symbols-outlined text-[20px] ms-fill">local_fire_department</span></span>
-            <div>
-              <p class="font-label-lg text-label-lg font-bold text-on-surface leading-tight">🔥 Chuỗi 7 ngày</p>
-              <p class="font-label-lg text-label-lg text-outline leading-tight">+30 XP hôm nay</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="relative h-6 sm:h-8"></div>
-    </section>
 
-    <!-- ================= TÍNH NĂNG ================= -->
-    <section id="tinh-nang" class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 scroll-mt-24">
-      <div class="max-w-2xl">
-        <span class="font-label-md text-label-md font-bold uppercase tracking-[0.14em] text-primary">Tính năng</span>
-        <h2 class="mt-2 font-headline-lg text-headline-lg-mobile sm:text-headline-lg font-extrabold text-on-surface tracking-tight">Một cổng sinh viên — sáu phân hệ cốt lõi</h2>
-        <p class="mt-3 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
-          Mọi hoạt động của CLB đều số hoá và ghi nhận tự động: thành viên tập trung trải nghiệm,
-          Ban chủ nhiệm điều hành bằng dữ liệu thật.
-        </p>
-      </div>
-      <div class="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        <div class="group rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)] hover:shadow-[0_16px_40px_rgba(70,72,212,0.14)] hover:-translate-y-1 transition-all">
-          <span class="w-12 h-12 rounded-xl bg-surface-container-high text-tertiary flex items-center justify-center group-hover:scale-110 transition-transform"><span aria-hidden="true" class="material-symbols-outlined text-[24px]">radar</span></span>
-          <h3 class="mt-4 font-headline-sm text-headline-sm font-bold text-on-surface">Điểm danh GPS</h3>
-          <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Check-in bằng khoảng cách Haversine trong bán kính cho phép — chống gian lận vị trí tuyệt đối, phiên mở cổng theo giờ.</p>
-        </div>
-        <div class="group rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)] hover:shadow-[0_16px_40px_rgba(70,72,212,0.14)] hover:-translate-y-1 transition-all">
-          <span class="w-12 h-12 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center group-hover:scale-110 transition-transform"><span aria-hidden="true" class="material-symbols-outlined text-[24px]">confirmation_number</span></span>
-          <h3 class="mt-4 font-headline-sm text-headline-sm font-bold text-on-surface">Sự kiện &amp; Vé QR</h3>
-          <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Đăng ký sự kiện, nhận vé QR cá nhân và được BCN quét xác minh tại cổng trong tích tắc — không cần vé giấy.</p>
-        </div>
-        <div class="group rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)] hover:shadow-[0_16px_40px_rgba(70,72,212,0.14)] hover:-translate-y-1 transition-all">
-          <span class="w-12 h-12 rounded-xl bg-primary-fixed text-on-primary-fixed flex items-center justify-center group-hover:scale-110 transition-transform"><span aria-hidden="true" class="material-symbols-outlined text-[24px]">military_tech</span></span>
-          <h3 class="mt-4 font-headline-sm text-headline-sm font-bold text-on-surface">Bảng vàng XP</h3>
-          <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Tích XP từ mọi hoạt động, thăng Level, săn huy hiệu và đua Top chiến thần toàn CLB — xếp hạng bằng thuật toán Min-Heap.</p>
-        </div>
-        <div class="group rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)] hover:shadow-[0_16px_40px_rgba(70,72,212,0.14)] hover:-translate-y-1 transition-all">
-          <span class="w-12 h-12 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center group-hover:scale-110 transition-transform"><span aria-hidden="true" class="material-symbols-outlined text-[24px]">menu_book</span></span>
-          <h3 class="mt-4 font-headline-sm text-headline-sm font-bold text-on-surface">Kho học liệu</h3>
-          <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Chia sẻ slide, bài giảng, đề thi giữa các khóa — tìm kiếm tức thời theo tiền tố Trie, tải qua đường dẫn có kiểm soát.</p>
-        </div>
-        <div class="group rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)] hover:shadow-[0_16px_40px_rgba(70,72,212,0.14)] hover:-translate-y-1 transition-all">
-          <span class="w-12 h-12 rounded-xl bg-error-container text-on-error-container flex items-center justify-center group-hover:scale-110 transition-transform"><span aria-hidden="true" class="material-symbols-outlined text-[24px]">account_balance_wallet</span></span>
-          <h3 class="mt-4 font-headline-sm text-headline-sm font-bold text-on-surface">Quỹ minh bạch</h3>
-          <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Sổ quỹ thu–chi rõ ràng cho Ban chủ nhiệm: khóa kỳ an toàn, xuất Excel, cảnh báo quỹ thấp — minh bạch với toàn CLB.</p>
-        </div>
-        <div class="group rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)] hover:shadow-[0_16px_40px_rgba(70,72,212,0.14)] hover:-translate-y-1 transition-all">
-          <span class="w-12 h-12 rounded-xl bg-surface-container-high text-secondary flex items-center justify-center group-hover:scale-110 transition-transform"><span aria-hidden="true" class="material-symbols-outlined text-[24px]">mark_chat_unread</span></span>
-          <h3 class="mt-4 font-headline-sm text-headline-sm font-bold text-on-surface">Hòm thư ẩn danh</h3>
-          <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Góp ý và bình chọn ẩn danh về hoạt động CLB — tiếng nói của mọi thành viên đều được lắng nghe nghiêm túc.</p>
-        </div>
-      </div>
-    </section>
+              <!-- Floating Glass Card #1: Top-Right -->
+              <div class="absolute -top-6 -right-4 sm:-right-6 bg-surface-container-lowest/95 backdrop-blur-md px-4 py-3 rounded-xl shadow-xl border border-surface-container flex items-center gap-3.5 max-w-[240px]">
+                <div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[24px] text-secondary">trophy</span>
+                </div>
+                <div>
+                  <div class="font-label-sm text-label-sm text-secondary font-bold">Thành tích 2025</div>
+                  <div class="font-headline-sm text-[13px] leading-tight font-bold text-on-surface">Giải Nhì Toàn Quốc OLP Tin Học SV</div>
+                </div>
+              </div>
 
-    <!-- ================= CÁCH HOẠT ĐỘNG ================= -->
-    <section id="cach-hoat-dong" class="bg-surface-container-low border-y border-outline-variant/25 scroll-mt-24">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
-        <div class="max-w-2xl">
-          <span class="font-label-md text-label-md font-bold uppercase tracking-[0.14em] text-primary">Cách hoạt động</span>
-          <h2 class="mt-2 font-headline-lg text-headline-lg-mobile sm:text-headline-lg font-extrabold text-on-surface tracking-tight">Ba bước để trở thành chiến thần</h2>
-          <p class="mt-3 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
-            Không giấy tờ, không bảng điểm danh thủ công — mọi thứ diễn ra trên điện thoại của bạn.
-          </p>
-        </div>
-        <ol class="mt-10 grid gap-5 md:grid-cols-3">
-          <li class="relative rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)]">
-            <span class="font-headline-xl text-headline-xl font-extrabold text-primary-fixed-dim select-none" aria-hidden="true">01</span>
-            <h3 class="mt-2 font-headline-sm text-headline-sm font-bold text-on-surface">Đăng nhập cổng sinh viên</h3>
-            <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Dùng email CLB do Ban chủ nhiệm cấp để truy cập. Mật khẩu được bảo vệ bằng cơ chế khoá chống dò đoán.</p>
-          </li>
-          <li class="relative rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)]">
-            <span class="font-headline-xl text-headline-xl font-extrabold text-primary-fixed-dim select-none" aria-hidden="true">02</span>
-            <h3 class="mt-2 font-headline-sm text-headline-sm font-bold text-on-surface">Tham gia &amp; check-in</h3>
-            <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Đăng ký sự kiện, nhận vé QR và điểm danh GPS ngay tại hội trường — chỉ cần trong bán kính cho phép.</p>
-          </li>
-          <li class="relative rounded-2xl bg-surface-container-lowest border border-outline-variant/30 p-6 shadow-[0_2px_10px_rgba(70,72,212,0.05)]">
-            <span class="font-headline-xl text-headline-xl font-extrabold text-primary-fixed-dim select-none" aria-hidden="true">03</span>
-            <h3 class="mt-2 font-headline-sm text-headline-sm font-bold text-on-surface">Tích XP &amp; thăng hạng</h3>
-            <p class="mt-2 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">Mỗi đóng góp đều quy đổi thành XP, mở khoá huy hiệu và đưa bạn lên bảng vàng — giữ chuỗi chuyên cần để nhận thưởng.</p>
-          </li>
-        </ol>
-      </div>
-    </section>
+              <!-- Floating Glass Card #2: Bottom-Left -->
+              <div class="absolute -bottom-8 -left-4 sm:-left-8 bg-surface-container-lowest/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-surface-container flex items-center gap-4 max-w-[270px]">
+                <div class="w-11 h-11 rounded-lg bg-primary-container flex items-center justify-center text-on-primary shrink-0 shadow-md">
+                  <span class="material-symbols-outlined text-[24px] text-secondary-fixed">qr_code_scanner</span>
+                </div>
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-on-tertiary-container animate-pulse"></span>
+                    <span class="font-label-sm text-label-sm text-on-tertiary-container font-semibold">Cổng số IP 2.0</span>
+                  </div>
+                  <span class="font-headline-sm text-[13px] font-bold text-on-surface">Check-in GPS &amp; Điểm XP</span>
+                  <span class="font-label-sm text-[10px] text-on-surface-variant">🔥 142 thành viên đang trực tuyến</span>
+                </div>
+              </div>
 
-    <!-- ================= VỀ CLB ================= -->
-    <section id="ve-clb" class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 scroll-mt-24">
-      <div class="grid lg:grid-cols-2 gap-10 items-center">
-        <div>
-          <span class="font-label-md text-label-md font-bold uppercase tracking-[0.14em] text-primary">Về CLB</span>
-          <h2 class="mt-2 font-headline-lg text-headline-lg-mobile sm:text-headline-lg font-extrabold text-on-surface tracking-tight">CLB IP — Tin học Thực hành, Trường ĐH Sư phạm, ĐH Huế</h2>
-          <p class="mt-4 font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
-            CLB IP quy tụ những bạn trẻ yêu thích lập trình và công nghệ của Khoa Tin học với tinh thần
-            <span class="font-bold text-on-surface">"Code your Future"</span> — học thật, làm thật, thi thật.
-            Trong năm học, CLB tổ chức TechTalk, workshop, hackathon và đội tuyển Olympic;
-            nền tảng 2.0 này được chính thành viên CLB xây dựng để số hoá toàn bộ điều hành:
-            từ điểm danh, vé sự kiện, quỹ CLB cho đến gamification XP.
-          </p>
-          <div class="mt-6 flex flex-wrap gap-2.5">
-            <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-primary-fixed text-on-primary-fixed font-label-lg text-label-lg font-bold"><span aria-hidden="true" class="material-symbols-outlined text-[18px]">school</span> Học tập</span>
-            <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-lg text-label-lg font-bold"><span aria-hidden="true" class="material-symbols-outlined text-[18px]">diversity_3</span> Cộng đồng</span>
-            <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-lg text-label-lg font-bold"><span aria-hidden="true" class="material-symbols-outlined text-[18px]">volunteer_activism</span> Cống hiến</span>
+              <!-- Floating Badge #3: Center-Right -->
+              <div class="hidden sm:flex absolute top-1/2 -right-6 transform -translate-y-1/2 bg-primary-container text-on-primary px-3.5 py-2 rounded-full shadow-lg items-center gap-2 border border-secondary/30">
+                <span class="material-symbols-outlined text-[18px] text-secondary-fixed">verified</span>
+                <span class="font-label-sm text-label-sm font-semibold tracking-wide">100% Mentorship 1:1</span>
+              </div>
+            </div>
+
           </div>
         </div>
-        <div class="rounded-2xl lp-hero p-8 sm:p-10 text-on-primary shadow-[0_20px_50px_rgba(70,72,212,0.3)] overflow-hidden relative">
-          <img alt="" src="/frontend/assets/hero_bg.jpg" class="absolute inset-0 w-full h-full object-cover lp-hero-img" onerror="this.remove()">
-          <div class="relative">
-            <span aria-hidden="true" class="material-symbols-outlined text-[40px] text-tertiary-fixed ms-fill">rocket_launch</span>
-            <h3 class="mt-3 font-headline-lg text-headline-lg-mobile sm:text-headline-lg font-extrabold tracking-tight">Sẵn sàng bước vào cổng sinh viên?</h3>
-            <p class="mt-3 font-body-lg text-body-lg text-on-primary/85 leading-relaxed">
-              Cổng chỉ dành cho thành viên đã được Ban chủ nhiệm thêm vào hệ thống.
-              Đăng nhập bằng email CLB để bắt đầu hành trình tích XP của bạn.
+      </section>
+
+      <!-- ================= 4 VALUE PILLARS ================= -->
+      <section class="w-full py-20 bg-surface-container-lowest scroll-mt-24" id="mang-hoat-dong">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+          <!-- Section Header -->
+          <div class="flex flex-col items-center text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
+              Sứ Mệnh &amp; Định Hướng
+            </span>
+            <h2 class="font-headline-lg text-headline-lg lg:text-headline-xl font-bold text-on-surface">
+              Bốn Trụ Cột Phát Triển Toàn Diện Tại CLB IP
+            </h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+              Chúng tôi không chỉ rèn luyện tư duy lập trình viên xuất sắc, mà còn đào tạo những nhà giáo dục, người chia sẻ tri thức và lãnh đạo công nghệ tự tin bước vào kỷ nguyên số.
             </p>
-            <a id="banner-cta" href="/frontend/login.html"
-               class="mt-6 inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-surface-container-lowest text-primary font-label-lg text-label-lg font-bold shadow-[0_10px_30px_rgba(19,27,46,0.28)] hover:bg-surface-bright transition-colors">
-              <span aria-hidden="true" class="material-symbols-outlined text-[20px]">login</span>
-              <span id="banner-cta-text">Đăng nhập ngay</span>
-            </a>
+          </div>
+
+          <!-- Bento Grid (4 Cards) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Pillar 1 -->
+            <div class="group relative rounded-2xl bg-surface p-7 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between border border-surface-container">
+              <div>
+                <div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center mb-6 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-[28px] text-secondary group-hover:text-secondary-fixed">terminal</span>
+                </div>
+                <span class="font-label-sm text-label-sm font-semibold text-secondary tracking-wide uppercase block mb-1">
+                  Olympic &amp; Giải thuật
+                </span>
+                <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface mb-3">
+                  Thuật toán &amp; Thi đấu Đỉnh cao
+                </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                  Luyện tập cấu trúc dữ liệu chuyên sâu, giải thuật nâng cao, ICPC và Olympic Tin học sinh viên toàn quốc dưới sự cố vấn trực tiếp của giảng viên Khoa Tin học.
+                </p>
+              </div>
+              <div class="mt-6 pt-4 border-t border-surface-container flex items-center justify-between">
+                <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-md bg-surface-container-high text-on-secondary-container font-mono">
+                  C++ • Python • Java
+                </span>
+                <span class="material-symbols-outlined text-[18px] text-secondary group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </div>
+            </div>
+
+            <!-- Pillar 2 -->
+            <div class="group relative rounded-2xl bg-surface p-7 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between border border-surface-container">
+              <div>
+                <div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center mb-6 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-[28px] text-secondary group-hover:text-secondary-fixed">deployed_code</span>
+                </div>
+                <span class="font-label-sm text-label-sm font-semibold text-secondary tracking-wide uppercase block mb-1">
+                  Thực chiến &amp; Phần mềm
+                </span>
+                <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface mb-3">
+                  Sản phẩm Thực tế cho Xã hội
+                </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                  Sinh viên tổ chức làm việc nhóm theo mô hình Agile/Scrum, tự tay phát triển web app, mobile app, hệ thống quản lý số hoá phục vụ trực tiếp cho nhà trường và cộng đồng.
+                </p>
+              </div>
+              <div class="mt-6 pt-4 border-t border-surface-container flex items-center justify-between">
+                <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-md bg-surface-container-high text-on-secondary-container font-mono">
+                  Fullstack • Cloud • DevOps
+                </span>
+                <span class="material-symbols-outlined text-[18px] text-secondary group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </div>
+            </div>
+
+            <!-- Pillar 3 -->
+            <div class="group relative rounded-2xl bg-surface p-7 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between border border-surface-container">
+              <div>
+                <div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center mb-6 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-[28px] text-secondary group-hover:text-secondary-fixed">school</span>
+                </div>
+                <span class="font-label-sm text-label-sm font-semibold text-secondary tracking-wide uppercase block mb-1">
+                  Sư phạm số &amp; STEM
+                </span>
+                <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface mb-3">
+                  Nghiệp vụ Sư phạm Hiện đại
+                </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                  Thiết kế bài giảng số hóa, ứng dụng Trí tuệ Nhân tạo (AI) trong dạy học, tổ chức các lớp phổ cập lập trình và Robotics miễn phí cho học sinh trung học phổ thông.
+                </p>
+              </div>
+              <div class="mt-6 pt-4 border-t border-surface-container flex items-center justify-between">
+                <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-md bg-surface-container-high text-on-secondary-container font-mono">
+                  EdTech • STEM • AI Tutor
+                </span>
+                <span class="material-symbols-outlined text-[18px] text-secondary group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </div>
+            </div>
+
+            <!-- Pillar 4 -->
+            <div class="group relative rounded-2xl bg-surface p-7 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between border border-surface-container">
+              <div>
+                <div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center mb-6 group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+                  <span class="material-symbols-outlined text-[28px] text-secondary group-hover:text-secondary-fixed">groups_3</span>
+                </div>
+                <span class="font-label-sm text-label-sm font-semibold text-secondary tracking-wide uppercase block mb-1">
+                  Gia đình &amp; Mạng lưới
+                </span>
+                <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface mb-3">
+                  Kỹ năng &amp; Kết nối Doanh nghiệp
+                </h3>
+                <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                  Tổ chức TechTalk định kỳ cùng chuyên gia từ FPT, Viettel, VNG; rèn luyện kỹ năng thuyết trình, teamwork và những chuyến đi teambuilding gắn bó thanh xuân đại học.
+                </p>
+              </div>
+              <div class="mt-6 pt-4 border-t border-surface-container flex items-center justify-between">
+                <span class="font-label-sm text-label-sm px-2.5 py-1 rounded-md bg-surface-container-high text-on-secondary-container font-mono">
+                  TechTalk • Hackathon • Career
+                </span>
+                <span class="material-symbols-outlined text-[18px] text-secondary group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <!-- ================= STATS & IMPACT COUNTER ================= -->
+      <section id="dau-an-du-an" class="w-full py-16 bg-primary-container text-on-primary relative overflow-hidden scroll-mt-24">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#d7e2ff_1px,transparent_1px)] [background-size:24px_24px]"></div>
+        <div class="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-on-primary-container/20">
+            <div class="pt-4 md:pt-0 flex flex-col items-center">
+              <div class="font-headline-xl text-[44px] lg:text-[56px] font-extrabold text-secondary-fixed tracking-tight">15+</div>
+              <p class="font-label-lg text-label-lg font-semibold text-on-primary mt-1">Năm Hình Thành &amp; Phát Triển</p>
+              <span class="font-body-sm text-body-sm text-on-primary-container mt-1">Từ năm 2011 đến nay</span>
+            </div>
+            <div class="pt-4 md:pt-0 flex flex-col items-center">
+              <div class="font-headline-xl text-[44px] lg:text-[56px] font-extrabold text-secondary-fixed tracking-tight">500+</div>
+              <p class="font-label-lg text-label-lg font-semibold text-on-primary mt-1">Thành Viên &amp; Cựu Sinh Viên</p>
+              <span class="font-body-sm text-body-sm text-on-primary-container mt-1">Làm việc tại các tập đoàn lớn</span>
+            </div>
+            <div class="pt-4 md:pt-0 flex flex-col items-center">
+              <div class="font-headline-xl text-[44px] lg:text-[56px] font-extrabold text-secondary-fixed tracking-tight">50+</div>
+              <p class="font-label-lg text-label-lg font-semibold text-on-primary mt-1">Huy Chương &amp; Giải Thưởng</p>
+              <span class="font-body-sm text-body-sm text-on-primary-container mt-1">OLP Tin học sinh viên, NCKH</span>
+            </div>
+            <div class="pt-4 md:pt-0 flex flex-col items-center">
+              <div class="font-headline-xl text-[44px] lg:text-[56px] font-extrabold text-secondary-fixed tracking-tight">100%</div>
+              <p class="font-label-lg text-label-lg font-semibold text-on-primary mt-1">Kinh Nghiệm Thực Chiến</p>
+              <span class="font-body-sm text-body-sm text-on-primary-container mt-1">Đều có sản phẩm trước khi tốt nghiệp</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= REAL-LIFE ACTIVITIES & MOMENTS ================= -->
+      <section id="thu-vien-anh" class="w-full py-20 bg-surface scroll-mt-24">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+          <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div>
+              <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
+                Cuộc Sống Tại CLB IP
+              </span>
+              <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface mt-2">
+                Những Khoảnh Khắc Tạo Nên Bản Sắc CLB IP
+              </h2>
+              <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl mt-2">
+                Học hết sức, chơi hết mình — từ những đêm thức trắng debug trước giờ thi đấu đến những hành trình dã ngoại đầy ắp tiếng cười bên dòng sông Hương thơ mộng.
+              </p>
+            </div>
+            <a class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-surface-container text-on-surface hover:bg-secondary hover:text-on-secondary font-label-md text-label-md transition-colors shrink-0" href="#ung-tuyen">
+              <span>Đăng ký tham gia cùng CLB</span>
+              <span class="material-symbols-outlined text-[18px]">group_add</span>
+            </a>
+          </div>
+
+          <!-- Photo Bento Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <!-- Hackathon (7 cols) -->
+            <div class="md:col-span-7 relative rounded-2xl overflow-hidden shadow-md group h-[380px] bg-surface-container-high border border-surface-container">
+              <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sinh viên tham gia Hackathon lập trình 48 giờ tại ĐH Sư phạm Huế" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiBXMbopWqGErs3LUBS7StTT-0aaUUmVX2O5nV94Eup5xLjXANPhaDv3DjPF4Zf8u1eJQtyZnSp3LqTCNo5KT_iNatHAokgn5mw40ASYsmw1EspUQKlepZ5rS0W0egS4eH9McPN2j0nNIvpLPMts3NkHLQPbh2OoAe9jx0-wE7riIHTo5Q1TICx7f6600sX3R3mHMcBNLCOj4_XlV1cg5vFMPmW_31TusKoGrHlto"/>
+              <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/30 to-transparent"></div>
+              <div class="absolute top-4 left-4">
+                <span class="px-3 py-1 rounded-full bg-secondary text-on-secondary font-label-sm text-label-sm font-bold flex items-center gap-1.5 shadow">
+                  <span class="material-symbols-outlined text-[14px]">local_fire_department</span>
+                  Hackathon Thường niên IP TechJam
+                </span>
+              </div>
+              <div class="absolute bottom-5 left-6 right-6 text-on-primary">
+                <h3 class="font-headline-md text-headline-md font-bold mb-1">48 Giờ Kiến Tạo Giải Pháp Công Nghệ Giáo Dục</h3>
+                <p class="font-body-sm text-body-sm text-surface-variant">Sân chơi sáng tạo lớn nhất trong năm quy tụ hơn 20 đội thi với các giải pháp AI và WebApp ứng dụng thực tế.</p>
+              </div>
+            </div>
+
+            <!-- Olympic Podium (5 cols) -->
+            <div class="md:col-span-5 relative rounded-2xl overflow-hidden shadow-md group h-[380px] bg-surface-container-high border border-surface-container">
+              <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Đội tuyển CLB IP nhận cúp giải Olympic Tin học Sinh viên" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBayV12pFUcus_Tq_krYQocFOentvbmMIyiLo8SOP8T63eDB5s3fA5zzxUZiVyfxP8shkZVis1DqjL2tdpl8pJPfj7Ct26Tj6QOU6H5cjb4ZJwBcE0MNQLEReazOYgA3ie6Z06pH0BWwg6zOHaDfXqEXz_2rFYtxN03VLIvwGDJ_qR1gvX0MuIPOFG5sWy76E3w6uJsptyl3-BIfnDipeRd5vdsFXfOYminUcuwxOk"/>
+              <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/30 to-transparent"></div>
+              <div class="absolute top-4 left-4">
+                <span class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-bold flex items-center gap-1.5 shadow">
+                  <span class="material-symbols-outlined text-[14px] text-secondary">workspace_premium</span>
+                  Vinh quang Olympic
+                </span>
+              </div>
+              <div class="absolute bottom-5 left-6 right-6 text-on-primary">
+                <h3 class="font-headline-sm text-headline-sm font-bold mb-1">Tự Hào Màu Cờ Sắc Áo ĐHSP Huế</h3>
+                <p class="font-body-sm text-body-sm text-surface-variant">Liên tục gặt hái giải thưởng cao tại các đấu trường trí tuệ sinh viên cấp Quốc gia.</p>
+              </div>
+            </div>
+
+            <!-- STEM Class (4 cols) -->
+            <div class="md:col-span-4 relative rounded-2xl overflow-hidden shadow-md group h-[300px] bg-surface-container-high border border-surface-container">
+              <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Thành viên CLB đứng lớp giảng dạy STEM cho học sinh" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9oD7aA6eBYu3eLqpdEneZF-WiQXfMVxPzmEpu5UKVW__Hz6Vb6JexJi-gBSoz4vDsyTD6ohpwIp56GtRoqQDBJ1kt0-9qv-yu3QDEodFTnllexQN9rCpyVZ-45YknDjS4Y3HL2hKPYJYQM-xpTV4ibZ5CmOdfAcMDwyRdrK-fP5JNb4peo8coYGB-j6swqxh_62xBQVzxoqNQlxDKutK95uoz8Cd19qx9pO9yyGY"/>
+              <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/20 to-transparent"></div>
+              <div class="absolute top-4 left-4">
+                <span class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-bold flex items-center gap-1 shadow">
+                  <span class="material-symbols-outlined text-[14px] text-secondary">volunteer_activism</span>
+                  Lớp học STEM Cộng đồng
+                </span>
+              </div>
+              <div class="absolute bottom-4 left-5 right-5 text-on-primary">
+                <h4 class="font-headline-sm text-[18px] font-bold">Ươm Mầm Đam Mê Lập Trình</h4>
+                <p class="font-body-sm text-[13px] text-surface-variant">Mỗi mùa hè là một hành trình lan tỏa tri thức đến các em nhỏ.</p>
+              </div>
+            </div>
+
+            <!-- TechTalk with Guest (4 cols) -->
+            <div class="md:col-span-4 relative rounded-2xl overflow-hidden shadow-md group h-[300px] bg-surface-container-high border border-surface-container">
+              <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Hội thảo TechTalk cùng diễn giả doanh nghiệp IT" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNMwUzcyuKPdlQv15KSU0UwurcpffMTWdKsB5EV_SWG9y97yhaLNmH3kLlC6go967YDcL8AelUoj5ADsIUZphZKh0UdO5NrPh5pPNzppTvLu7ek6s5symq43SSyvyUP1wmQINmgIfe7ao6Dbvs-cc4-0MjMX3BvzmegLVFxHuyjkh3QOqVzXTLgJOFAevYN5MWOb5Gj0EDtWzmkgSQlg8rBXYyZVAsM3v496Pw55E"/>
+              <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/20 to-transparent"></div>
+              <div class="absolute top-4 left-4">
+                <span class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-bold flex items-center gap-1 shadow">
+                  <span class="material-symbols-outlined text-[14px] text-secondary">forum</span>
+                  TechTalk Chuyên Sâu
+                </span>
+              </div>
+              <div class="absolute bottom-4 left-5 right-5 text-on-primary">
+                <h4 class="font-headline-sm text-[18px] font-bold">Gặp Gỡ Chuyên Gia Doanh Nghiệp</h4>
+                <p class="font-body-sm text-[13px] text-surface-variant">Rút ngắn khoảng cách giữa giảng đường đại học và thực tế ngành IT.</p>
+              </div>
+            </div>
+
+            <!-- Teambuilding (4 cols) -->
+            <div class="md:col-span-4 relative rounded-2xl overflow-hidden shadow-md group h-[300px] bg-surface-container-high border border-surface-container">
+              <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Dã ngoại teambuilding bên bờ sông Hương Huế" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVfsRyL4R6dw4_lyY6pdcQI9jpabQ5KqxTTQSNiCROb67LRUC5Zgc60FkvatL4-y7Y3TP0POSMyFsVXrv034ZiClgEo8NvO3qXsn4qWSIzaLe_HCAIlZEF2r2L6lPve935xEGaZ-pzfXq7kCaX9oy7m_whpj15U0drr8n2RG3nra945zOnC8jGYvzYPEV5-Po--8xazXxIIEbN8qBHGLEyIAgg4GK4BBy9j20okSA"/>
+              <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/20 to-transparent"></div>
+              <div class="absolute top-4 left-4">
+                <span class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-bold flex items-center gap-1 shadow">
+                  <span class="material-symbols-outlined text-[14px] text-secondary">favorite</span>
+                  Gắn Kết Tình Thân
+                </span>
+              </div>
+              <div class="absolute bottom-4 left-5 right-5 text-on-primary">
+                <h4 class="font-headline-sm text-[18px] font-bold">Thanh Xuân Bên Đồng Đội</h4>
+                <p class="font-body-sm text-[13px] text-surface-variant">Nơi tình bạn và những kỷ niệm đẹp đồng hành suốt 4 năm học.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PROOF OF INNOVATION — CỔNG NỀN TẢNG SỐ IP 2.0 ================= -->
+      <section id="cong-so" class="w-full py-20 bg-surface-container-low relative overflow-hidden scroll-mt-24">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            <!-- Left (6 Cols) -->
+            <div class="lg:col-span-6 space-y-6">
+              <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold">
+                <span class="material-symbols-outlined text-[16px]">integration_instructions</span>
+                <span>Proof of Work • Sản phẩm Made by Sinh viên IP</span>
+              </div>
+              <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface leading-tight">
+                Tự Hào Vận Hành Trên <br/>
+                <span class="text-secondary">Cổng Quản Lý Số 2.0</span> Do Chính Tay Sinh Viên CLB Phát Triển
+              </h2>
+              <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                Không sử dụng các nền tảng có sẵn khô cứng, ban kỹ thuật CLB IP đã tự kiến trúc một hệ thống Web App chuyên biệt để quản trị toàn bộ hoạt động sinh hoạt, học tập và tài chính nội bộ.
+              </p>
+
+              <!-- 4 Feature rows -->
+              <div class="space-y-4 pt-2">
+                <div class="flex items-start gap-3.5 p-3.5 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow transition-shadow border border-surface-container">
+                  <div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-[20px]">near_me</span>
+                  </div>
+                  <div>
+                    <h4 class="font-headline-sm text-[16px] font-bold text-on-surface">Điểm Danh Thông Minh Qua GPS Haversine</h4>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Tự động xác thực vị trí thành viên có mặt tại Lab 302A với bán kính chính xác chống gian lận.</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3.5 p-3.5 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow transition-shadow border border-surface-container">
+                  <div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-[20px]">social_leaderboard</span>
+                  </div>
+                  <div>
+                    <h4 class="font-headline-sm text-[16px] font-bold text-on-surface">Gamification Tích Điểm XP &amp; Đua Top Bảng Vàng</h4>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Làm bài tập, tham gia seminar và đóng góp mã nguồn để mở khóa các danh hiệu &amp; quà tặng độc quyền.</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3.5 p-3.5 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow transition-shadow border border-surface-container">
+                  <div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-[20px]">folder_special</span>
+                  </div>
+                  <div>
+                    <h4 class="font-headline-sm text-[16px] font-bold text-on-surface">Kho Tri Thức &amp; Đề Thi Số Hóa</h4>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Hơn 300+ tài liệu chuyên khảo, giáo án STEM mẫu và mã nguồn mẫu được tìm kiếm tức thời bằng thuật toán Trie.</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3.5 p-3.5 rounded-xl bg-surface-container-lowest shadow-sm hover:shadow transition-shadow border border-surface-container">
+                  <div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                  </div>
+                  <div>
+                    <h4 class="font-headline-sm text-[16px] font-bold text-on-surface">Sổ Quỹ Thu Chi Minh Bạch 100%</h4>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Báo cáo tài chính thu chi thời gian thực, từng chiếc bút hay cốc trà sữa liên hoan đều công khai tới từng thành viên.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <a class="inline-flex items-center gap-2 font-label-lg text-label-lg text-secondary hover:text-on-secondary-container font-bold group" href="/frontend/login.html">
+                  <span>Trải nghiệm Cổng số (Dành cho thành viên)</span>
+                  <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Right Dashboard UI Mockup (6 Cols) -->
+            <div class="lg:col-span-6">
+              <div class="relative bg-surface-container-lowest rounded-2xl shadow-xl p-6 sm:p-8 border border-surface-container">
+                <!-- Window Bar -->
+                <div class="flex items-center justify-between pb-5 mb-5 border-b border-surface-container">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-error"></span>
+                    <span class="w-3 h-3 rounded-full bg-secondary-fixed"></span>
+                    <span class="w-3 h-3 rounded-full bg-tertiary-fixed-dim"></span>
+                    <span class="font-mono text-label-sm text-on-surface-variant ml-2">portal.clbip-dhsphue.edu.vn</span>
+                  </div>
+                  <span class="px-2.5 py-0.5 rounded bg-surface-container text-secondary font-mono text-[11px] font-semibold">
+                    v2.4.2-stable
+                  </span>
+                </div>
+
+                <!-- Member Digital ID Card -->
+                <div class="p-5 rounded-xl bg-gradient-to-r from-primary-container to-secondary text-on-primary mb-6 shadow-md relative overflow-hidden">
+                  <div class="absolute right-0 bottom-0 translate-x-6 translate-y-6 opacity-10">
+                    <span class="material-symbols-outlined text-[140px]">badge</span>
+                  </div>
+                  <div class="flex items-center gap-4 relative z-10">
+                    <div class="w-14 h-14 rounded-full bg-surface-container-lowest/20 backdrop-blur-sm flex items-center justify-center font-headline-sm font-bold text-secondary-fixed border-2 border-surface-container-lowest/40">
+                      IP
+                    </div>
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-2">
+                        <span class="font-headline-sm text-headline-sm font-bold text-on-primary">Hoàng Nhật Nam</span>
+                        <span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-[10px] font-bold uppercase">Dev Tập Sự</span>
+                      </div>
+                      <span class="font-body-sm text-[13px] text-surface-variant">Mã SV: 22S1020089 • K46 SP Tin học</span>
+                      <div class="flex items-center gap-2 mt-2">
+                        <div class="w-36 h-2 rounded-full bg-surface-container-lowest/30 overflow-hidden">
+                          <div class="h-full bg-secondary-fixed rounded-full w-3/4"></div>
+                        </div>
+                        <span class="font-label-sm text-[11px] text-secondary-fixed font-mono font-bold">1,850 / 2,000 XP</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Quick Action Grid in Portal -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                  <div class="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between border border-surface-container">
+                    <div class="flex items-center justify-between text-secondary mb-2">
+                      <span class="material-symbols-outlined text-[24px]">pin_drop</span>
+                      <span class="w-2 h-2 rounded-full bg-on-tertiary-container animate-pulse"></span>
+                    </div>
+                    <div>
+                      <div class="font-label-sm text-label-sm text-on-surface-variant">Điểm danh GPS</div>
+                      <div class="font-headline-sm text-[15px] font-bold text-on-surface">Lab 302A (Hợp lệ)</div>
+                    </div>
+                  </div>
+                  <div class="p-4 rounded-xl bg-surface-container-low flex flex-col justify-between border border-surface-container">
+                    <div class="flex items-center justify-between text-secondary mb-2">
+                      <span class="material-symbols-outlined text-[24px]">military_tech</span>
+                      <span class="font-label-sm text-label-sm text-secondary font-mono">Rank #04</span>
+                    </div>
+                    <div>
+                      <div class="font-label-sm text-label-sm text-on-surface-variant">Bảng Vàng Tuần</div>
+                      <div class="font-headline-sm text-[15px] font-bold text-on-surface">Top Coder K47</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Mini Live Event Feed -->
+                <div class="rounded-xl bg-surface-container p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="font-label-sm text-label-sm font-bold text-on-surface uppercase tracking-wide">
+                      Hoạt Động Gần Đây Trong Portal
+                    </span>
+                    <span class="text-secondary font-label-sm text-[11px]">Real-time sync</span>
+                  </div>
+                  <div class="space-y-2.5">
+                    <div class="flex items-center gap-3 text-body-sm text-[13px]">
+                      <span class="material-symbols-outlined text-[16px] text-secondary shrink-0">check_circle</span>
+                      <span class="text-on-surface truncate"><strong class="font-semibold">Mai Linh (K48)</strong> vừa nộp bài tập ICPC Week 4</span>
+                      <span class="text-on-surface-variant text-[11px] ml-auto shrink-0 font-mono">2m ago</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-body-sm text-[13px]">
+                      <span class="material-symbols-outlined text-[16px] text-on-tertiary-container shrink-0">receipt_long</span>
+                      <span class="text-on-surface truncate"><strong class="font-semibold">Ban Hậu cần</strong> cập nhật sổ quỹ: Chi mua server hosting</span>
+                      <span class="text-on-surface-variant text-[11px] ml-auto shrink-0 font-mono">18m ago</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-body-sm text-[13px]">
+                      <span class="material-symbols-outlined text-[16px] text-secondary shrink-0">menu_book</span>
+                      <span class="text-on-surface truncate"><strong class="font-semibold">Long (Lead Dev)</strong> chia sẻ tài liệu React 19 &amp; Next.js</span>
+                      <span class="text-on-surface-variant text-[11px] ml-auto shrink-0 font-mono">1h ago</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= BAN CHỦ NHIỆM & CỐ VẤN HỌC THUẬT ================= -->
+      <section class="w-full py-20 bg-surface-container-lowest scroll-mt-24" id="doi-ngu">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+          <!-- Section Header -->
+          <div class="flex flex-col items-center text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
+              Đội Ngũ Dẫn Dắt
+            </span>
+            <h2 class="font-headline-lg text-headline-lg lg:text-headline-xl font-bold text-on-surface">
+              Những Người Thầy Tận Tâm &amp; Ban Chủ Nhiệm Nhiệt Huyết
+            </h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+              Sự kết hợp hoàn hảo giữa kinh nghiệm học thuật uyên bác từ các giảng viên Khoa Tin học và năng lượng tiên phong, đổi mới từ ban điều hành sinh viên.
+            </p>
+          </div>
+
+          <!-- 4 Leader Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Leader 1 -->
+            <div class="rounded-2xl bg-surface p-6 shadow-sm hover:shadow-lg transition-all flex flex-col text-center items-center group border border-surface-container">
+              <div class="w-28 h-28 rounded-full overflow-hidden mb-4 shadow-md bg-surface-container-high border-2 border-secondary/20">
+                <img class="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="TS. Nguyễn Văn Hùng - Giảng viên Khoa Tin học" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9CErsosmhAkOhX2a13mWoU-26-HPNvpfJp97E2gUdTkD3frHuC5FyNo-qkj04TWeVGPfoT3Rm9gxOFSe98_DJ8bqianksgsIVhuAmksjqlZi09JlgGHEboaISL-t2_L5LpshmSeoGtGUICpdGCRniAsGzVjAWfjncnKNcprs2llY-BTrZ82KRZnwV9EzQP_QqriQKEmLCgcZK72jZSfuID_pXeWxUa9dgnaJf5vk"/>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-secondary font-label-sm text-label-sm font-semibold mb-2">
+                Cố Vấn Chuyên Môn
+              </span>
+              <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">TS. Nguyễn Văn Hùng</h3>
+              <p class="font-body-sm text-[13px] text-on-surface-variant mb-3">Giảng viên Khoa Tin học · ĐHSP Huế</p>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-auto italic">
+                "Định hướng học thuật, bảo trợ chuyên môn và trực tiếp huấn luyện đội tuyển Olympic Tin học."
+              </p>
+              <div class="flex items-center gap-2 mt-4 text-secondary">
+                <span class="material-symbols-outlined text-[20px]">school</span>
+                <span class="material-symbols-outlined text-[20px]">mail</span>
+              </div>
+            </div>
+
+            <!-- Leader 2 -->
+            <div class="rounded-2xl bg-surface p-6 shadow-sm hover:shadow-lg transition-all flex flex-col text-center items-center group border border-surface-container">
+              <div class="w-28 h-28 rounded-full overflow-hidden mb-4 shadow-md bg-surface-container-high border-2 border-primary/20">
+                <img class="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Trần Quốc Bảo - Chủ nhiệm CLB IP" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrQcBLlMU-V-mw4V4MdvYgei3f_dyztrTY-dzJnj-dmswPyKNoxgfG3gQDq7-vc8KtWy0B4ltnH3TEsP1Fucgl8nHiAxSRQmbM19IdfF67JvcsdSEKkzQQQJmTXJRCSGBAYO-GnLVkKTR2Bn9aJnOnbK2PjfqvMyMDun5ORexZCX4jz3cnl2_fV8LsJbIEC1Koa5Zi5CpH2vVmMSCoY3dD8-0Ioqp06U3R0J7FCbU"/>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold mb-2">
+                Chủ Nhiệm CLB
+              </span>
+              <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Trần Quốc Bảo</h3>
+              <p class="font-body-sm text-[13px] text-on-surface-variant mb-3">K46 Công nghệ Thông tin</p>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-auto italic">
+                "Điều hành chiến lược phát triển tổng thể, kết nối mạng lưới doanh nghiệp và mở rộng quy mô CLB."
+              </p>
+              <div class="flex items-center gap-2 mt-4 text-secondary">
+                <span class="material-symbols-outlined text-[20px]">code</span>
+                <span class="material-symbols-outlined text-[20px]">link</span>
+              </div>
+            </div>
+
+            <!-- Leader 3 -->
+            <div class="rounded-2xl bg-surface p-6 shadow-sm hover:shadow-lg transition-all flex flex-col text-center items-center group border border-surface-container">
+              <div class="w-28 h-28 rounded-full overflow-hidden mb-4 shadow-md bg-surface-container-high border-2 border-secondary/20">
+                <img class="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Nguyễn Hoàng Long - Phó CN Ban Chuyên Môn" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy5nYv3ThnExN1zfMQqTJPDZG461-2biOvFdOwXkU2mRlziwOgTXFQE22Uket06DDLSH3-kFSHGZLucnC0JGV76sMuCqemB23mABdpgRoqsqSRTWhfOeE6UWXigmy5KF-e1bumS6mb4FPcIbl1IW83ESkaIS43blO8qbwVybyZH6TBfxIUPSpDWhhCZJ_Z9VEXWKrCyDrjHVWNmmTHhsMNVig8aUUpAMXyTxxTA8w"/>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-secondary font-label-sm text-label-sm font-semibold mb-2">
+                Phó CN • Ban Chuyên Môn
+              </span>
+              <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Nguyễn Hoàng Long</h3>
+              <p class="font-body-sm text-[13px] text-on-surface-variant mb-3">K47 Sư phạm Tin học</p>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-auto italic">
+                "Phụ trách các buổi seminar code chuyên sâu, quản lý sản phẩm số và kèm cặp tân sinh viên giải thuật."
+              </p>
+              <div class="flex items-center gap-2 mt-4 text-secondary">
+                <span class="material-symbols-outlined text-[20px]">terminal</span>
+                <span class="material-symbols-outlined text-[20px]">devices</span>
+              </div>
+            </div>
+
+            <!-- Leader 4 -->
+            <div class="rounded-2xl bg-surface p-6 shadow-sm hover:shadow-lg transition-all flex flex-col text-center items-center group border border-surface-container">
+              <div class="w-28 h-28 rounded-full overflow-hidden mb-4 shadow-md bg-surface-container-high border-2 border-secondary/20">
+                <img class="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Phạm Thị Minh Châu - Phó CN Ban Truyền Thông" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJPiNJpD0ipWon0i1DhAx1vU5M8znfGLLc4lIff7f_9gUNqfUKeY9S-2gUFaztO0C6KREYez_gUaeg3uwZ6Pu0xFYL9qWp5wLafSX2wpD0NLHTr3QbIty_3IUK8-MQINztL5-GfW-fYeA-X7f3sLYG6bSR2UNVcgjLbRR7KbY2XArjV06LDuKAxuqh9wgez9jL6OQ4KiVBpm4QIXr01hHfdEbYI8pAbFTcvbe-sYI"/>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-secondary font-label-sm text-label-sm font-semibold mb-2">
+                Phó CN • Ban Truyền Thông
+              </span>
+              <h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Phạm Thị Minh Châu</h3>
+              <p class="font-body-sm text-[13px] text-on-surface-variant mb-3">K47 Sư phạm Tin học</p>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-auto italic">
+                "Chịu trách nhiệm lan tỏa thương hiệu CLB, tổ chức các giải đấu Hackathon và teambuilding gắn kết."
+              </p>
+              <div class="flex items-center gap-2 mt-4 text-secondary">
+                <span class="material-symbols-outlined text-[20px]">campaign</span>
+                <span class="material-symbols-outlined text-[20px]">photo_camera</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= ALUMNI VOICES & TESTIMONIALS ================= -->
+      <section class="w-full py-20 bg-surface">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+          <div class="flex flex-col items-center text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
+              Góc Nhìn Từ Người Đi Trước
+            </span>
+            <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">
+              Những Câu Chuyện Trưởng Thành Cùng IP Club
+            </h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+              Dù trở thành kỹ sư phần mềm tại các tập đoàn lớn hay thầy cô giáo dạy Tin học khắp mọi miền đất nước, CLB IP luôn là điểm tựa vững chắc đầu đời.
+            </p>
+          </div>
+
+          <!-- 3 Testimonial Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Testimonial 1 -->
+            <div class="p-8 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col justify-between relative border border-surface-container">
+              <div>
+                <span class="material-symbols-outlined text-[36px] text-secondary/30 mb-4 block">format_quote</span>
+                <p class="font-body-md text-body-md text-on-surface leading-relaxed mb-6">
+                  "CLB IP là bệ phóng lớn nhất thời đại học của mình. Từ một cậu sinh viên năm nhất chưa biết viết hàm đệ quy, mình đã tự tin đoạt giải OLP và hiện đang làm Software Engineer tại TP. Đà Nẵng. Môi trường anh em chia sẻ ở đây vô cùng tuyệt vời."
+                </p>
+              </div>
+              <div class="flex items-center gap-3.5 pt-4 border-t border-surface-container">
+                <div class="w-11 h-11 rounded-full bg-secondary-fixed flex items-center justify-center font-bold text-on-secondary-fixed">
+                  HN
+                </div>
+                <div>
+                  <h4 class="font-headline-sm text-[16px] font-bold text-on-surface">Hoàng Nhật Nam</h4>
+                  <p class="font-label-sm text-label-sm text-on-surface-variant">Cựu TV K41 • Senior Software Engineer</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Testimonial 2 -->
+            <div class="p-8 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col justify-between relative border border-surface-container">
+              <div>
+                <span class="material-symbols-outlined text-[36px] text-secondary/30 mb-4 block">format_quote</span>
+                <p class="font-body-md text-body-md text-on-surface leading-relaxed mb-6">
+                  "Tại IP Club, mình học được cách làm cho bài giảng tin học trở nên lôi cuốn với AI và đồ họa trực quan. Kỹ năng đó giúp mình rất nhiều khi đứng lớp giảng dạy tại trường THPT Chuyên. Cảm ơn CLB vì đã rèn giũa cả tâm và tầm người thầy."
+                </p>
+              </div>
+              <div class="flex items-center gap-3.5 pt-4 border-t border-surface-container">
+                <div class="w-11 h-11 rounded-full bg-secondary-fixed flex items-center justify-center font-bold text-on-secondary-fixed">
+                  MA
+                </div>
+                <div>
+                  <h4 class="font-headline-sm text-[16px] font-bold text-on-surface">Lê Thị Mai Anh</h4>
+                  <p class="font-label-sm text-label-sm text-on-surface-variant">Cựu TV K43 • Giáo viên Tin học THPT</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Testimonial 3 -->
+            <div class="p-8 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col justify-between relative border border-surface-container">
+              <div>
+                <span class="material-symbols-outlined text-[36px] text-secondary/30 mb-4 block">format_quote</span>
+                <p class="font-body-md text-body-md text-on-surface leading-relaxed mb-6">
+                  "Điều mình thích nhất là không hề có khoảng cách giữa các khóa! Các anh chị năm 3, năm 4 luôn sẵn sàng kèm 1:1 cho tân sinh viên từng dòng code đầu tiên. Ở đây mình tìm thấy những người bạn cùng chí hướng."
+                </p>
+              </div>
+              <div class="flex items-center gap-3.5 pt-4 border-t border-surface-container">
+                <div class="w-11 h-11 rounded-full bg-secondary-fixed flex items-center justify-center font-bold text-on-secondary-fixed">
+                  ĐH
+                </div>
+                <div>
+                  <h4 class="font-headline-sm text-[16px] font-bold text-on-surface">Nguyễn Đức Huy</h4>
+                  <p class="font-label-sm text-label-sm text-on-surface-variant">Thành viên K48 • Ban Kỹ thuật</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= INTERACTIVE FAQ SECTION ================= -->
+      <section class="w-full py-20 bg-surface-container-lowest scroll-mt-24" id="faq-section">
+        <div class="max-w-4xl mx-auto px-6 lg:px-12">
+          <div class="flex flex-col items-center text-center mb-14 space-y-3">
+            <span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">
+              Giải Đáp Thắc Mắc
+            </span>
+            <h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">
+              Câu Hỏi Thường Gặp Của Tân Ứng Viên
+            </h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+              Tất cả những điều bạn cần biết trước khi gửi hồ sơ trở thành một phần của gia đình IP Club.
+            </p>
+          </div>
+
+          <!-- Accordion Container -->
+          <div class="space-y-4" id="faq-accordion">
+            <!-- FAQ 1 -->
+            <div class="rounded-xl bg-surface p-5 transition-all cursor-pointer faq-item shadow-sm border border-surface-container">
+              <div class="flex items-center justify-between">
+                <h3 class="font-headline-sm text-[17px] font-bold text-on-surface">
+                  Tôi là tân sinh viên chưa biết lập trình nhiều thì có tham gia được không?
+                </h3>
+                <span class="material-symbols-outlined text-secondary transition-transform faq-icon">expand_more</span>
+              </div>
+              <div class="faq-answer hidden pt-3 text-on-surface-variant font-body-sm text-body-sm leading-relaxed border-t border-surface-container mt-3">
+                Hoàn toàn được bạn nhé! CLB IP có lộ trình đào tạo 'Zero to Hero' được thiết kế đặc biệt dành riêng cho thành viên mới. Các anh chị Mentor khóa trên sẽ kèm cặp bạn từ những cú pháp cơ bản nhất của C++/Python đến khi bạn tự tin làm bài tập và xây dựng sản phẩm.
+              </div>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="rounded-xl bg-surface p-5 transition-all cursor-pointer faq-item shadow-sm border border-surface-container">
+              <div class="flex items-center justify-between">
+                <h3 class="font-headline-sm text-[17px] font-bold text-on-surface">
+                  Sinh viên ngoài Khoa Tin học có thể đăng ký ứng tuyển không?
+                </h3>
+                <span class="material-symbols-outlined text-secondary transition-transform faq-icon">expand_more</span>
+              </div>
+              <div class="faq-answer hidden pt-3 text-on-surface-variant font-body-sm text-body-sm leading-relaxed border-t border-surface-container mt-3">
+                Có! CLB luôn chào đón tất cả các bạn sinh viên trực thuộc Trường ĐH Sư phạm và các trường thành viên của Đại học Huế có đam mê với lập trình, thiết kế đồ họa, truyền thông sự kiện hoặc ứng dụng công nghệ trong sư phạm.
+              </div>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="rounded-xl bg-surface p-5 transition-all cursor-pointer faq-item shadow-sm border border-surface-container">
+              <div class="flex items-center justify-between">
+                <h3 class="font-headline-sm text-[17px] font-bold text-on-surface">
+                  CLB sinh hoạt vào thời gian nào trong tuần? Có bị trùng lịch học không?
+                </h3>
+                <span class="material-symbols-outlined text-secondary transition-transform faq-icon">expand_more</span>
+              </div>
+              <div class="faq-answer hidden pt-3 text-on-surface-variant font-body-sm text-body-sm leading-relaxed border-t border-surface-container mt-3">
+                CLB tổ chức các buổi sinh hoạt chuyên đề định kỳ vào tối Thứ Bảy hoặc sáng Chủ Nhật để đảm bảo 100% không trùng với lịch học chính khóa trên trường. Ngoài ra, phòng Lab 302A luôn mở cửa suốt các ngày trong tuần để các nhóm dự án tự do lên trao đổi và làm việc.
+              </div>
+            </div>
+
+            <!-- FAQ 4 -->
+            <div class="rounded-xl bg-surface p-5 transition-all cursor-pointer faq-item shadow-sm border border-surface-container">
+              <div class="flex items-center justify-between">
+                <h3 class="font-headline-sm text-[17px] font-bold text-on-surface">
+                  Thành viên CLB có những quyền lợi đặc quyền gì khi tham gia?
+                </h3>
+                <span class="material-symbols-outlined text-secondary transition-transform faq-icon">expand_more</span>
+              </div>
+              <div class="faq-answer hidden pt-3 text-on-surface-variant font-body-sm text-body-sm leading-relaxed border-t border-surface-container mt-3">
+                Bạn sẽ được: (1) Cấp tài khoản truy cập toàn quyền trên Cổng số IP 2.0; (2) Sử dụng máy tính và server tại Lab nghiên cứu; (3) Được ưu tiên tuyển chọn và bồi dưỡng vào đội tuyển Olympic Tin học của Trường; (4) Nhận chứng nhận hoạt động tích cực cộng điểm rèn luyện và cơ hội học bổng doanh nghiệp.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RECRUITMENT CALL-TO-ACTION BANNER ================= -->
+      <section class="w-full py-16 lg:py-24 bg-surface scroll-mt-24" id="ung-tuyen">
+        <div class="max-w-7xl mx-auto px-6 lg:px-12">
+          <div class="relative rounded-3xl bg-primary-container text-on-primary overflow-hidden p-8 sm:p-14 lg:p-20 shadow-2xl">
+            <!-- Gradient Mesh Accent -->
+            <div class="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-secondary opacity-40 blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-surface-container-highest opacity-20 blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10 max-w-3xl space-y-6 text-left">
+              <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-bold">
+                <span class="material-symbols-outlined text-[16px]">celebration</span>
+                <span>Đợt Tuyển Quân Thế Hệ Mới Đang Mở</span>
+              </div>
+
+              <h2 class="font-headline-lg text-headline-lg lg:text-headline-xl font-extrabold text-on-primary leading-tight">
+                Sẵn Sàng Cùng CLB IP <br/>
+                <span class="bg-gradient-to-r from-secondary-fixed via-surface-container-lowest to-secondary-container bg-clip-text text-transparent">
+                  "Code your Future" Ngay Hôm Nay?
+                </span>
+              </h2>
+
+              <p class="font-body-lg text-body-lg text-surface-variant leading-relaxed max-w-2xl">
+                Đừng ngần ngại bước ra khỏi vùng an toàn. Dù bạn muốn trở thành chuyên gia thuật toán, nhà phát triển phần mềm, thầy cô giáo tương lai hay một nhà truyền thông tài ba — cánh cửa CLB IP luôn rộng mở chào đón bạn.
+              </p>
+
+              <div class="flex flex-wrap items-center gap-4 pt-4">
+                <a class="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-surface-container-lowest text-on-primary-fixed font-label-lg text-label-lg font-bold shadow-xl hover:bg-surface-bright transition-all group" href="https://forms.gle" target="_blank" rel="noopener noreferrer">
+                  <span>Đăng ký ứng tuyển ngay hôm nay</span>
+                  <span class="material-symbols-outlined text-[20px] text-secondary group-hover:translate-x-1.5 transition-transform">arrow_forward</span>
+                </a>
+                <a class="inline-flex items-center gap-2 px-6 py-4 rounded-full bg-surface-container-low/10 text-on-primary hover:bg-surface-container-low/20 font-label-lg text-label-lg transition-colors border border-on-primary/20" href="https://facebook.com" target="_blank" rel="noopener noreferrer">
+                  <span class="material-symbols-outlined text-[20px]">chat</span>
+                  <span>Nhắn tin Fanpage CLB</span>
+                </a>
+              </div>
+
+              <div class="pt-6 flex flex-wrap items-center gap-6 text-on-primary-container font-label-sm text-label-sm">
+                <span class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-secondary-fixed">schedule</span>
+                  Hạn chót đợt 1: 30/10/2026
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-secondary-fixed">location_on</span>
+                  Phỏng vấn tại Lab 302 Nhà A, ĐH Sư phạm Huế
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
   </main>
 
   <!-- ================= FOOTER ================= -->
-  <footer class="bg-inverse-surface text-on-primary/80">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-5">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0">
-          <span class="text-on-primary font-headline-sm text-headline-sm font-extrabold tracking-wider">IP</span>
+  <footer class="w-full bg-primary-container text-surface-container py-16 border-t border-surface-container/20">
+    <div class="max-w-7xl mx-auto px-6 lg:px-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12">
+        <div class="space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full p-1 bg-white flex items-center justify-center shrink-0">
+              <img alt="CLB IP Logo" class="w-full h-full object-contain" src="/frontend/assets/logo.png"/>
+            </div>
+            <span class="font-headline-sm text-headline-sm text-on-primary font-bold">CLB IP</span>
+          </div>
+          <p class="font-body-sm text-body-sm text-surface-variant leading-relaxed">
+            CLB Tin học &amp; Sư phạm — Trường ĐH Sư phạm, ĐH Huế.<br/>
+            <span class="font-label-md text-label-md text-secondary-container mt-1 block">Code your Future • Nâng tầm công nghệ &amp; giáo dục.</span>
+          </p>
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low/10 text-surface-variant font-label-sm text-label-sm">
+            <span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></span>
+            <span>Hoạt động tích cực 2026</span>
+          </div>
         </div>
-        <div>
-          <p class="font-headline-sm text-headline-sm font-bold text-on-primary leading-tight">CLB IP ĐHSP Huế</p>
-          <p class="font-label-lg text-label-lg text-on-primary/60">Code your Future • Khoa Tin học</p>
+
+        <div class="space-y-3">
+          <h4 class="font-headline-sm text-headline-sm text-on-primary font-bold">Liên kết nhanh</h4>
+          <ul class="space-y-2.5 font-body-sm text-body-sm">
+            <li class="flex items-center"><a class="text-surface-variant hover:text-on-primary transition-colors" href="#ve-clb">Về CLB</a></li>
+            <li class="flex items-center"><a class="text-surface-variant hover:text-on-primary transition-colors" href="#mang-hoat-dong">Mảng hoạt động</a></li>
+            <li class="flex items-center"><a class="text-surface-variant hover:text-on-primary transition-colors" href="#dau-an-du-an">Dấu ấn &amp; Số liệu</a></li>
+            <li class="flex items-center"><a class="text-surface-variant hover:text-on-primary transition-colors" href="#thu-vien-anh">Thư viện ảnh</a></li>
+            <li class="flex items-center"><a class="text-surface-variant hover:text-on-primary transition-colors" href="#ung-tuyen">Đăng ký thành viên</a></li>
+            <li class="flex items-center"><a class="text-surface-variant hover:text-on-primary transition-colors" href="/frontend/login.html">Cổng sinh viên 2.0</a></li>
+          </ul>
+        </div>
+
+        <div class="space-y-3">
+          <h4 class="font-headline-sm text-headline-sm text-on-primary font-bold">Thông tin liên hệ</h4>
+          <div class="space-y-2.5 font-body-sm text-body-sm text-surface-variant">
+            <p class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-[18px] text-secondary-container shrink-0 mt-0.5">location_on</span>
+              <span>Khoa Tin học, Tầng 3 Nhà A, 34 Lê Lợi, TP. Huế</span>
+            </p>
+            <p class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-secondary-container shrink-0">mail</span>
+              <span>clbip.dhsphue@gmail.com</span>
+            </p>
+            <p class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-secondary-container shrink-0">public</span>
+              <span>Fanpage Facebook CLB IP</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <h4 class="font-headline-sm text-headline-sm text-on-primary font-bold">Bảo trợ học thuật</h4>
+          <div class="p-4 rounded-xl bg-surface-container-low/10 space-y-2">
+            <p class="font-body-sm text-body-sm text-surface-variant leading-relaxed">Được bảo trợ chuyên môn &amp; học thuật trực tiếp bởi:</p>
+            <p class="font-label-md text-label-md text-on-primary font-bold">Khoa Tin học — Trường Đại học Sư phạm, Đại học Huế</p>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <a aria-label="Terminal" class="w-9 h-9 rounded-full bg-surface-container-low/10 hover:bg-secondary flex items-center justify-center text-on-primary transition-colors" href="#mang-hoat-dong"><span class="material-symbols-outlined text-[18px]">terminal</span></a>
+            <a aria-label="Học thuật" class="w-9 h-9 rounded-full bg-surface-container-low/10 hover:bg-secondary flex items-center justify-center text-on-primary transition-colors" href="#doi-ngu"><span class="material-symbols-outlined text-[18px]">school</span></a>
+            <a aria-label="Cộng đồng" class="w-9 h-9 rounded-full bg-surface-container-low/10 hover:bg-secondary flex items-center justify-center text-on-primary transition-colors" href="#thu-vien-anh"><span class="material-symbols-outlined text-[18px]">forum</span></a>
+          </div>
         </div>
       </div>
-      <nav class="flex items-center gap-5 font-label-lg text-label-lg" aria-label="Liên kết chân trang">
-        <a href="#tinh-nang" class="hover:text-on-primary transition-colors">Tính năng</a>
-        <a href="#cach-hoat-dong" class="hover:text-on-primary transition-colors">Cách hoạt động</a>
-        <a href="#ve-clb" class="hover:text-on-primary transition-colors">Về CLB</a>
-        <a href="/frontend/login.html" class="text-tertiary-fixed font-bold hover:text-on-primary transition-colors">Đăng nhập</a>
-      </nav>
-      <p class="font-label-lg text-label-lg text-on-primary/50 order-last sm:order-none">© 2026 CLB IP — Trường ĐH Sư phạm, ĐH Huế</p>
+
+      <div class="pt-8 mt-2 border-t border-surface-container-low/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <p class="font-body-sm text-body-sm text-on-primary-container">© 2026 CLB IP ĐHSP Huế. Xây dựng bởi Ban Công nghệ CLB IP với tinh thần tự hào mã nguồn mở.</p>
+        <div class="flex items-center gap-4 font-label-sm text-label-sm text-on-primary-container">
+          <a class="hover:text-on-primary transition-colors" href="#ve-clb">Quy chế hoạt động</a>
+          <a class="hover:text-on-primary transition-colors" href="#cong-so">Bảo mật &amp; Dữ liệu</a>
+        </div>
+      </div>
     </div>
   </footer>
 
   <script src="/frontend/js/api.js"></script>
   <script>
     "use strict";
-    // Khách đã có phiên đăng nhập → đổi CTA thành "Vào cổng sinh viên"
-    // (index.html splash sẽ điều hướng đúng trang theo vai trò MEMBER/BCN/ADMIN).
+
+    // 1. Mobile Menu Drawer Toggle
+    const mobileBtn = document.getElementById("mobile-menu-btn");
+    const mobileDrawer = document.getElementById("mobile-drawer");
+    const mobileIcon = document.getElementById("mobile-menu-icon");
+    if (mobileBtn && mobileDrawer) {
+      mobileBtn.addEventListener("click", () => {
+        const isHidden = mobileDrawer.classList.contains("hidden");
+        if (isHidden) {
+          mobileDrawer.classList.remove("hidden");
+          if (mobileIcon) mobileIcon.textContent = "close";
+        } else {
+          mobileDrawer.classList.add("hidden");
+          if (mobileIcon) mobileIcon.textContent = "menu";
+        }
+      });
+      // Đóng drawer khi click vào liên kết bất kỳ trong drawer
+      mobileDrawer.querySelectorAll("a").forEach(link => {
+        link.addEventListener("click", () => {
+          mobileDrawer.classList.add("hidden");
+          if (mobileIcon) mobileIcon.textContent = "menu";
+        });
+      });
+    }
+
+    // 2. Interactive Accordion FAQ Logic
+    document.querySelectorAll(".faq-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const answer = item.querySelector(".faq-answer");
+        const icon = item.querySelector(".faq-icon");
+        const isHidden = answer.classList.contains("hidden");
+        
+        // Đóng các câu trả lời khác
+        document.querySelectorAll(".faq-answer").forEach(el => el.classList.add("hidden"));
+        document.querySelectorAll(".faq-icon").forEach(el => el.textContent = "expand_more");
+        
+        if (isHidden) {
+          answer.classList.remove("hidden");
+          icon.textContent = "expand_less";
+        }
+      });
+    });
+
+    // 3. Khách đã có phiên đăng nhập → đổi CTA thành "Vào cổng sinh viên"
     (function () {
-      var hasSession = false;
-      try { hasSession = Boolean(window.ApiClient && ApiClient.getAccessToken()); }
-      catch (e) { hasSession = false; }
+      let hasSession = false;
+      try {
+        hasSession = Boolean(window.ApiClient && ApiClient.getAccessToken());
+      } catch (e) {
+        hasSession = false;
+      }
       if (!hasSession) return;
-      var swap = function (id, text) {
-        var el = document.getElementById(id);
-        if (el) { el.textContent = text; }
-      };
-      swap("auth-cta-text", "Vào cổng sinh viên");
-      swap("hero-cta-text", "Vào cổng sinh viên");
-      swap("banner-cta-text", "Vào cổng sinh viên");
-      var ctaIcon = document.getElementById("auth-cta-icon");
-      if (ctaIcon) { ctaIcon.textContent = "arrow_forward"; }
-      var go = function (id) {
-        var el = document.getElementById(id);
-        if (el) { el.setAttribute("href", "/frontend/index.html"); }
-      };
-      go("auth-cta"); go("hero-cta"); go("banner-cta");
+
+      const authCtaText = document.getElementById("auth-cta-text");
+      if (authCtaText) {
+        authCtaText.textContent = "Vào cổng sinh viên";
+      }
+      const authCtaIcon = document.getElementById("auth-cta-icon");
+      if (authCtaIcon) {
+        authCtaIcon.textContent = "arrow_forward";
+      }
+      const authCta = document.getElementById("auth-cta");
+      if (authCta) {
+        authCta.setAttribute("href", "/frontend/index.html");
+      }
     })();
   </script>
 </body>

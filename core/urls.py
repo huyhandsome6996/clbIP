@@ -70,6 +70,7 @@ urlpatterns = [
     # ---------- Trang chủ công khai → landing page giới thiệu CLB ----------
     # (Swagger UI vẫn luôn sẵn tại /api/docs/)
     path("", frontend_index_serve),
+    path("favicon.ico", lambda r: static_serve(r, "assets/favicon.ico", document_root=FRONTEND_DIR)),
 
     # ---------- Frontend tĩnh (login, admin, member, css, js, assets) ----------
     re_path(r"^frontend/(?P<path>.*)$", frontend_serve),

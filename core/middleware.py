@@ -35,7 +35,7 @@ class ContentSecurityPolicyMiddleware:
         # vì X_FRAME_OPTIONS=DENY chặn iframe trỏ thẳng /media/.
         directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com",
             # fonts.googleapis.com: trang frontend nạp stylesheet Inter từ Google Fonts
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "img-src 'self' data: blob: https:",
