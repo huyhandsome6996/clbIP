@@ -17,6 +17,7 @@ ràng — apps.events chưa có repository riêng tại thời điểm refactor.
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
+from django.db import transaction as db_transaction
 from django.db.models import Q, QuerySet
 
 from apps.attendance.models import AttendanceRecord, AttendanceSession
@@ -53,6 +54,12 @@ class IAttendanceRepository(ABC):
     @abstractmethod
     def get_record_for_member(self, session: AttendanceSession, member: MemberProfile) -> AttendanceRecord:
         """Bản ghi điểm danh của một thành viên trong một phiên."""
+
+    @abstractmethod
+    def get_record_for_member_locked(
+        self, session: AttendanceSession, member: MemberProfile
+    ) -> AttendanceRecord:
+        """Bản ghi + row lock (select_for_update) — gọi trong transaction.atomic."""
 
     @abstractmethod
     def get_or_create_record(
@@ -157,6 +164,23 @@ class DjangoAttendanceRepository(IAttendanceRepository):
         """Bản ghi của `member` trong `session` — raise DoesNotExist nếu thiếu."""
         return AttendanceRecord.objects.get(session=session, member=member)
 
+    @db_transaction.atomic
+    def get_record_for_member_locked(
+        self, session: AttendanceSession, member: MemberProfile
+    ) -> AttendanceRecord:
+        """
+        Bản ghi của `member` trong `session` — `select_for_update` (row lock).
+
+        review 13-a P2-4: hai check-in song song cùng member/session tuần tự
+        hóa tại đây → chỉ 1 request ghi được, request kia bắt duplicate 409.
+        `@atomic` tự bảo đảm có transaction quanh select_for_update (an toàn
+        ngay cả khi caller chưa bọc atomic); SQLite lock là no-op toàn bảng,
+        MySQL production khóa đúng dòng.
+        """
+        return AttendanceRecord.objects.select_for_update().get(
+            session=session, member=member
+        )
+
     def get_or_create_record(
         self, session: AttendanceSession, member_id: int, defaults: dict
     ) -> Tuple[AttendanceRecord, bool]:
@@ -252,7 +276,10 @@ class DjangoAttendanceRepository(IAttendanceRepository):
         if search:
             qs = qs.filter(
                 Q(member__ho_ten__icontains=search)
-                | Q(member__mssv__icontains=search)
+                # ⚠ `mssv` trên MemberProfile là property (field thật nằm trên
+                # User) — ORM chỉ query được qua `member__user__mssv` (fix
+                # F-13b-01: trước đây dùng member__mssv → FieldError 500).
+                | Q(member__user__mssv__icontains=search)
                 | Q(member__user__email__icontains=search)
             )
         return qs.order_by("member__ho_ten", "id")

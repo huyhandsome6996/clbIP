@@ -315,7 +315,8 @@ class SessionRecordsView(APIView):
                 f"Tham số trang_thai không hợp lệ: {trang_thai!r}",
                 errors={"trang_thai": f"Chỉ nhận: {sorted(self.VALID_STATUS_FILTERS)}"},
             )
-        search = (qp.get("search") or "").strip()
+        # Cap 100 ký tự — đồng bộ với events view (review 13-a NOTE-5)
+        search = (qp.get("search") or "").strip()[:100] or None
         queryset = AttendanceService.list_records_for_session(
             session, trang_thai=trang_thai or None, search=search or None
         )

@@ -15,6 +15,7 @@ from datetime import timedelta
 from typing import ClassVar, Optional
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
@@ -161,65 +162,70 @@ class AttendanceService:
         if session.hieu_luc_den and now > session.hieu_luc_den:
             raise SessionClosedException("Phiên điểm danh đã hết hiệu lực.")
 
-        # 2. Bản ghi trong phiên (được tạo VẮNG khi mở phiên)
-        try:
-            record = cls._repo().get_record_for_member(session, member)
-        except AttendanceRecord.DoesNotExist:
-            raise NotFoundException("Bạn không có bản ghi điểm danh trong phiên này.")
+        # 2→5. Bản ghi + duplicate check + anti-cheat + ghi — TOÀN BỘ trong MỘT
+        #      atomic block với ROW LOCK (review 13-a P2-4): hai check-in song
+        #      song cùng member/session tuần tự hóa ở bước fetch → chỉ 1 request
+        #      ghi được, request còn lại bắt duplicate 409. XP không đúp vì
+        #      ledger idempotent; invariant "một lần check-in" giờ chặt hơn.
+        with transaction.atomic():
+            try:
+                record = cls._repo().get_record_for_member_locked(session, member)
+            except AttendanceRecord.DoesNotExist:
+                raise NotFoundException("Bạn không có bản ghi điểm danh trong phiên này.")
 
-        # 3. Chặn check-in trùng — CẢ CO_MAT lẫn DI_MUON (audit F07: trước đây
-        # chỉ chặn CO_MAT nên check-in muộn gửi lại vẫn ghi đè metadata/XP).
-        # Raise TRƯỚC mọi mutation → checked_in_at/device/GPS/XP không bị sửa.
-        if record.trang_thai in (
-            AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
-            AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
-        ):
-            raise DuplicateDataException("Bạn đã điểm danh phiên này rồi!")
+            # 3. Chặn check-in trùng — CẢ CO_MAT lẫn DI_MUON (audit F07: trước đây
+            # chỉ chặn CO_MAT nên check-in muộn gửi lại vẫn ghi đè metadata/XP).
+            # Raise TRƯỚC mọi mutation → checked_in_at/device/GPS/XP không bị sửa.
+            if record.trang_thai in (
+                AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
+                AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
+            ):
+                raise DuplicateDataException("Bạn đã điểm danh phiên này rồi!")
 
-        # 4. Anti-Cheat Engine — raise nếu vi phạm bất kỳ lớp nào
-        is_valid, dist = GPSAntiCheatEngine.validate_checkin(
-            member=member,
-            session=session,
-            client_lat=client_lat,
-            client_lon=client_lon,
-            client_time=client_time,
-            device_id=device_id,
-            nonce=nonce,
-            is_mock=is_mock,
-            accuracy=accuracy,
-        )
+            # 4. Anti-Cheat Engine — raise nếu vi phạm bất kỳ lớp nào
+            is_valid, dist = GPSAntiCheatEngine.validate_checkin(
+                member=member,
+                session=session,
+                client_lat=client_lat,
+                client_lon=client_lon,
+                client_time=client_time,
+                device_id=device_id,
+                nonce=nonce,
+                is_mock=is_mock,
+                accuracy=accuracy,
+            )
 
-        # 5. Xác định đúng giờ / muộn + XP tương ứng (server-authoritative)
-        late_deadline = session.mo_phien_at + timedelta(minutes=LATE_AFTER_MINUTES)
-        if now > late_deadline:
-            trang_thai = AttendanceRecord.TrangThaiDiemDanh.DI_MUON
-            xp_total = clb["XP_ATTENDANCE_LATE"]
-        else:
-            trang_thai = AttendanceRecord.TrangThaiDiemDanh.CO_MAT
-            minutes_early = (session.mo_phien_at - now).total_seconds() / 60.0
-            xp_total = clb["XP_ATTENDANCE"]
-            if minutes_early >= 15:
-                xp_total += clb["XP_ATTENDANCE_EARLY_BONUS"]
+            # 5. Xác định đúng giờ / muộn + XP tương ứng (server-authoritative)
+            late_deadline = session.mo_phien_at + timedelta(minutes=LATE_AFTER_MINUTES)
+            if now > late_deadline:
+                trang_thai = AttendanceRecord.TrangThaiDiemDanh.DI_MUON
+                xp_total = clb["XP_ATTENDANCE_LATE"]
+            else:
+                trang_thai = AttendanceRecord.TrangThaiDiemDanh.CO_MAT
+                minutes_early = (session.mo_phien_at - now).total_seconds() / 60.0
+                xp_total = clb["XP_ATTENDANCE"]
+                if minutes_early >= 15:
+                    xp_total += clb["XP_ATTENDANCE_EARLY_BONUS"]
 
-        record.trang_thai = trang_thai
-        record.khoang_cach_m = dist
-        record.vi_do = client_lat
-        record.kinh_do = client_lon
-        record.checked_in_at = now
-        record.device_id = device_id or ""
-        record.xp_awarded = xp_total
-        record.save(
-            update_fields=[
-                "trang_thai",
-                "khoang_cach_m",
-                "vi_do",
-                "kinh_do",
-                "checked_in_at",
-                "device_id",
-                "xp_awarded",
-                "updated_at",
-            ]
-        )
+            record.trang_thai = trang_thai
+            record.khoang_cach_m = dist
+            record.vi_do = client_lat
+            record.kinh_do = client_lon
+            record.checked_in_at = now
+            record.device_id = device_id or ""
+            record.xp_awarded = xp_total
+            record.save(
+                update_fields=[
+                    "trang_thai",
+                    "khoang_cach_m",
+                    "vi_do",
+                    "kinh_do",
+                    "checked_in_at",
+                    "device_id",
+                    "xp_awarded",
+                    "updated_at",
+                ]
+            )
 
         # 6a. Streak chuyên cần 🔥
         cls._update_streak(member, now)
@@ -395,7 +401,17 @@ class AttendanceService:
                 record.overridden_by = actor
                 if trang_thai == AttendanceRecord.TrangThaiDiemDanh.CO_PHEP:
                     record.is_suspicious = False  # có phép → xóa cờ nghi vấn
-                record.save()
+                # review 13-a P2-1: save CHỈ các field override — tránh
+                # lost-update đè metadata check-in (GPS/device/checked_in_at)
+                # khi BCN override đồng thời với member đang check-in.
+                record.save(
+                    update_fields=[
+                        "trang_thai",
+                        "overridden_by",
+                        "is_suspicious",
+                        "updated_at",
+                    ]
+                )
                 updated += 1
 
         logger.info(

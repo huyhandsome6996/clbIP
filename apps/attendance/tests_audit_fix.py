@@ -260,3 +260,39 @@ class SessionRecordsEndpointTests(AttendanceTestBase):
         res = self.client.get(f"{ATT_URL}sessions/{session.id}/records/")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.data["data"]["items"]), 2)
+
+
+@override_settings(AXES_ENABLED=False)
+class SessionRecordsSearchTests(AttendanceTestBase):
+    """F-13b-01 (review 13-b): ?search= khác rỗng phải 200 — không 500 FieldError.
+
+    Root cause: `mssv` là PROPERTY trên MemberProfile (field thật nằm trên
+    User) — Q(member__mssv__icontains) làm ORM ném FieldError. Đã đổi thành
+    member__user__mssv.
+    """
+
+    def test_search_non_empty_returns_200_and_matches(self):
+        session = self.make_session()
+        AttendanceRecord.objects.filter(session=session, member=self.profile_a).update(
+            trang_thai="CO_MAT", checked_in_at=timezone.now()
+        )
+        self.client.force_authenticate(self.bcn)
+        # Tìm theo tên
+        res_name = self.client.get(f"{ATT_URL}sessions/{session.id}/records/?search=Viên A")
+        self.assertEqual(res_name.status_code, 200, res_name.data)
+        items = res_name.data["data"]["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["member"], self.profile_a.pk)
+        # Tìm theo MSSV (field trên User — đường từng gây FieldError 500)
+        res_mssv = self.client.get(f"{ATT_URL}sessions/{session.id}/records/?search=clb.vn")
+        self.assertEqual(res_mssv.status_code, 200)
+        # Search không khớp → 200 rỗng
+        res_none = self.client.get(f"{ATT_URL}sessions/{session.id}/records/?search=zzz-khong-co")
+        self.assertEqual(res_none.status_code, 200)
+        self.assertEqual(res_none.data["data"]["pagination"]["total_items"], 0)
+
+    def test_search_over_100_chars_capped(self):
+        session = self.make_session()
+        self.client.force_authenticate(self.bcn)
+        res = self.client.get(f"{ATT_URL}sessions/{session.id}/records/?search=" + "x" * 500)
+        self.assertEqual(res.status_code, 200)

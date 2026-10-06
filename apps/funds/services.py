@@ -219,6 +219,27 @@ class FundService:
             and existing.ghi_chu.strip() == (intent.get("ghi_chu") or "").strip()
             and existing.event_id == intent.get("event_id")
         )
+        if same_intent:
+            # review 13-a P2-2: legacy không có vân tay ngay_gd gốc, NHƯNG nếu
+            # client lần này gửi ngay_gd tường minh LỆCH NGÀY với bản ghi lưu
+            # thì ý định khác → 409 (retry không gửi ngay_gd vẫn replay an toàn).
+            intent_ngay = intent.get("ngay_gd")
+            if intent_ngay is not None:
+                from django.utils import timezone as _tz  # noqa: PLC0415
+
+                intent_date = _tz.localdate(intent_ngay)
+                stored_date = _tz.localdate(existing.ngay_gd)
+                if intent_date != stored_date:
+                    raise IdempotencyKeyConflictException(
+                        errors={
+                            "idempotency_key": (
+                                f"Khóa này đã dùng cho phiếu {existing.ma_phieu} "
+                                f"ngày {stored_date:%d/%m/%Y} — ngày giao dịch yêu "
+                                "cầu hiện tại khác. Kiểm tra sổ quỹ trước khi gửi lại."
+                            )
+                        }
+                    )
+            return
         if not same_intent:
             raise IdempotencyKeyConflictException(
                 errors={
@@ -292,6 +313,19 @@ class FundService:
             created_by=created_by,
             event=event,
             idempotency_key=idempotency_key,
+            # review 13-a P2-3: wrapper này cũng phải tính vân tay — nếu caller
+            # tương lai truyền key, replay vẫn đối chiếu đúng ý định thay vì
+            # 409 giả, và mọi dòng ghi đều có fingerprint (không “legacy hóa”).
+            request_fingerprint=cls.compute_request_fingerprint(
+                actor_id=getattr(created_by, "pk", None),
+                loai_gd=loai_gd,
+                so_tien=so_tien,
+                nguoi_thuc_hien=nguoi_thuc_hien,
+                hinh_thuc=hinh_thuc,
+                ngay_gd=ngay_gd,
+                ghi_chu=ghi_chu,
+                event_id=getattr(event, "pk", None),
+            ),
         )
         return tx
 
@@ -362,6 +396,7 @@ class FundService:
                     hinh_thuc=hinh_thuc,
                     ghi_chu=ghi_chu,
                     event_id=getattr(event, "pk", None),
+                    ngay_gd=ngay_gd,
                 )
                 logger.info(
                     "Idempotency replay (UNIQUE backstop): key=%s → %s.",
@@ -386,6 +421,10 @@ class FundService:
         request_fingerprint: Optional[str] = None,
     ) -> "tuple[FundTransaction, bool]":
         """Lõi ghi sổ dùng chung cho execute_transaction / execute_transaction_idempotent."""
+        # GIỮ giá trị GỐC client gửi (None nếu không có) — dùng cho đối chiếu
+        # legacy ngay_gd; KHÔNG dùng bản đã default = now() (sẽ sai khi retry
+        # không có ngay_gd sang ngày khác).
+        raw_ngay_gd = ngay_gd
         if ngay_gd is None:
             ngay_gd = timezone.now()
         if timezone.is_naive(ngay_gd):
@@ -424,6 +463,7 @@ class FundService:
                         hinh_thuc=hinh_thuc,
                         ghi_chu=ghi_chu,
                         event_id=getattr(event, "pk", None),
+                        ngay_gd=raw_ngay_gd,
                     )
                     logger.info(
                         "Idempotency replay: key=%s → trả lại %s, không ghi thêm.",

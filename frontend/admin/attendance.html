@@ -153,12 +153,12 @@
     openCount: 0,
     nonce: null,
     nonceRemain: 0,
-    nonceFetching: false,
+    nonceFetchingFor: null,
   };
   let nonceTimer = null;
 
   /* ================= Helper chung ================= */
-  function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
+  function openModal({ title, bodyHTML, onMount, footerHTML = "", onClose = null }) {
     const backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop";
     backdrop.innerHTML = `
@@ -168,7 +168,10 @@
         <div class="modal-body">${bodyHTML}</div>
         ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
       </div>`;
-    const close = () => backdrop.remove();
+    const close = () => {
+      backdrop.remove();
+      if (onClose) onClose(); // review 13-c P2-1: cleanup listener/global đúng lúc đóng
+    };
     backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
     backdrop.querySelector(".modal-close").addEventListener("click", close);
     document.body.appendChild(backdrop);
@@ -366,11 +369,15 @@
 
   async function fetchNonce() {
     const s = state.openSession;
-    if (!s || state.nonceFetching) return;
+    // review 13-c P2-2: KHÔNG dùng cờ toàn cục chặn fetch của phiên MỚI —
+    // chặn theo sessionId: nếu fetch cũ đang bay khi BCN đổi phiên, fetch của
+    // phiên mới vẫn được phép chạy ngay.
+    if (!s) return;
+    const sessionId = s.id;
+    if (state.nonceFetchingFor === sessionId) return;
+    state.nonceFetchingFor = sessionId;
     // Audit F10: gắn cứng ID phiên vào request — nếu BCN đổi phiên giữa chừng
     // thì response cũ không được phép render lên card của phiên mới.
-    const sessionId = s.id;
-    state.nonceFetching = true;
     try {
       const data = await ApiClient.get(`/attendance/sessions/${sessionId}/nonce/`);
       if (state.openSession?.id !== sessionId) return; // đã đổi phiên — bỏ response cũ
@@ -395,7 +402,11 @@
         Toast.error(err.message || "Không lấy được mã nonce.");
       }
     } finally {
-      state.nonceFetching = false;
+      if (state.nonceFetchingFor === sessionId) state.nonceFetchingFor = null;
+      // Nếu BCN đã đổi phiên trong lúc fetch cũ bay → fetch nonce cho phiên mới
+      if (state.openSession && state.openSession.id !== sessionId) {
+        fetchNonce();
+      }
     }
   }
 
@@ -441,6 +452,7 @@
     const countEl = backdrop.querySelector("#" + countId);
     let browsePage = 0;
     let browseDone = false;
+    let searchSeq = 0; // review 13-c P2-3: response cũ về sau không đè kết quả mới
 
     const rowHTML = (m) => `<label>
       <input type="checkbox" class="ov-check" value="${m.id}">
@@ -468,7 +480,6 @@
       const have = new Set(Utils.qsa(".ov-check", list).map((c) => c.value));
       const fresh = items.filter((m) => !have.has(String(m.id)));
       list.insertAdjacentHTML("beforeend", fresh.map(rowHTML).join(""));
-      Utils.qsa(".ov-check", list).slice(-fresh.length).forEach((c) => c.addEventListener("change", updateCount));
       browsePage += 1;
       browseDone = !pagination || browsePage >= pagination.total_pages;
       if (browseDone && moreBtn) moreBtn.classList.add("hidden");
@@ -477,6 +488,7 @@
 
     const runSearch = Utils.debounce(async () => {
       const q = (search?.value || "").trim();
+      const seq = ++searchSeq;
       if (!q) {
         list.innerHTML = "";
         browsePage = 0;
@@ -487,15 +499,15 @@
       }
       try {
         const data = await ApiClient.get("/members/search/", { q });
+        if (seq !== searchSeq) return; // đã có từ khóa mới hơn — bỏ response cũ
         const found = data?.items || data || [];
         list.innerHTML = found.length
           ? found.map(rowHTML).join("")
           : '<div class="empty-mini">Không tìm thấy ai khớp từ khóa.</div>';
         if (moreBtn) moreBtn.classList.add("hidden");
-        Utils.qsa(".ov-check", list).forEach((c) => c.addEventListener("change", updateCount));
         updateCount();
       } catch (err) {
-        Toast.error("Tìm kiếm thất bại: " + (err.message || ""));
+        if (seq === searchSeq) Toast.error("Tìm kiếm thất bại: " + (err.message || ""));
       }
     }, 300);
 
@@ -782,6 +794,7 @@
     const moreBtn = backdrop.querySelector("#" + moreId);
     let browsePage = 0;
     let browseDone = false;
+    let eventSearchSeq = 0; // review 13-c P2-3: sequence guard
 
     const optionHTML = (ev) =>
       `<option value="${ev.id}">${Utils.escapeHtml(ev.ten_hoat_dong)} (${Utils.escapeHtml(ev.ma_hd || "")})</option>`;
@@ -802,6 +815,7 @@
 
     const runSearch = Utils.debounce(async () => {
       const q = (search?.value || "").trim();
+      const seq = ++eventSearchSeq;
       select.innerHTML = '<option value="">— Không gắn sự kiện —</option>';
       browsePage = 0;
       browseDone = false;
@@ -810,11 +824,12 @@
         const { items, pagination } = await ApiClient.getList("/events/", {
           page: 1, page_size: 20, search: q || undefined,
         });
+        if (seq !== eventSearchSeq) return; // từ khóa mới hơn đã gõ — bỏ response cũ
         select.insertAdjacentHTML("beforeend", items.map(optionHTML).join(""));
         browseDone = !pagination || browsePage + 1 >= pagination.total_pages;
         if (!browseDone && moreBtn) moreBtn.classList.remove("hidden");
       } catch (err) {
-        Toast.error("Không tìm kiếm được sự kiện: " + (err.message || ""));
+        if (seq === eventSearchSeq) Toast.error("Không tìm kiếm được sự kiện: " + (err.message || ""));
       }
     }, 300);
 

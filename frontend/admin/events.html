@@ -684,6 +684,7 @@
     const countEl = backdrop.querySelector("#" + countId);
     let browsePage = 0;
     let browseDone = false;
+    let searchSeq = 0; // review 13-c P2-3: response cũ về sau không đè kết quả mới
 
     const optionHTML = (m) =>
       `<option value="${m.id}">${Utils.escapeHtml(m.ho_ten)}${m.lop ? " · " + Utils.escapeHtml(m.lop) : ""}${m.mssv ? " — " + Utils.escapeHtml(m.mssv) : ""}</option>`;
@@ -712,6 +713,7 @@
 
     const runSearch = Utils.debounce(async () => {
       const q = (search?.value || "").trim();
+      const seq = ++searchSeq;
       if (!q) {
         // Hết từ khóa → reset về browse từ đầu
         select.innerHTML = '<option value="">— Chưa phân công —</option>';
@@ -723,6 +725,7 @@
       }
       try {
         const data = await ApiClient.get("/members/search/", { q });
+        if (seq !== searchSeq) return; // đã có từ khóa mới hơn — bỏ response cũ
         const found = data?.items || data || [];
         select.innerHTML =
           '<option value="">— Chưa phân công —</option>' +
@@ -733,7 +736,7 @@
           select.insertAdjacentHTML("beforeend", '<option value="" disabled>Không tìm thấy ai khớp</option>');
         }
       } catch (err) {
-        Toast.error("Tìm kiếm thất bại: " + (err.message || ""));
+        if (seq === searchSeq) Toast.error("Tìm kiếm thất bại: " + (err.message || ""));
       }
     }, 300);
 
@@ -849,8 +852,16 @@
       const total = !Array.isArray(data) && data.tong_kinh_phi_du_tru != null
         ? data.tong_kinh_phi_du_tru
         : items.reduce((s, it) => s + (Number(it.so_tien) || 0), 0);
-      box.innerHTML = `
-        ${items.length ? `
+      // review 13-c P1-1: Utils.empty() KHÔNG return gì (side-effect ghi thẳng
+      // vào container) — gọi trong template literal sẽ render chữ "undefined".
+      // Tách nhánh rỗng thành statement riêng.
+      if (!items.length) {
+        box.innerHTML = `<div id="budget-empty"></div>${Auth.isBoard() ? `<div class="card card-pad mt-4"><h3 class="bold small mb-2">Thêm hạng mục dự trù</h3><div class="form-row"><div class="form-group"><label class="form-label" for="bud-ten">Hạng mục <span class="req">*</span></label><input class="form-input" id="bud-ten" placeholder="VD: In ấn tài liệu"></div><div class="form-group"><label class="form-label" for="bud-tien">Số tiền (VNĐ) <span class="req">*</span></label><input class="form-input" id="bud-tien" type="number" min="1" step="1000"></div></div><div class="form-group"><label class="form-label" for="bud-ghichu">Ghi chú</label><input class="form-input" id="bud-ghichu" placeholder="Tùy chọn"></div><button class="btn btn-primary btn-sm" id="btn-add-budget">${Icons.render("plus", 14)} Thêm hạng mục</button></div>` : ""}`;
+        // Empty state vào container CON — không đè form (Utils.empty ghi thẳng
+        // container.innerHTML của đích)
+        Utils.empty(box.querySelector("#budget-empty"), { icon: "wallet", title: "Chưa có hạng mục kinh phí", desc: "Thêm hạng mục dự trù đầu tiên bên dưới." });
+      } else {
+        box.innerHTML = `
         <div class="table-wrap"><table class="table">
           <thead><tr><th>Hạng mục</th><th class="num">Số tiền</th><th>Ghi chú</th></tr></thead>
           <tbody>
@@ -865,8 +876,7 @@
               .join("")}
             <tr class="total-row"><td>Tổng cộng</td><td class="num">${Utils.fmtVND(total)}</td><td></td></tr>
           </tbody>
-        </table></div>`
-        : Utils.empty(box, { icon: "wallet", title: "Chưa có hạng mục kinh phí", desc: "Thêm hạng mục dự trù đầu tiên bên dưới." })}
+        </table></div>
         ${Auth.isBoard() ? `
         <div class="card card-pad mt-4">
           <h3 class="bold small mb-2">Thêm hạng mục dự trù</h3>
@@ -886,6 +896,7 @@
           </div>
           <button class="btn btn-primary btn-sm" id="btn-add-budget">${Icons.render("plus", 14)} Thêm hạng mục</button>
         </div>` : ""}`;
+      }
       const addBtn = box.querySelector("#btn-add-budget");
       if (addBtn) {
         addBtn.addEventListener("click", async () => {

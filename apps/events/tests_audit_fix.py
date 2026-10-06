@@ -17,6 +17,7 @@ from rest_framework.test import APIClient
 
 from apps.authentication.models import User
 from apps.events.models import ActivityEvent, EventTask
+from apps.common.exceptions import ValidationException
 from apps.events.services import EventTaskService
 from apps.events.tests import EventTestBase
 from apps.gamification.models import XpLedger
@@ -47,7 +48,7 @@ class TaskReopenInvariantTests(EventTestBase):
         a = self._task("A — in ấn banner", completed=True)
         b = self._task("B — treo banner", depends_on=[a], completed=True)
 
-        with self.assertRaises(Exception) as ctx:
+        with self.assertRaises(ValidationException) as ctx:
             EventTaskService.reopen_task(a)
         errors = getattr(ctx.exception, "errors", None) or {}
         self.assertIn("blocking_tasks", errors)
@@ -64,7 +65,7 @@ class TaskReopenInvariantTests(EventTestBase):
         b = self._task("B — xin phép trường", depends_on=[a], completed=False)
         c = self._task("C — khởi hành", depends_on=[b], completed=True)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationException):
             EventTaskService.reopen_task(a)
         a.refresh_from_db()
         self.assertTrue(a.is_completed)
@@ -106,7 +107,7 @@ class TaskReopenInvariantTests(EventTestBase):
             source="TASK_COMPLETION", idempotency_key=f"task_{a.id}",
         )
         count_before = XpLedger.objects.count()
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationException):
             EventTaskService.reopen_task(a)
         self.assertEqual(XpLedger.objects.count(), count_before)
 
