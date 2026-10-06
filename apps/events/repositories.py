@@ -44,6 +44,7 @@ class IEventRepository(ABC):
         trang_thai: Optional[str] = None,
         loai_hd: Optional[str] = None,
         sort: str = "-thoi_gian_bat_dau",
+        search: Optional[str] = None,
     ) -> QuerySet[ActivityEvent]:
         """Danh sách sự kiện kèm annotation `active_reg_count`; lọc + sắp xếp."""
 
@@ -204,11 +205,15 @@ class DjangoEventRepository(IEventRepository):
         trang_thai: Optional[str] = None,
         loai_hd: Optional[str] = None,
         sort: str = "-thoi_gian_bat_dau",
+        search: Optional[str] = None,
     ) -> QuerySet[ActivityEvent]:
         """
         Danh sách sự kiện — annotate `active_reg_count` (số vé hiệu lực, không
         tính CANCELLED) chống N+1; lọc theo trạng thái/loại (giá trị None/rỗng
         bị bỏ qua); sắp xếp theo `sort` đã được whitelist ở view (Security §2.1).
+
+        `search`: khớp tên hoạt động / mã hoạt động (icontains) — audit F09/C6:
+        selector gắn sự kiện cần search + paginate thật, không chỉ trang đầu.
         """
         queryset = ActivityEvent.objects.annotate(
             active_reg_count=Count(
@@ -220,6 +225,10 @@ class DjangoEventRepository(IEventRepository):
             queryset = queryset.filter(trang_thai=trang_thai)
         if loai_hd:
             queryset = queryset.filter(loai_hd=loai_hd)
+        if search:
+            queryset = queryset.filter(
+                Q(ten_hoat_dong__icontains=search) | Q(ma_hd__icontains=search)
+            )
         return queryset.order_by(sort)
 
     def get_event_by_id(self, event_id: int) -> Optional[ActivityEvent]:

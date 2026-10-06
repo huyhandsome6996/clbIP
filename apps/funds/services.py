@@ -11,6 +11,8 @@ Service Layer — apps.funds
   số dư gần nhất (chống double-spending — Security Hardening §5.3), và được kiểm
   chứng bởi `FundInvariantsEngine` TRƯỚC KHI ghi (DSA 5 — bất biến I1→I4).
 """
+import hashlib
+import json
 import logging
 from abc import ABC, abstractmethod
 from datetime import date
@@ -23,6 +25,7 @@ from django.utils import timezone
 
 from apps.common.exceptions import (
     DuplicateDataException,
+    IdempotencyKeyConflictException,
     InsufficientFundException,
     PeriodLockedException,
     ValidationException,
@@ -141,6 +144,93 @@ class FundService:
         return cls._repository_class()
 
     # ------------------------------------------------------------------
+    # IDEMPOTENCY — vân tay nội dung yêu cầu (audit F02)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def compute_request_fingerprint(
+        *,
+        actor_id: Optional[int],
+        loai_gd: str,
+        so_tien: int,
+        nguoi_thuc_hien: str,
+        hinh_thuc: str,
+        ngay_gd: Optional[object],
+        ghi_chu: str,
+        event_id: Optional[int],
+    ) -> str:
+        """
+        SHA-256 của các trường CÓ Ý NGHĨA NGHIỆP VỤ của yêu cầu ghi sổ.
+
+        - `ngay_gd` giữ NGUYÊN giá trị client gửi (None → None): retry nguyên
+          yêu cầu không có ngay_gd vẫn khớp dù server-time hai lần khác nhau
+          (audit F02: "Xử lý default ngày giờ để retry nguyên yêu cầu không bị
+          conflict chỉ vì server time đổi").
+        - Chuỗi chuẩn hóa strip; so_tien ép int — tránh lệch do format.
+        """
+        payload = json.dumps(
+            {
+                "actor": actor_id,
+                "loai_gd": loai_gd,
+                "so_tien": int(so_tien),
+                "nguoi_thuc_hien": (nguoi_thuc_hien or "").strip(),
+                "hinh_thuc": hinh_thuc,
+                "ngay_gd": ngay_gd.isoformat() if ngay_gd else None,
+                "ghi_chu": (ghi_chu or "").strip(),
+                "event": event_id,
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _assert_same_intent(existing: FundTransaction, fingerprint: str, **intent) -> None:
+        """
+        Đối chiếu ý định của yêu cầu hiện tại với bản ghi đã tồn tại cùng key.
+
+        - Bản ghi CÓ `request_fingerprint` (ghi sau khi sửa F02): so vân tay
+          trực tiếp — khác → 409.
+        - Bản ghi LEGACY (fingerprint NULL — ghi trước khi có field): đối chiếu
+          các trường nghiệp vụ ĐÃ LƯU trong DB (actor/loại/tiền/người thực
+          hiện/hình thức/ghi chú/event; không so ngay_gd vì server đã default).
+          Không khớp → 409. Khớp → replay an toàn.
+        """
+        if existing.request_fingerprint:
+            if existing.request_fingerprint != fingerprint:
+                raise IdempotencyKeyConflictException(
+                    errors={
+                        "idempotency_key": (
+                            f"Khóa này đã dùng cho phiếu {existing.ma_phieu} "
+                            f"({existing.get_loai_gd_display()} {existing.so_tien:,}đ) "
+                            "với nội dung khác yêu cầu hiện tại."
+                        )
+                    }
+                )
+            return
+
+        # Legacy: so từng trường nghiệp vụ lưu trong DB
+        same_intent = (
+            (existing.created_by_id or None) == (intent.get("actor_id") or None)
+            and existing.loai_gd == intent.get("loai_gd")
+            and existing.so_tien == int(intent.get("so_tien", 0))
+            and existing.nguoi_thuc_hien.strip() == (intent.get("nguoi_thuc_hien") or "").strip()
+            and existing.hinh_thuc == intent.get("hinh_thuc")
+            and existing.ghi_chu.strip() == (intent.get("ghi_chu") or "").strip()
+            and existing.event_id == intent.get("event_id")
+        )
+        if not same_intent:
+            raise IdempotencyKeyConflictException(
+                errors={
+                    "idempotency_key": (
+                        f"Khóa này đã dùng cho phiếu {existing.ma_phieu} "
+                        f"({existing.get_loai_gd_display()} {existing.so_tien:,}đ) "
+                        "với nội dung khác yêu cầu hiện tại."
+                    )
+                }
+            )
+
+    # ------------------------------------------------------------------
     # GHI SỔ GIAO DỊCH
     # ------------------------------------------------------------------
     @classmethod
@@ -231,6 +321,18 @@ class FundService:
         """
         from django.db import IntegrityError  # noqa: PLC0415 — import cục bộ phòng hờ
 
+        # Vân tay tính từ payload THÔ trước khi server default ngay_gd
+        fingerprint = cls.compute_request_fingerprint(
+            actor_id=getattr(created_by, "pk", None),
+            loai_gd=loai_gd,
+            so_tien=so_tien,
+            nguoi_thuc_hien=nguoi_thuc_hien,
+            hinh_thuc=hinh_thuc,
+            ngay_gd=ngay_gd,
+            ghi_chu=ghi_chu,
+            event_id=getattr(event, "pk", None),
+        )
+
         try:
             return cls._execute_locked(
                 loai_gd=loai_gd,
@@ -242,6 +344,7 @@ class FundService:
                 created_by=created_by,
                 event=event,
                 idempotency_key=idempotency_key,
+                request_fingerprint=fingerprint,
             )
         except IntegrityError:
             if not idempotency_key:
@@ -249,6 +352,17 @@ class FundService:
             # Atomic đã rollback → tra cứu lại bản ghi request kia đã commit
             existing = cls._repo().get_by_idempotency_key(idempotency_key)
             if existing is not None:
+                cls._assert_same_intent(
+                    existing,
+                    fingerprint,
+                    actor_id=getattr(created_by, "pk", None),
+                    loai_gd=loai_gd,
+                    so_tien=so_tien,
+                    nguoi_thuc_hien=nguoi_thuc_hien,
+                    hinh_thuc=hinh_thuc,
+                    ghi_chu=ghi_chu,
+                    event_id=getattr(event, "pk", None),
+                )
                 logger.info(
                     "Idempotency replay (UNIQUE backstop): key=%s → %s.",
                     idempotency_key, existing.ma_phieu,
@@ -269,6 +383,7 @@ class FundService:
         created_by: Optional[object] = None,
         event: Optional[object] = None,
         idempotency_key: Optional[str] = None,
+        request_fingerprint: Optional[str] = None,
     ) -> "tuple[FundTransaction, bool]":
         """Lõi ghi sổ dùng chung cho execute_transaction / execute_transaction_idempotent."""
         if ngay_gd is None:
@@ -296,6 +411,20 @@ class FundService:
             if idempotency_key:
                 existing = repo.get_by_idempotency_key(idempotency_key)
                 if existing is not None:
+                    # Audit F02: chỉ replay khi nội dung yêu cầu TƯƠNG ĐƯƠNG —
+                    # key dùng cho payload khác → 409, tuyệt đối không trả
+                    # success với giao dịch ngoài ý định.
+                    cls._assert_same_intent(
+                        existing,
+                        request_fingerprint or "",
+                        actor_id=getattr(created_by, "pk", None),
+                        loai_gd=loai_gd,
+                        so_tien=so_tien,
+                        nguoi_thuc_hien=nguoi_thuc_hien,
+                        hinh_thuc=hinh_thuc,
+                        ghi_chu=ghi_chu,
+                        event_id=getattr(event, "pk", None),
+                    )
                     logger.info(
                         "Idempotency replay: key=%s → trả lại %s, không ghi thêm.",
                         idempotency_key, existing.ma_phieu,
@@ -320,7 +449,7 @@ class FundService:
             # Bước 5 — sinh mã phiếu duy nhất (while-loop tăng seq nếu trùng)
             ma_phieu = cls._generate_ma_phieu(repo, strategy, loai_gd, ngay_dia_phuong)
 
-            # Bước 6 — ghi sổ
+            # Bước 6 — ghi sổ (lưu vân tay yêu cầu để đối chiếu replay)
             tx = repo.create_transaction(
                 ma_phieu=ma_phieu,
                 loai_gd=loai_gd,
@@ -333,6 +462,7 @@ class FundService:
                 created_by=created_by,
                 event=event,
                 idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint or None,
             )
             logger.info(
                 "Ghi sổ quỹ %s (%s %sđ) — số dư mới: %sđ",

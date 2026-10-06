@@ -519,6 +519,7 @@
       state.current = detail;
       state.tab = "tasks";
       state.plan = null;
+      state.regsPage = 1; // audit F09: reset trang vé khi đổi sự kiện
       const body = backdrop.querySelector(".modal-body");
       body.innerHTML = `
         <div class="flex items-center justify-between gap-2 wrap">
@@ -669,21 +670,90 @@
     }
   }
 
+  const MEMBER_PAGE_SIZE = 20;
+
+  /**
+   * Bộ chọn người phụ trách (audit F09): search qua Trie (/members/search/)
+   * + browse phân trang (page_size=20, nút "Tải thêm") — hết cảnh chọn chỉ
+   * được người trong 100 dòng đầu. Không tải vô hạn, không bỏ max_page_size.
+   */
+  function bindMemberPicker(backdrop, { selectId, searchId, moreId, countId }) {
+    const select = backdrop.querySelector("#" + selectId);
+    const search = backdrop.querySelector("#" + searchId);
+    const moreBtn = backdrop.querySelector("#" + moreId);
+    const countEl = backdrop.querySelector("#" + countId);
+    let browsePage = 0;
+    let browseDone = false;
+
+    const optionHTML = (m) =>
+      `<option value="${m.id}">${Utils.escapeHtml(m.ho_ten)}${m.lop ? " · " + Utils.escapeHtml(m.lop) : ""}${m.mssv ? " — " + Utils.escapeHtml(m.mssv) : ""}</option>`;
+
+    const setCount = (n) => {
+      if (countEl) countEl.textContent = `Đang hiện ${n} người`;
+    };
+
+    const hideMore = () => {
+      if (moreBtn) moreBtn.classList.add("hidden");
+    };
+
+    const loadBrowsePage = async () => {
+      if (browseDone) return;
+      const { items, pagination } = await ApiClient.getList("/members/", {
+        page: browsePage + 1,
+        page_size: MEMBER_PAGE_SIZE,
+      });
+      const fresh = items.filter((m) => !select.querySelector(`option[value="${m.id}"]`));
+      select.insertAdjacentHTML("beforeend", fresh.map(optionHTML).join(""));
+      browsePage += 1;
+      browseDone = !pagination || browsePage >= pagination.total_pages;
+      if (browseDone) hideMore();
+      setCount(select.querySelectorAll("option:not([value=''])").length);
+    };
+
+    const runSearch = Utils.debounce(async () => {
+      const q = (search?.value || "").trim();
+      if (!q) {
+        // Hết từ khóa → reset về browse từ đầu
+        select.innerHTML = '<option value="">— Chưa phân công —</option>';
+        browsePage = 0;
+        browseDone = false;
+        if (moreBtn) moreBtn.classList.remove("hidden");
+        try { await loadBrowsePage(); } catch { /* toast ở catch ngoài */ }
+        return;
+      }
+      try {
+        const data = await ApiClient.get("/members/search/", { q });
+        const found = data?.items || data || [];
+        select.innerHTML =
+          '<option value="">— Chưa phân công —</option>' +
+          found.map(optionHTML).join("");
+        hideMore();
+        setCount(found.length);
+        if (!found.length) {
+          select.insertAdjacentHTML("beforeend", '<option value="" disabled>Không tìm thấy ai khớp</option>');
+        }
+      } catch (err) {
+        Toast.error("Tìm kiếm thất bại: " + (err.message || ""));
+      }
+    }, 300);
+
+    if (search) search.addEventListener("input", runSearch);
+    if (moreBtn) moreBtn.addEventListener("click", () => {
+      loadBrowsePage().catch((err) => Toast.error("Không tải thêm được: " + (err.message || "")));
+    });
+    // Trang đầu ngay khi mở modal
+    loadBrowsePage().catch((err) => Toast.error("Không tải được danh sách thành viên: " + (err.message || "")));
+
+    return {
+      get value() { return select.value; },
+    };
+  }
+
   async function openAddTaskModal() {
     if (!state.current) return;
-    let members = [];
-    try {
-      const { items } = await ApiClient.getList("/members/", { page: 1, page_size: 100 });
-      members = items;
-    } catch (err) {
-      Toast.error("Không tải được danh sách thành viên: " + (err.message || ""));
-      return;
-    }
+    const eventId = state.current.id; // snapshot — chống stale-response (audit D3)
     const plan = state.plan;
     const tasks = plan ? sortTasks(plan.tasks || [], plan) : [];
-    const memberOptions = members
-      .map((m) => `<option value="${m.id}">${Utils.escapeHtml(m.ho_ten)}${m.lop ? " · " + Utils.escapeHtml(m.lop) : ""}</option>`)
-      .join("");
     const taskOptions = tasks.length
       ? tasks
           .map(
@@ -704,10 +774,14 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="task-phu-trach">Người phụ trách</label>
-              <select class="form-select" id="task-phu-trach">
+              <input class="form-input" id="task-assignee-search" type="search" placeholder="Gõ tên / MSSV để tìm nhanh..." autocomplete="off">
+              <select class="form-select mt-2" id="task-phu-trach" size="5">
                 <option value="">— Chưa phân công —</option>
-                ${memberOptions}
               </select>
+              <div class="flex items-center justify-between gap-2 mt-2">
+                <span class="xs muted" id="assignee-count"></span>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-load-more-members">Tải thêm</button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="task-deadline">Deadline</label>
@@ -725,6 +799,12 @@
         <button class="btn btn-primary" id="btn-save-task">${Icons.render("plus", 16)} Thêm công việc</button>`,
       onMount(backdrop, close) {
         backdrop.querySelector("[data-close]").addEventListener("click", close);
+        bindMemberPicker(backdrop, {
+          selectId: "task-phu-trach",
+          searchId: "task-assignee-search",
+          moreId: "btn-load-more-members",
+          countId: "assignee-count",
+        });
         backdrop.querySelector("#task-form").addEventListener("submit", (ev) => {
           ev.preventDefault();
           backdrop.querySelector("#btn-save-task").click();
@@ -741,10 +821,12 @@
             const payload = { ten_task: ten, depends_on: deps };
             if (pt) payload.nguoi_phu_trach = Number(pt);
             if (deadline) payload.deadline = localToISO(deadline);
-            await ApiClient.post(`/events/${state.current.id}/tasks/`, payload);
+            await ApiClient.post(`/events/${eventId}/tasks/`, payload);
             close();
             Toast.success(`Đã thêm công việc "${ten}".`, "Thành công");
-            await renderTasksTab(document.getElementById("tab-content"));
+            if (state.current?.id === eventId) {
+              await renderTasksTab(document.getElementById("tab-content"));
+            }
           } catch (err) {
             if (err.status === 400) Toast.error(err.message || "Phát hiện phụ thuộc vòng tròn (deadlock) giữa các task!");
             else Toast.error(err.message || "Không thêm được công việc.");
@@ -759,17 +841,16 @@
   /* ---------- Tab 2: Dự trù kinh phí ---------- */
   async function renderBudgetTab(box) {
     Utils.skeleton(box, 3);
+    const eventId = state.current?.id; // snapshot — chống stale-response (D3)
     try {
-      const data = await ApiClient.get(`/events/${state.current.id}/budget/`);
+      const data = await ApiClient.get(`/events/${eventId}/budget/`);
+      if (state.current?.id !== eventId) return; // sự kiện đã đổi — bỏ render
       const items = Array.isArray(data) ? data : data.items || [];
       const total = !Array.isArray(data) && data.tong_kinh_phi_du_tru != null
         ? data.tong_kinh_phi_du_tru
         : items.reduce((s, it) => s + (Number(it.so_tien) || 0), 0);
-      if (!items.length) {
-        Utils.empty(box, { icon: "wallet", title: "Chưa có hạng mục kinh phí", desc: "Sự kiện này chưa được dự trù hạng mục nào." });
-        return;
-      }
       box.innerHTML = `
+        ${items.length ? `
         <div class="table-wrap"><table class="table">
           <thead><tr><th>Hạng mục</th><th class="num">Số tiền</th><th>Ghi chú</th></tr></thead>
           <tbody>
@@ -784,7 +865,52 @@
               .join("")}
             <tr class="total-row"><td>Tổng cộng</td><td class="num">${Utils.fmtVND(total)}</td><td></td></tr>
           </tbody>
-        </table></div>`;
+        </table></div>`
+        : Utils.empty(box, { icon: "wallet", title: "Chưa có hạng mục kinh phí", desc: "Thêm hạng mục dự trù đầu tiên bên dưới." })}
+        ${Auth.isBoard() ? `
+        <div class="card card-pad mt-4">
+          <h3 class="bold small mb-2">Thêm hạng mục dự trù</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="bud-ten">Hạng mục <span class="req">*</span></label>
+              <input class="form-input" id="bud-ten" placeholder="VD: In ấn tài liệu">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="bud-tien">Số tiền (VNĐ) <span class="req">*</span></label>
+              <input class="form-input" id="bud-tien" type="number" min="1" step="1000">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bud-ghichu">Ghi chú</label>
+            <input class="form-input" id="bud-ghichu" placeholder="Tùy chọn">
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-add-budget">${Icons.render("plus", 14)} Thêm hạng mục</button>
+        </div>` : ""}`;
+      const addBtn = box.querySelector("#btn-add-budget");
+      if (addBtn) {
+        addBtn.addEventListener("click", async () => {
+          const ten = box.querySelector("#bud-ten").value.trim();
+          const tien = Number(box.querySelector("#bud-tien").value);
+          if (!ten || !tien || tien < 1) {
+            Toast.warning("Nhập đủ hạng mục và số tiền dương.");
+            return;
+          }
+          const undo = Utils.btnLoading(addBtn, "Đang thêm...");
+          try {
+            await ApiClient.post(`/events/${eventId}/budget/`, {
+              ten_hang_muc: ten,
+              so_tien: tien,
+              ghi_chu: box.querySelector("#bud-ghichu").value.trim(),
+            });
+            Toast.success("Đã thêm hạng mục — tổng kinh phí được tính lại tự động.");
+            await renderBudgetTab(box);
+          } catch (err) {
+            Toast.error(err.message || "Không thêm được hạng mục.");
+          } finally {
+            undo();
+          }
+        });
+      }
     } catch (err) {
       console.error(err);
       Utils.empty(box, { icon: "alert-triangle", title: "Không tải được dự trù kinh phí", desc: err.message || "" });
@@ -795,16 +921,25 @@
   /* ---------- Tab 3: Đăng ký ---------- */
   async function renderRegsTab(box) {
     Utils.skeleton(box, 3);
+    const eventId = state.current?.id; // snapshot — chống stale-response (D3)
+    const page = state.regsPage || 1;
     try {
-      const { items } = await ApiClient.getList(`/events/${state.current.id}/registrations/`);
-      if (!items.length) {
+      // Audit F09: phân trang THẬT — trước đây chỉ gọi trang đầu rồi lấy
+      // items.length làm "tổng số vé" → vé từ trang 2 trở đi biến mất khỏi UI.
+      const { items, pagination } = await ApiClient.getList(
+        `/events/${eventId}/registrations/`, { page, page_size: 20 }
+      );
+      if (state.current?.id !== eventId) return; // sự kiện đã đổi — bỏ render
+      const totalCount = pagination?.total_items ?? items.length;
+      if (!items.length && page === 1) {
         Utils.empty(box, { icon: "qr", title: "Chưa có ai đăng ký", desc: "Danh sách vé sẽ xuất hiện khi thành viên đăng ký tham gia." });
         return;
       }
+      const pagerId = `regs-pager-${eventId}`;
       box.innerHTML = `
         <div class="flex items-center justify-between gap-2 wrap mb-2">
           <span class="small muted">${Icons.render("qr", 14)} Check-in tại cổng bằng mã QR in trên vé.</span>
-          <a class="btn btn-outline btn-sm" href="/frontend/admin/ticket_scanner.html?event=${state.current.id}">${Icons.render("qr", 15)} Quét QR vé tại cổng</a>
+          <a class="btn btn-outline btn-sm" href="/frontend/admin/ticket_scanner.html?event=${eventId}">${Icons.render("qr", 15)} Quét QR vé tại cổng</a>
         </div>
         <div class="table-wrap"><table class="table">
           <thead><tr><th>Thành viên</th><th>Mã vé</th><th>Trạng thái</th><th>Đăng ký lúc</th></tr></thead>
@@ -822,7 +957,16 @@
               .join("")}
           </tbody>
         </table></div>
-        <p class="tab-table-note">${items.length} vé · mã vé dùng để render QR check-in phía thành viên.</p>`;
+        <div class="pagination" id="${pagerId}">
+          <span class="page-info small muted">Tổng ${Utils.fmtNum(totalCount)} vé${pagination ? ` · trang ${pagination.page}/${pagination.total_pages}` : ""}</span>
+          <div class="page-btns"></div>
+        </div>`;
+      if (pagination && pagination.total_pages > 1) {
+        renderPagination(box.querySelector(`#${pagerId}`), pagination, (p) => {
+          state.regsPage = p;
+          renderRegsTab(box);
+        });
+      }
     } catch (err) {
       console.error(err);
       Utils.empty(box, { icon: "alert-triangle", title: "Không tải được danh sách đăng ký", desc: err.message || "" });

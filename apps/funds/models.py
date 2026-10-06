@@ -52,6 +52,19 @@ class FundTransaction(TimeStampedModel):
         null=True,    # nhiều NULL hợp lệ (giao dịch không dùng khóa)
         blank=True,
     )
+    # Vân tay nội dung yêu cầu (audit F02): SHA-256 của các trường nghiệp vụ
+    # (actor, loại, số tiền, người thực hiện, hình thức, ngày GD client gửi,
+    # ghi chú, event). Cùng key + cùng vân tay → replay an toàn; cùng key +
+    # vân tay KHÁC → 409 IdempotencyKeyConflictException. NULL = bản ghi legacy
+    # trước khi có field (đối chiếu bằng các trường lưu trong DB — xem service).
+    request_fingerprint: models.CharField = models.CharField(
+        "Vân tay nội dung yêu cầu (idempotency)",
+        max_length=64,
+        null=True,
+        blank=True,
+        db_index=True,
+        editable=False,
+    )
 
     # Liên kết tùy chọn
     created_by: models.ForeignKey = models.ForeignKey(

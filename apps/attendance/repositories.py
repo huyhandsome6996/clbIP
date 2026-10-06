@@ -17,7 +17,7 @@ ràng — apps.events chưa có repository riêng tại thời điểm refactor.
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from apps.attendance.models import AttendanceRecord, AttendanceSession
 from apps.members.models import MemberProfile
@@ -78,6 +78,19 @@ class IAttendanceRepository(ABC):
     @abstractmethod
     def member_exists(self, member_id: int) -> bool:
         """Thành viên có tồn tại theo pk? (bulk_override validate)."""
+
+    @abstractmethod
+    def filter_existing_member_ids(self, member_ids: set[int]) -> set[int]:
+        """Lọc trong tập ID nào thực sự tồn tại (bulk validate — 1 query)."""
+
+    @abstractmethod
+    def list_records_for_session(
+        self,
+        session: AttendanceSession,
+        trang_thai: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> QuerySet[AttendanceRecord]:
+        """Bản ghi điểm danh của một phiên (BCN xem/audit — phân trang ở view)."""
 
     @abstractmethod
     def get_member_profile_for_user(self, user) -> Optional[MemberProfile]:
@@ -201,6 +214,48 @@ class DjangoAttendanceRepository(IAttendanceRepository):
         chưa có phương thức `exists()` tương ứng trong repository của nó.
         """
         return MemberProfile.objects.filter(pk=member_id).exists()
+
+    def filter_existing_member_ids(self, member_ids: set[int]) -> set[int]:
+        """
+        Trả về tập ID thực sự tồn tại trong `MemberProfile` (1 query duy nhất).
+
+        Dùng bởi `AttendanceService.bulk_override` — validate TOÀN BỘ danh sách
+        trước khi ghi (audit F01: hết lỗi "API báo thất bại nhưng một phần dữ
+        liệu đã đổi").
+        """
+        if not member_ids:
+            return set()
+        return set(
+            MemberProfile.objects.filter(pk__in=member_ids).values_list("pk", flat=True)
+        )
+
+    def list_records_for_session(
+        self,
+        session: AttendanceSession,
+        trang_thai: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> QuerySet[AttendanceRecord]:
+        """
+        Bản ghi điểm danh của một phiên (audit F10 — khoảng trống chức năng:
+        BCN cần bảng xem kết quả theo phiên sau override/đóng phiên).
+
+        - `trang_thai`: lọc theo choices (giá trị lạ bị service chặn trước).
+        - `search`: khớp họ tên / MSSV / email thành viên (icontains).
+        Không trả tọa độ GPS thô — BCN xem `khoang_cach_m` + `is_suspicious`
+        là đủ để audit anti-cheat (giảm PII trong payload).
+        """
+        qs = AttendanceRecord.objects.filter(session=session).select_related(
+            "member", "member__user", "overridden_by"
+        )
+        if trang_thai:
+            qs = qs.filter(trang_thai=trang_thai)
+        if search:
+            qs = qs.filter(
+                Q(member__ho_ten__icontains=search)
+                | Q(member__mssv__icontains=search)
+                | Q(member__user__email__icontains=search)
+            )
+        return qs.order_by("member__ho_ten", "id")
 
     def get_member_profile_for_user(self, user) -> Optional[MemberProfile]:
         """

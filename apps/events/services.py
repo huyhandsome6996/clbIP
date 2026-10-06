@@ -326,14 +326,18 @@ class EventService:
         trang_thai: Optional[str] = None,
         loai_hd: Optional[str] = None,
         sort: str = "-thoi_gian_bat_dau",
+        search: Optional[str] = None,
     ) -> QuerySet[ActivityEvent]:
         """
         Danh sách sự kiện kèm annotation `active_reg_count` (chống N+1).
 
         `trang_thai` / `loai_hd` đã được view validate theo choices, `sort`
         đã được view ràng buộc whitelist EVENT_SORT_WHITELIST (Security §2.1).
+        `search`: khớp tên/mã hoạt động (audit F09 — selector cần search thật).
         """
-        return cls._repo().list_events(trang_thai=trang_thai, loai_hd=loai_hd, sort=sort)
+        return cls._repo().list_events(
+            trang_thai=trang_thai, loai_hd=loai_hd, sort=sort, search=search
+        )
 
     @classmethod
     def list_tickets_for_member(cls, member: MemberProfile) -> QuerySet[EventRegistration]:
@@ -675,12 +679,72 @@ class EventTaskService:
         """
         Mở lại task đã hoàn thành (is_completed=False).
 
+        BẤT BIẾN DAG (audit F08): "task đã hoàn thành thì mọi tiền nhiệm của nó
+        cũng đã hoàn thành". Reopen tiền nhiệm khi còn hậu nhiệm (trực tiếp HOẶC
+        gián tiếp qua chuỗi phụ thuộc) đã hoàn thành sẽ phá bất biến đó → CHẶN
+        400 kèm danh sách task chặn, KHÔNG âm thầm thay đổi nhiều task
+        (chính sách chặn được ưu tiên hơn cascade theo đề nghị audit).
+
         KHÔNG hoàn lại XP đã cộng (XP ledger là bất biến — xem
         GamificationService với idempotency_key "task_<id>").
+
+        Raises:
+            ValidationException: tồn tại hậu nhiệm đã hoàn thành (danh sách id
+                + tên được trả trong `errors.blocking_tasks` để frontend hiển thị).
         """
+        blockers = cls._completed_descendants(task)
+        if blockers:
+            preview = ", ".join(f"#{tid} {tname}" for tid, tname in blockers[:5])
+            more = f" và {len(blockers) - 5} task khác" if len(blockers) > 5 else ""
+            raise ValidationException(
+                f"Không thể mở lại '{task.ten_task}' vì còn "
+                f"{len(blockers)} task phụ thuộc đã hoàn thành: {preview}{more}. "
+                "Hãy mở lại các task phụ thuộc trước (theo thứ tự ngược).",
+                errors={
+                    "blocking_tasks": [
+                        {"id": tid, "ten_task": tname} for tid, tname in blockers
+                    ]
+                },
+            )
+
         task.is_completed = False
         task.save(update_fields=["is_completed", "updated_at"])
         return task
+
+    @classmethod
+    def _completed_descendants(cls, task: EventTask) -> list[tuple[int, str]]:
+        """
+        Tìm HẬU NHIỆM (trực tiếp + gián tiếp) của `task` đang is_completed=True.
+
+        Duyệt BFS trên đồ thị phụ thuộc đảo (dep → người phụ thuộc) giới hạn
+        trong CÙNG sự kiện — tái dùng `_dependency_edges` (dữ liệu qua repo).
+        Trả về [(id, ten_task)] theo thứ tự duyệt (ổn định để test + hiển thị).
+        """
+        event = task.event
+        edges = cls._dependency_edges(event)  # (tiền nhiệm, hậu nhiệm)
+        # Kề đảo: từ một task → các task phụ thuộc nó
+        dependents: dict[int, list[int]] = {}
+        for prev_id, next_id in edges:
+            dependents.setdefault(prev_id, []).append(next_id)
+
+        tasks = {t.id: t for t in cls._repo().list_tasks_for_plan(event)}
+
+        visited: set[int] = set()
+        queue = [task.id]
+        blockers: list[tuple[int, str]] = []
+        while queue:
+            current = queue.pop(0)
+            for nxt in dependents.get(current, []):
+                if nxt in visited:
+                    continue
+                visited.add(nxt)
+                nxt_task = tasks.get(nxt)
+                if nxt_task is None:
+                    continue  # dữ liệu lạ — bỏ qua an toàn
+                if nxt_task.is_completed:
+                    blockers.append((nxt_task.id, nxt_task.ten_task))
+                queue.append(nxt)  # vẫn đi tiếp qua cả hậu nhiệm chưa hoàn thành
+        return blockers
 
     @staticmethod
     def _award_xp_for_completion(task: EventTask) -> None:

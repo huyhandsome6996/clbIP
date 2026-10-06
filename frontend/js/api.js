@@ -206,14 +206,53 @@ class ApiClient {
     };
   }
 
-  /** Đọc blob (file Excel / tài liệu) rồi tải xuống máy. */
-  static async download(endpoint, filename = "download", params = null) {
+  /* ---------------- Blob / download (có refresh single-flight) ---------------- */
+  /**
+   * Gọi API trả về BLOB (file Excel / PDF / tài liệu) — audit F04.
+   * - Gắn Bearer cùng origin, KHÔNG parse blob thành JSON khi thành công.
+   * - 401 → refresh ĐÚNG 1 LẦN (dùng chung single-flight với request JSON)
+   *   rồi retry ĐÚNG 1 LẦN; refresh fail → clear phiên + redirect login.
+   * - Khi lỗi có body JSON (envelope {message}) → ưu tiên message backend.
+   * @returns {Promise<Blob>}
+   */
+  static async getBlob(endpoint, params = null) {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-    const res = await fetch(`${API_BASE}${endpoint}${qs}`, {
+    const url = `${API_BASE}${endpoint}${qs}`;
+    const doFetch = () => fetch(url, {
       headers: { Authorization: `Bearer ${this.getAccessToken()}` },
     });
-    if (!res.ok) throw new ApiError(this.#defaultError(res.status), res.status);
-    const blob = await res.blob();
+
+    let res = await doFetch();
+
+    // 401 → refresh single-flight đúng 1 lần → retry đúng 1 lần (audit F04)
+    if (res.status === 401 && this.getRefreshToken()) {
+      const refreshed = await this.refreshToken();
+      if (refreshed) {
+        res = await doFetch();
+      } else {
+        this.forceLogout();
+        throw new ApiError("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại", 401);
+      }
+    }
+
+    if (!res.ok) {
+      // Lỗi trả envelope JSON → đọc message tiếng Việt nếu có
+      let message = this.#defaultError(res.status);
+      try {
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("application/json")) {
+          const env = await res.json();
+          message = env?.message || env?.detail || message;
+        }
+      } catch { /* body nhị phân / rỗng — giữ message mặc định */ }
+      throw new ApiError(message, res.status);
+    }
+    return res.blob();
+  }
+
+  /** Đọc blob rồi tải xuống máy — filename an toàn, revoke đúng vòng đời. */
+  static async download(endpoint, filename = "download", params = null) {
+    const blob = await this.getBlob(endpoint, params);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

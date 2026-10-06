@@ -248,19 +248,61 @@
     stopNonceTimer();
     wrap.innerHTML = `<div class="card card-pad open-card"><div class="skeleton" style="width:30%;height:18px"></div><div class="skeleton mt-2" style="width:70%"></div></div>`;
     try {
-      const { items, pagination } = await ApiClient.getList("/attendance/sessions/", { trang_thai: "OPEN", page: 1 });
-      state.openSession = items.length ? items[0] : null;
-      state.openCount = pagination?.total_items ?? items.length;
+      // Audit F10: tải TOÀN BỘ phiên OPEN (đủ trang) — trước đây chỉ lấy
+      // items[0] nên BCN không điều khiển được các phiên OPEN khác.
+      let items = [];
+      let openTotal = 0;
+      let page = 1;
+      for (;;) {
+        const { items: pageItems, pagination } = await ApiClient.getList(
+          "/attendance/sessions/", { trang_thai: "OPEN", page, page_size: 50 }
+        );
+        items = items.concat(pageItems);
+        openTotal = pagination?.total_items ?? items.length;
+        if (!pagination || page >= pagination.total_pages || page >= 10) break;
+        page += 1;
+      }
+      state.openSessions = items;
+      state.openCount = openTotal;
+      // Giữ lựa chọn cũ nếu còn OPEN; ngược lại chọn phiên mới nhất
+      const stillOpen = items.find((s) => s.id === state.openSession?.id);
+      state.openSession = stillOpen || items[0] || null;
       renderOpenCard();
       renderKpis();
     } catch (err) {
       console.error(err);
       state.openSession = null;
+      state.openSessions = [];
       state.openCount = 0;
       wrap.innerHTML = "";
       Toast.error(err.message || "Không tải được phiên đang mở");
       renderKpis();
     }
+  }
+
+  /** Audit F10: BCN chọn điều khiển bất kỳ phiên OPEN nào — nonce/override/close
+   *  đều gắn phiên đang chọn (state.openSession), không ép đóng phiên mới. */
+  function selectOpenSession(id) {
+    if (state.openSession?.id === id) return;
+    const target = state.openSessions.find((s) => s.id === id);
+    if (!target) return;
+    stopNonceTimer();
+    state.openSession = target;
+    state.nonce = null;
+    state.nonceRemain = 0;
+    renderOpenCard();
+  }
+
+  function openSessionChips() {
+    if (!state.openSessions || state.openSessions.length <= 1) return "";
+    return `
+      <div class="flex items-center gap-2 wrap mb-2" id="open-session-chips">
+        <span class="xs muted">${Icons.render("layers", 13)} ${state.openSessions.length} phiên đang mở — chọn phiên để điều khiển:</span>
+        ${state.openSessions.map((s) => `
+          <button type="button" class="btn btn-sm ${s.id === state.openSession?.id ? "btn-violet" : "btn-outline"} os-chip" data-id="${s.id}" title="Điều khiển phiên này">
+            ${Icons.render("compass", 13)} ${Utils.escapeHtml(s.ten_phien)}
+          </button>`).join("")}
+      </div>`;
   }
 
   function renderOpenCard() {
@@ -280,6 +322,7 @@
       return;
     }
     wrap.innerHTML = `
+      ${openSessionChips()}
       <div class="card card-pad open-card" id="open-card">
         <div class="open-grid">
           <div class="open-info">
@@ -301,13 +344,18 @@
           </div>
           <div class="open-actions">
             <button class="btn btn-outline" id="btn-override">${Icons.render("sliders", 16)} Điều chỉnh thủ công</button>
+            <button class="btn btn-outline" id="btn-view-records">${Icons.render("list", 16)} Xem bản ghi</button>
             <button class="btn btn-danger" id="btn-close-session">${Icons.render("lock", 16)} Đóng phiên</button>
           </div>
         </div>
       </div>`;
 
+    Utils.qsa(".os-chip", wrap).forEach((chip) =>
+      chip.addEventListener("click", () => selectOpenSession(Number(chip.dataset.id)))
+    );
     document.getElementById("btn-refresh-nonce").addEventListener("click", fetchNonce);
     document.getElementById("btn-override").addEventListener("click", openOverrideModal);
+    document.getElementById("btn-view-records").addEventListener("click", () => openSessionRecordsModal(s.id, s.ten_phien));
     document.getElementById("btn-close-session").addEventListener("click", onCloseSession);
     fetchNonce();
   }
@@ -319,9 +367,13 @@
   async function fetchNonce() {
     const s = state.openSession;
     if (!s || state.nonceFetching) return;
+    // Audit F10: gắn cứng ID phiên vào request — nếu BCN đổi phiên giữa chừng
+    // thì response cũ không được phép render lên card của phiên mới.
+    const sessionId = s.id;
     state.nonceFetching = true;
     try {
-      const data = await ApiClient.get(`/attendance/sessions/${s.id}/nonce/`);
+      const data = await ApiClient.get(`/attendance/sessions/${sessionId}/nonce/`);
+      if (state.openSession?.id !== sessionId) return; // đã đổi phiên — bỏ response cũ
       // Phiên có thể vừa bị đóng giữa chừng
       if (data.trang_thai && data.trang_thai !== "OPEN") { await loadOpenSession(); return; }
       state.nonce = String(data.nonce || "").trim();
@@ -332,13 +384,16 @@
       updateNonceUI();
       stopNonceTimer();
       nonceTimer = setInterval(() => {
+        if (state.openSession?.id !== sessionId) { stopNonceTimer(); return; }
         state.nonceRemain -= 1;
         if (state.nonceRemain <= 0) { fetchNonce(); return; }
         updateNonceUI();
       }, 1000);
     } catch (err) {
       console.error(err);
-      Toast.error(err.message || "Không lấy được mã nonce.");
+      if (state.openSession?.id === sessionId) {
+        Toast.error(err.message || "Không lấy được mã nonce.");
+      }
     } finally {
       state.nonceFetching = false;
     }
@@ -373,43 +428,101 @@
   }
 
   /* ================= Điều chỉnh thủ công (bulk override) ================= */
+  /**
+   * Danh sách thành viên trong modal override (audit F09): search qua Trie
+   * (/members/search/) + phân trang 20 người/trang — người thứ 121 cũng chọn
+   * được. "Chọn tất cả" rõ ràng chỉ áp dụng CHO CÁC NGƯỜI ĐANG HIỆN trong
+   * danh sách (không silently bỏ các trang sau).
+   */
+  function bindOverrideMemberList(backdrop, { listId, searchId, moreId, countId }) {
+    const list = backdrop.querySelector("#" + listId);
+    const search = backdrop.querySelector("#" + searchId);
+    const moreBtn = backdrop.querySelector("#" + moreId);
+    const countEl = backdrop.querySelector("#" + countId);
+    let browsePage = 0;
+    let browseDone = false;
+
+    const rowHTML = (m) => `<label>
+      <input type="checkbox" class="ov-check" value="${m.id}">
+      <span class="who">
+        <span class="bold">${Utils.escapeHtml(m.ho_ten)}</span>
+        <span class="lop"> · ${Utils.escapeHtml(m.mssv || "")}${m.lop ? " · " + Utils.escapeHtml(m.lop) : ""}</span>
+      </span>
+      <span class="badge badge-neutral">${Utils.escapeHtml(m.trang_thai_hd || "")}</span>
+    </label>`;
+
+    const updateCount = () => {
+      if (countEl) {
+        const n = Utils.qsa(".ov-check:checked", backdrop).length;
+        const total = Utils.qsa(".ov-check", backdrop).length;
+        countEl.textContent = `${n}/${total} thành viên đang hiện được chọn`;
+      }
+    };
+
+    const loadBrowsePage = async () => {
+      if (browseDone) return;
+      const { items, pagination } = await ApiClient.getList("/members/", {
+        page: browsePage + 1,
+        page_size: 20,
+      });
+      const have = new Set(Utils.qsa(".ov-check", list).map((c) => c.value));
+      const fresh = items.filter((m) => !have.has(String(m.id)));
+      list.insertAdjacentHTML("beforeend", fresh.map(rowHTML).join(""));
+      Utils.qsa(".ov-check", list).slice(-fresh.length).forEach((c) => c.addEventListener("change", updateCount));
+      browsePage += 1;
+      browseDone = !pagination || browsePage >= pagination.total_pages;
+      if (browseDone && moreBtn) moreBtn.classList.add("hidden");
+      updateCount();
+    };
+
+    const runSearch = Utils.debounce(async () => {
+      const q = (search?.value || "").trim();
+      if (!q) {
+        list.innerHTML = "";
+        browsePage = 0;
+        browseDone = false;
+        if (moreBtn) moreBtn.classList.remove("hidden");
+        try { await loadBrowsePage(); } catch { /* toast ngoài */ }
+        return;
+      }
+      try {
+        const data = await ApiClient.get("/members/search/", { q });
+        const found = data?.items || data || [];
+        list.innerHTML = found.length
+          ? found.map(rowHTML).join("")
+          : '<div class="empty-mini">Không tìm thấy ai khớp từ khóa.</div>';
+        if (moreBtn) moreBtn.classList.add("hidden");
+        Utils.qsa(".ov-check", list).forEach((c) => c.addEventListener("change", updateCount));
+        updateCount();
+      } catch (err) {
+        Toast.error("Tìm kiếm thất bại: " + (err.message || ""));
+      }
+    }, 300);
+
+    if (search) search.addEventListener("input", runSearch);
+    if (moreBtn) moreBtn.addEventListener("click", () => {
+      loadBrowsePage().catch((err) => Toast.error("Không tải thêm được: " + (err.message || "")));
+    });
+    loadBrowsePage().catch((err) => Toast.error("Không tải được danh sách thành viên: " + (err.message || "")));
+    window.__ovSyncCount = updateCount;
+    return { updateCount };
+  }
+
   async function openOverrideModal() {
     const s = state.openSession;
     if (!s) return;
-    const btn = document.getElementById("btn-override");
-    const undoBtn = Utils.btnLoading(btn, "Đang tải thành viên...");
-    let members = [];
-    try {
-      const { items } = await ApiClient.getList("/members/", { page: 1, page_size: 100 });
-      members = items;
-    } catch (err) {
-      undoBtn();
-      Toast.error(err.message || "Không tải được danh sách thành viên.");
-      return;
-    }
-    undoBtn();
-
-    const memberRows = members.length
-      ? members
-          .map(
-            (m) => `<label>
-              <input type="checkbox" class="ov-check" value="${m.id}">
-              <span class="who">
-                <span class="bold">${Utils.escapeHtml(m.ho_ten)}</span>
-                <span class="lop"> · ${Utils.escapeHtml(m.mssv || "")}${m.lop ? " · " + Utils.escapeHtml(m.lop) : ""}</span>
-              </span>
-              <span class="badge badge-neutral">${Utils.escapeHtml(m.trang_thai_hd || "")}</span>
-            </label>`
-          )
-          .join("")
-      : `<div class="empty-mini">Không có thành viên nào.</div>`;
-
+    const sessionId = s.id; // snapshot ID phiên — chống stale-response (D3)
+    const sessionName = s.ten_phien;
     openModal({
       title: "Điều chỉnh điểm danh thủ công",
       bodyHTML: `
-        <p class="small muted">Ghi đè trực tiếp bản ghi điểm danh của phiên <b>${Utils.escapeHtml(s.ten_phien)}</b>.
-        Chọn thành viên rồi áp dụng một trạng thái chung cho cả nhóm được tick.</p>
+        <p class="small muted">Ghi đè trực tiếp bản ghi điểm danh của phiên <b>${Utils.escapeHtml(sessionName)}</b>.
+        Chọn thành viên (tìm kiếm hoặc tải thêm trang) rồi áp dụng một trạng thái chung cho cả nhóm được tick.</p>
         <div class="form-group mt-2">
+          <label class="form-label" for="ov-search">Tìm thành viên</label>
+          <input class="form-input" id="ov-search" type="search" placeholder="Gõ tên / MSSV..." autocomplete="off">
+        </div>
+        <div class="form-group">
           <label class="form-label" for="ov-status">Trạng thái áp dụng</label>
           <select class="form-select" id="ov-status">
             <option value="CO_MAT">Có mặt</option>
@@ -419,34 +532,57 @@
           </select>
         </div>
         <div class="flex items-center justify-between mb-2">
-          <span class="xs muted" id="ov-count">0/${members.length} thành viên được chọn</span>
+          <span class="xs muted" id="ov-count">0 thành viên được chọn</span>
           <div class="flex gap-2">
-            <button type="button" class="btn btn-ghost btn-sm" id="ov-all">${Icons.render("check-square", 13)} Chọn tất cả</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="ov-all" title="Chỉ tick những người đang hiện trong danh sách">${Icons.render("check-square", 13)} Chọn tất cả (đang hiện)</button>
             <button type="button" class="btn btn-ghost btn-sm" id="ov-none">Bỏ chọn</button>
           </div>
         </div>
-        <div class="ov-member-list">${memberRows}</div>`,
+        <div class="ov-member-list" id="ov-member-list"></div>
+        <div class="flex items-center justify-between mt-2">
+          <span class="xs muted" id="ov-browse-count"></span>
+          <button type="button" class="btn btn-outline btn-sm" id="ov-more">Tải thêm 20 người</button>
+        </div>`,
       footerHTML: `
         <button class="btn btn-ghost" data-close>Hủy</button>
         <button class="btn btn-primary" id="ov-submit" disabled>${Icons.render("check", 16)} Áp dụng (0)</button>`,
       onMount(backdrop, close) {
         backdrop.querySelector("[data-close]").addEventListener("click", close);
         const submit = backdrop.querySelector("#ov-submit");
-        const countEl = backdrop.querySelector("#ov-count");
-        const syncCount = () => {
+        const syncSubmit = () => {
           const n = Utils.qsa(".ov-check:checked", backdrop).length;
-          countEl.textContent = `${n}/${members.length} thành viên được chọn`;
           submit.disabled = n === 0;
           submit.innerHTML = `${Icons.render("check", 16)} Áp dụng (${n})`;
         };
-        Utils.qsa(".ov-check", backdrop).forEach((c) => c.addEventListener("change", syncCount));
+        bindOverrideMemberList(backdrop, {
+          listId: "ov-member-list",
+          searchId: "ov-search",
+          moreId: "ov-more",
+          countId: "ov-count",
+        });
+        window.__ovUpdateCount = () => {
+          const n = Utils.qsa(".ov-check:checked", backdrop).length;
+          const total = Utils.qsa(".ov-check", backdrop).length;
+          backdrop.querySelector("#ov-count").textContent = `${n}/${total} thành viên đang hiện được chọn`;
+          syncSubmit();
+        };
+        // Event DELEGATION trên container — bắt cả checkbox nạp bất đồng bộ
+        // SAU khi modal mở (fix E2E: listener per-checkbox gắn trước khi nạp
+        // trang nên nút Áp dụng không bao giờ được enable).
+        backdrop.addEventListener("change", (e) => {
+          if (e.target && e.target.classList && e.target.classList.contains("ov-check")) {
+            window.__ovUpdateCount();
+          }
+        });
         backdrop.querySelector("#ov-all").addEventListener("click", () => {
+          // Audit F09: “Chọn tất cả” = tất cả người ĐANG HIỆN — nhãn nói rõ,
+          // BCN bấm "Tải thêm" để nạp rồi tick tiếp các trang sau.
           Utils.qsa(".ov-check", backdrop).forEach((c) => { c.checked = true; });
-          syncCount();
+          window.__ovUpdateCount();
         });
         backdrop.querySelector("#ov-none").addEventListener("click", () => {
           Utils.qsa(".ov-check", backdrop).forEach((c) => { c.checked = false; });
-          syncCount();
+          window.__ovUpdateCount();
         });
         submit.addEventListener("click", async () => {
           const trangThai = backdrop.querySelector("#ov-status").value;
@@ -455,17 +591,19 @@
           const undo = Utils.btnLoading(submit, "Đang ghi đè...");
           try {
             // ⚠ Backend thực tế nhận PUT (không phải POST như CONTRACT ghi) — đã test thật
-            const res = await ApiClient.put(`/attendance/sessions/${s.id}/bulk-override/`, { items });
+            const res = await ApiClient.put(`/attendance/sessions/${sessionId}/bulk-override/`, { items });
             close();
             Toast.success(`Đã ghi đè điểm danh cho ${res?.updated ?? items.length} thành viên (${trangThai === "CO_MAT" ? "Có mặt" : trangThai === "VANG" ? "Vắng" : trangThai === "CO_PHEP" ? "Có phép" : "Đi muộn"}).`, "Thành công");
             loadOpenSession();
           } catch (err) {
+            // Audit F01: lỗi → giữ nguyên lựa chọn + trạng thái form để BCN sửa rồi gửi lại
             Toast.error(err.message || "Không ghi đè được điểm danh.");
           } finally {
             undo();
           }
         });
       },
+      onClose() { window.__ovSyncCount = null; window.__ovUpdateCount = null; },
     });
   }
 
@@ -481,7 +619,109 @@
       <td class="small muted">${s.hieu_luc_den ? Utils.fmtDateTime(s.hieu_luc_den) : "—"}</td>
       <td class="num small">${s.ban_kinh_m != null ? Utils.fmtNum(s.ban_kinh_m) + " m" : "—"}</td>
       <td class="small muted">${s.dong_phien_at ? Utils.fmtDateTime(s.dong_phien_at) : "—"}</td>
+      <td class="actions">
+        ${s.trang_thai === "OPEN"
+          ? `<button class="btn btn-ghost btn-icon act-control" data-id="${s.id}" title="Điều khiển phiên này">${Icons.render("sliders", 15)}</button>`
+          : ""}
+        <button class="btn btn-ghost btn-icon act-records" data-id="${s.id}" data-name="${Utils.escapeHtml(s.ten_phien)}" title="Xem bản ghi điểm danh">${Icons.render("list", 15)}</button>
+      </td>
     </tr>`;
+  }
+
+  /** Audit F10: bảng bản ghi điểm danh THEO PHIÊN (admin) — API mới
+   *  GET /attendance/sessions/{id}/records/ (BCN, phân trang + lọc + tìm).
+   *  Sau override/đóng phiên BCN kiểm tra được kết quả cuối cùng. */
+  async function openSessionRecordsModal(sessionId, sessionName) {
+    let recordsState = { page: 1, trangThai: "", search: "" };
+    openModal({
+      title: `Bản ghi điểm danh — ${sessionName}`,
+      bodyHTML: `
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="rec-search">Tìm thành viên</label>
+            <input class="form-input" id="rec-search" type="search" placeholder="Tên / MSSV / email..." autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rec-status">Trạng thái</label>
+            <select class="form-select" id="rec-status">
+              <option value="">Tất cả</option>
+              <option value="CO_MAT">Có mặt</option>
+              <option value="CO_PHEP">Có phép</option>
+              <option value="DI_MUON">Đi muộn</option>
+              <option value="VANG">Vắng</option>
+            </select>
+          </div>
+        </div>
+        <div id="records-table-wrap"><div class="skeleton" style="height:14px;width:60%"></div><div class="skeleton mt-2" style="height:14px;width:80%"></div><div class="skeleton mt-2" style="height:14px;width:40%"></div></div>
+        <div class="pagination mt-2" id="records-pagination"><span class="page-info small muted"></span><div class="page-btns"></div></div>`,
+      footerHTML: `<button class="btn btn-outline" data-close>Đóng</button>`,
+      onMount(backdrop, close) {
+        backdrop.querySelector("[data-close]").addEventListener("click", close);
+        const wrap = backdrop.querySelector("#records-table-wrap");
+        const pager = backdrop.querySelector("#records-pagination");
+        const statusLabel = { CO_MAT: "Có mặt", CO_PHEP: "Có phép", DI_MUON: "Đi muộn", VANG: "Vắng" };
+
+        const loadRecords = async () => {
+          Utils.skeleton(wrap, 3);
+          try {
+            const params = { page: recordsState.page, page_size: 10 };
+            if (recordsState.trangThai) params.trang_thai = recordsState.trangThai;
+            if (recordsState.search) params.search = recordsState.search;
+            const { items, pagination } = await ApiClient.getList(
+              `/attendance/sessions/${sessionId}/records/`, params
+            );
+            if (!items.length) {
+              wrap.innerHTML = `<div class="empty"><div class="empty-icon">${Icons.render("list")}</div><h3>Không có bản ghi nào</h3><p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p></div>`;
+              pager.querySelector(".page-info").textContent = "";
+              pager.querySelector(".page-btns").innerHTML = "";
+              return;
+            }
+            wrap.innerHTML = `
+              <div class="table-wrap"><table class="table">
+                <thead><tr><th>Thành viên</th><th>Trạng thái</th><th>Check-in lúc</th><th class="num">Khoảng cách</th><th>Thiết bị</th><th class="num">XP</th><th>Cờ</th></tr></thead>
+                <tbody>
+                  ${items.map((r) => {
+                    const [tone, label] = Object.entries(statusLabel).find(([k]) => k === r.trang_thai) || [r.trang_thai, r.trang_thai];
+                    return `<tr>
+                      <td>
+                        <div class="bold small">${Utils.escapeHtml(r.member_ten || "—")}</div>
+                        <div class="xs muted">${Utils.escapeHtml(r.member_mssv || "")}${r.member_lop ? " · " + Utils.escapeHtml(r.member_lop) : ""}</div>
+                      </td>
+                      <td>${Utils.badge(label[1] || label, tone === "CO_MAT" ? "success" : r.trang_thai === "DI_MUON" ? "warning" : r.trang_thai === "CO_PHEP" ? "info" : "neutral")}</td>
+                      <td class="small muted">${r.checked_in_at ? Utils.fmtDateTime(r.checked_in_at) : "—"}</td>
+                      <td class="num small">${r.khoang_cach_m != null ? Utils.fmtNum(Math.round(r.khoang_cach_m)) + " m" : "—"}</td>
+                      <td class="small mono">${r.device_id ? Utils.escapeHtml(String(r.device_id).slice(0, 14)) : "—"}</td>
+                      <td class="num small">${r.xp_awarded ?? 0}</td>
+                      <td>${r.is_suspicious ? '<span class="badge badge-danger">Nghi vấn</span>' : ""}${r.overridden_by_email ? `<div class="xs muted mt-2">GV ghi đè: ${Utils.escapeHtml(r.overridden_by_email)}</div>` : ""}</td>
+                    </tr>`;
+                  }).join("")}
+                </tbody>
+              </table></div>`;
+            pager.querySelector(".page-info").textContent = pagination
+              ? `Tổng ${Utils.fmtNum(pagination.total_items)} bản ghi · trang ${pagination.page}/${pagination.total_pages}`
+              : "";
+            pager.querySelector(".page-btns").innerHTML = "";
+            if (pagination && pagination.total_pages > 1) {
+              renderPagination(pager, pagination, (p) => { recordsState.page = p; loadRecords(); });
+            }
+          } catch (err) {
+            wrap.innerHTML = `<div class="empty"><div class="empty-icon">${Icons.render("alert-triangle")}</div><h3>Không tải được bản ghi</h3><p>${Utils.escapeHtml(err.message || "")}</p></div>`;
+          }
+        };
+
+        backdrop.querySelector("#rec-status").addEventListener("change", (e) => {
+          recordsState.trangThai = e.target.value;
+          recordsState.page = 1;
+          loadRecords();
+        });
+        backdrop.querySelector("#rec-search").addEventListener("input", Utils.debounce(() => {
+          recordsState.search = backdrop.querySelector("#rec-search").value.trim();
+          recordsState.page = 1;
+          loadRecords();
+        }, 300));
+        loadRecords();
+      },
+    });
   }
 
   async function loadSessions() {
@@ -508,9 +748,16 @@
       }
       wrap.innerHTML = `
         <div class="table-wrap"><table class="table">
-          <thead><tr><th>Tên phiên</th><th>Trạng thái</th><th>Mở lúc</th><th>Hiệu lực đến</th><th class="num">Bán kính</th><th>Đóng lúc</th></tr></thead>
+          <thead><tr><th>Tên phiên</th><th>Trạng thái</th><th>Mở lúc</th><th>Hiệu lực đến</th><th class="num">Bán kính</th><th>Đóng lúc</th><th>Hành động</th></tr></thead>
           <tbody>${items.map(rowHTML).join("")}</tbody>
         </table></div>`;
+      // Audit F10: hành động THEO DÒNG — điều khiển phiên OPEN bất kỳ / xem bản ghi
+      Utils.qsa(".act-control", wrap).forEach((b) =>
+        b.addEventListener("click", () => selectOpenSession(Number(b.dataset.id)))
+      );
+      Utils.qsa(".act-records", wrap).forEach((b) =>
+        b.addEventListener("click", () => openSessionRecordsModal(Number(b.dataset.id), b.dataset.name))
+      );
       renderPagination(pager, pagination, (p) => { state.page = p; loadSessions(); });
       renderKpis();
     } catch (err) {
@@ -527,18 +774,58 @@
   }
 
   /* ================= Mở phiên mới ================= */
-  async function openNewSessionModal() {
-    let events = [];
-    try {
-      const { items } = await ApiClient.getList("/events/", { page: 1 });
-      events = items;
-    } catch (err) {
-      console.error(err); // sự kiện chỉ là tùy chọn — không chặn việc mở phiên
-    }
-    const eventOptions = events
-      .map((ev) => `<option value="${ev.id}">${Utils.escapeHtml(ev.ten_hoat_dong)} (${Utils.escapeHtml(ev.ma_hd || "")})</option>`)
-      .join("");
+  /** Audit F09: bộ chọn sự kiện search + phân trang — sự kiện thứ 25+ cũng
+   *  chọn được (trước đây chỉ nạp trang 1, mặc định 20 dòng). */
+  function bindEventPicker(backdrop, { selectId, searchId, moreId }) {
+    const select = backdrop.querySelector("#" + selectId);
+    const search = backdrop.querySelector("#" + searchId);
+    const moreBtn = backdrop.querySelector("#" + moreId);
+    let browsePage = 0;
+    let browseDone = false;
 
+    const optionHTML = (ev) =>
+      `<option value="${ev.id}">${Utils.escapeHtml(ev.ten_hoat_dong)} (${Utils.escapeHtml(ev.ma_hd || "")})</option>`;
+
+    const loadBrowsePage = async () => {
+      if (browseDone) return;
+      const { items, pagination } = await ApiClient.getList("/events/", {
+        page: browsePage + 1,
+        page_size: 20,
+      });
+      const have = new Set(Utils.qsa("option", select).map((o) => o.value));
+      const fresh = items.filter((ev) => !have.has(String(ev.id)));
+      select.insertAdjacentHTML("beforeend", fresh.map(optionHTML).join(""));
+      browsePage += 1;
+      browseDone = !pagination || browsePage >= pagination.total_pages;
+      if (browseDone && moreBtn) moreBtn.classList.add("hidden");
+    };
+
+    const runSearch = Utils.debounce(async () => {
+      const q = (search?.value || "").trim();
+      select.innerHTML = '<option value="">— Không gắn sự kiện —</option>';
+      browsePage = 0;
+      browseDone = false;
+      if (moreBtn) moreBtn.classList.add("hidden");
+      try {
+        const { items, pagination } = await ApiClient.getList("/events/", {
+          page: 1, page_size: 20, search: q || undefined,
+        });
+        select.insertAdjacentHTML("beforeend", items.map(optionHTML).join(""));
+        browseDone = !pagination || browsePage + 1 >= pagination.total_pages;
+        if (!browseDone && moreBtn) moreBtn.classList.remove("hidden");
+      } catch (err) {
+        Toast.error("Không tìm kiếm được sự kiện: " + (err.message || ""));
+      }
+    }, 300);
+
+    if (search) search.addEventListener("input", runSearch);
+    if (moreBtn) moreBtn.addEventListener("click", () => {
+      loadBrowsePage().catch((err) => Toast.error("Không tải thêm được: " + (err.message || "")));
+    });
+    loadBrowsePage().catch((err) => console.error(err)); // sự kiện tùy chọn — không chặn
+  }
+
+  async function openNewSessionModal() {
     openModal({
       title: "Mở phiên điểm danh mới",
       bodyHTML: `
@@ -570,10 +857,13 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="ss-event">Gắn với sự kiện (tùy chọn)</label>
-            <select class="form-select" id="ss-event">
+            <input class="form-input" id="ss-event-search" type="search" placeholder="Tìm sự kiện theo tên / mã..." autocomplete="off">
+            <select class="form-select mt-2" id="ss-event">
               <option value="">— Không gắn sự kiện —</option>
-              ${eventOptions}
             </select>
+            <div class="flex items-center justify-end mt-2">
+              <button type="button" class="btn btn-outline btn-sm" id="ss-event-more">Tải thêm sự kiện</button>
+            </div>
           </div>
           <p class="form-hint">${Icons.render("info", 13)} Khi mở phiên, hệ thống <b>tự tạo bản ghi VẮNG</b> cho toàn bộ thành viên đang hoạt động — check-in GPS sẽ ghi đè thành CÓ MẶT / ĐI MUỘN.</p>
         </form>`,
@@ -582,6 +872,7 @@
         <button class="btn btn-primary" id="btn-save-session">${Icons.render("play", 16)} Mở phiên</button>`,
       onMount(backdrop, close) {
         backdrop.querySelector("[data-close]").addEventListener("click", close);
+        bindEventPicker(backdrop, { selectId: "ss-event", searchId: "ss-event-search", moreId: "ss-event-more" });
         backdrop.querySelector("#session-form").addEventListener("submit", (ev) => {
           ev.preventDefault();
           backdrop.querySelector("#btn-save-session").click();

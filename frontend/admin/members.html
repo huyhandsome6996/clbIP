@@ -344,7 +344,9 @@
       const params = { page: state.page };
       if (state.search) params.search = state.search;
       if (state.lop) params.lop = state.lop;
-      if (state.trangThai) params.trang_thai_hd = state.trangThai;
+      // Audit F06: query list dùng `trang_thai` (canonical backend) — KHÔNG
+      // phải `trang_thai_hd` (chỉ là tên trường WRITE payload/response).
+      if (state.trangThai) params.trang_thai = state.trangThai;
       const { items, pagination } = await ApiClient.getList("/members/", params);
       if (!items.length) {
         tbody.innerHTML = "";
@@ -490,16 +492,68 @@
           const btn = modal.querySelector("#btn-submit-add");
           const undo = Utils.btnLoading(btn, "Đang thêm...");
           try {
-            await ApiClient.post("/members/", body);
-            Toast.success(`Đã thêm thành viên ${body.ho_ten}.`);
+            const created = await ApiClient.post("/members/", body);
             close();
             state.page = 1;
             loadMembers();
+            // Audit F03: backend sinh mật khẩu khi bỏ trống → trả ĐÚNG 1 LẦN
+            // trong `initial_password`. Hiện modal riêng cho BCN sao chép,
+            // KHÔNG toast rồi đóng mất credential.
+            if (created && created.initial_password) {
+              showInitialPasswordModal(created);
+            } else {
+              Toast.success(`Đã thêm thành viên ${body.ho_ten}.`);
+            }
           } catch (err) {
             showFieldErrors(modal, err.errors);
             Toast.error(err.message);
           } finally {
             undo();
+          }
+        });
+      },
+    });
+  }
+
+  /* ============ MODAL: MẬT KHẨU KHỞI TẠO (audit F03) ============
+   * Hiện credential ĐÚNG MỘT LẦN trong luồng riêng có chủ đích — BCN sao
+   * chép gửi thành viên qua kênh riêng. KHÔNG lưu localStorage/log/URL. */
+  function showInitialPasswordModal(created) {
+    const hoTen = Utils.escapeHtml(created.ho_ten || "thành viên mới");
+    const email = Utils.escapeHtml(created.email || "");
+    const pwd = String(created.initial_password || "");
+    openModal({
+      title: "Mật khẩu khởi tạo — chỉ hiển thị lần này",
+      bodyHTML: `
+        <div class="flex items-center gap-2 mb-4">
+          <span class="badge badge-warning">Quan trọng</span>
+          <span class="small muted">Hãy sao chép ngay — sau khi đóng sẽ không xem lại được.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Thành viên</label>
+          <div class="bold">${hoTen}${email ? ` <span class="muted small">· ${email}</span>` : ""}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="initial-password-value">Mật khẩu đăng nhập</label>
+          <div class="input-wrap">
+            <input class="form-input mono" id="initial-password-value" readonly value="${Utils.escapeHtml(pwd)}">
+          </div>
+          <p class="form-hint">Gửi mật khẩu cho thành viên qua kênh riêng (Zalo/email cá nhân) và nhắc đổi mật khẩu sau lần đăng nhập đầu.</p>
+        </div>`,
+      footerHTML: `
+        <button class="btn btn-ghost" data-close>Đã lưu mật khẩu — Đóng</button>
+        <button class="btn btn-primary" id="btn-copy-cred">${ic("copy", 16)}Sao chép mật khẩu</button>`,
+      onMount(modal, close) {
+        modal.querySelector("[data-close]").addEventListener("click", close);
+        modal.querySelector("#btn-copy-cred").addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(pwd);
+            Toast.success("Đã sao chép mật khẩu vào clipboard.");
+          } catch {
+            // Fallback: chọn text cho Ctrl+C (clipboard API cần https/permission)
+            const input = modal.querySelector("#initial-password-value");
+            input.focus(); input.select();
+            Toast.info("Trình duyệt chặn clipboard — mật khẩu đã được chọn, nhấn Ctrl+C để sao chép.");
           }
         });
       },

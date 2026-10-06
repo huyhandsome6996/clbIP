@@ -183,7 +183,7 @@
 
 <!-- Chart.js v4 cho biểu đồ dashboard. Tải đồng bộ trước script chính;
      nếu CDN fail (offline) → typeof Chart === "undefined" → trang vẫn chạy, hiện empty state. -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="/frontend/assets/chart.umd.min.js"></script> <!-- audit F13: vendor cùng origin — CSP production chỉ cho 'self', jsDelivr bị chặn -->
 <script src="/frontend/js/api.js"></script>
 <script src="/frontend/js/icons.js"></script>
 <script src="/frontend/js/toast.js"></script>
@@ -288,7 +288,9 @@
   /* ================= 1. KPI ================= */
   async function loadKpis() {
     const [mem, fund, ev, att] = await Promise.allSettled([
-      ApiClient.get("/members/"),
+      // Audit F11: KPI "Thành viên hoạt động" chỉ đếm ACTIVE — trước đây gọi
+      // /members/ không lọc nên INACTIVE/LEAVE cũng bị tính.
+      ApiClient.get("/members/", { trang_thai: "ACTIVE" }),
       ApiClient.get("/funds/stats/"),
       ApiClient.get("/events/", { trang_thai: "OPEN_REGISTRATION" }),
       ApiClient.get("/attendance/sessions/", { trang_thai: "OPEN" }),
@@ -642,7 +644,25 @@
   }
 
   /* ================= 3. BÌNH CHỌN CỘNG ĐỒNG ================= */
+  // Audit F12: khóa nút vote theo `has_voted` TỪ SERVER (theo user, mọi thiết
+  // bị) — không dùng localStorage chỉ có poll ID để quyết định quyền vote.
+  // localStorage (key có prefix user id) CHỈ nhớ lựa chọn để tô sáng option,
+  // tối ưu hiển thị, không authoritative.
+  function pollVotedKey(pollId) {
+    const uid = Auth.cachedUser()?.id ?? "anon";
+    return `clbip_poll_voted_u${uid}_${pollId}`;
+  }
+  // Dọn key cũ không có prefix user (kỳ trước dùng "clbip_poll_voted_<id>")
+  function cleanupLegacyPollKeys() {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => /^clbip_poll_voted_\d+$/.test(k))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch { /* storage đầy/chặn — bỏ qua */ }
+  }
+
   async function loadPolls() {
+    cleanupLegacyPollKeys();
     const box = document.getElementById("polls-list");
     Utils.skeleton(box, 3);
     try {
@@ -653,9 +673,9 @@
       }
       box.innerHTML = items.map((p) => {
         const total = p.total_votes || 0;
-        const votedKey = "clbip_poll_voted_" + p.id;
-        const myVote = localStorage.getItem(votedKey);
-        const disabled = myVote !== null || p.is_closed;
+        const myVote = localStorage.getItem(pollVotedKey(p.id));
+        const voted = p.has_voted === true || myVote !== null;
+        const disabled = voted || p.is_closed;
         const opts = (p.options || []).map((opt, i) => {
           const cnt = Number(p.votes?.[String(i)] || 0);
           const pct = total ? Math.round((cnt / total) * 100) : 0;
@@ -683,7 +703,7 @@
               ? `<button class="btn btn-ghost btn-sm act-close-poll" data-poll="${p.id}" title="Chặn mọi vote mới">Đóng bình chọn</button>`
               : ""}
           </div>
-          ${myVote !== null && !p.is_closed ? '<p class="xs muted mb-2">Bạn đã bình chọn cho kỳ này rồi.</p>' : ""}
+          ${voted && !p.is_closed ? '<p class="xs muted mb-2">Bạn đã bình chọn cho kỳ này rồi.</p>' : ""}
           ${opts}
         </div>`;
       }).join("");
@@ -700,12 +720,13 @@
     const undo = Utils.btnLoading(btn, "Đang gửi...");
     try {
       await ApiClient.post(`/polls/${id}/vote/`, { option_index: index });
-      localStorage.setItem("clbip_poll_voted_" + id, String(index));
+      localStorage.setItem(pollVotedKey(id), String(index));
       Toast.success("Cảm ơn bạn đã bình chọn!");
       loadPolls();
     } catch (err) {
       Toast.error(err.message);
       undo();
+      loadPolls(); // phục hồi trạng thái server (409 đã vote / poll đóng)
     }
   }
 

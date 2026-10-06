@@ -9,6 +9,7 @@ from apps.documents.views import (
     DocumentDetailView,
     DocumentDownloadView,
     DocumentListCreateView,
+    DocumentPreviewView,
     DocumentSearchView,
 )
 
@@ -18,4 +19,5 @@ urlpatterns = [
     path("search/", DocumentSearchView.as_view(), name="document_search"),
     path("<int:pk>/", DocumentDetailView.as_view(), name="document_detail"),
     path("<int:pk>/download/", DocumentDownloadView.as_view(), name="document_download"),
+    path("<int:pk>/preview/", DocumentPreviewView.as_view(), name="document_preview"),
 ]

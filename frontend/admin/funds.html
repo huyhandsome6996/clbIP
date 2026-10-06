@@ -320,6 +320,14 @@
       if (state.fromDate) params.from_date = state.fromDate;
       if (state.toDate) params.to_date = state.toDate;
       const { items, pagination } = await ApiClient.getList("/funds/", params);
+      // Audit F14: sau xóa/lọc/mutation, trang hiện hành có thể vượt total_pages
+      // (vd đang trang 3 rồi lọc → còn 1 trang). Tự snap về trang cuối cùng
+      // còn tồn tại, tránh treo "trang rỗng" với counter lỗi thời.
+      if (pagination && pagination.total_pages > 0 && state.page > pagination.total_pages) {
+        state.page = pagination.total_pages;
+        loadTransactions();
+        return;
+      }
       if (!items.length) {
         tbody.innerHTML = "";
         Utils.empty(tbody, { icon: "wallet", title: "Chưa có giao dịch nào", desc: "Ghi sổ thu/chi đầu tiên hoặc nới rộng bộ lọc thời gian." });
@@ -422,6 +430,17 @@
       onClose() { state.idempotencyKey = null; },
       onMount(modal, close) {
         modal.querySelector("[data-close]").addEventListener("click", close);
+        // Audit F02: user SỬA NỘI DUNG sau một lần gửi thất bại → ý định đã
+        // đổi → phải sinh key MỚI, không tái dùng key cũ (không thì backend
+        // trả 409 conflict). Retry NGUYÊN yêu cầu giữ nguyên key → replay 200.
+        modal.querySelectorAll("input, select, textarea").forEach((el) => {
+          el.addEventListener("input", () => {
+            state.idempotencyKey = newIdempotencyKey();
+          });
+          el.addEventListener("change", () => {
+            state.idempotencyKey = newIdempotencyKey();
+          });
+        });
         modal.querySelector("#btn-submit-gd").addEventListener("click", async () => {
           clearFieldErrors(modal);
           const so_tien = Number(modal.querySelector("#gd-tien").value);
@@ -451,7 +470,19 @@
             loadTransactions();
           } catch (err) {
             showFieldErrors(modal, err.errors);
-            Toast.error(err.message);
+            if (err.status === 409) {
+              // Audit F02: backend từ chối vì key đã dùng cho NỘI DUNG KHÁC.
+              // Reset key để lần submit kế tiếp là yêu cầu hoàn toàn mới;
+              // giữ form + dữ liệu đã nhập cho BCN kiểm tra lại.
+              state.idempotencyKey = newIdempotencyKey();
+              Toast.error(
+                err.message ||
+                  "Idempotency-Key đã dùng cho giao dịch khác. Kiểm tra sổ quỹ rồi lưu lại (hệ thống đã cấp khóa mới).",
+                "Xung đột ghi sổ",
+              );
+            } else {
+              Toast.error(err.message);
+            }
           } finally {
             undo();
           }
@@ -536,7 +567,12 @@
             });
             Toast.success(`Đã khóa sổ kỳ "${ten_ky}".`);
             close();
+            // Audit F14: khóa kỳ đổi is_locked của nhiều giao dịch hiện hành →
+            // refresh ĐỒNG THỜI cả 3 nguồn để badge không giữ trạng thái cũ.
             loadLocks();
+            loadStats();
+            state.page = 1;
+            loadTransactions();
           } catch (err) {
             showFieldErrors(modal, err.errors);
             Toast.error(err.message);

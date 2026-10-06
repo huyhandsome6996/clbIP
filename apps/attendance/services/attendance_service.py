@@ -167,8 +167,13 @@ class AttendanceService:
         except AttendanceRecord.DoesNotExist:
             raise NotFoundException("Bạn không có bản ghi điểm danh trong phiên này.")
 
-        # 3. Chặn check-in trùng
-        if record.trang_thai == AttendanceRecord.TrangThaiDiemDanh.CO_MAT:
+        # 3. Chặn check-in trùng — CẢ CO_MAT lẫn DI_MUON (audit F07: trước đây
+        # chỉ chặn CO_MAT nên check-in muộn gửi lại vẫn ghi đè metadata/XP).
+        # Raise TRƯỚC mọi mutation → checked_in_at/device/GPS/XP không bị sửa.
+        if record.trang_thai in (
+            AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
+            AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
+        ):
             raise DuplicateDataException("Bạn đã điểm danh phiên này rồi!")
 
         # 4. Anti-Cheat Engine — raise nếu vi phạm bất kỳ lớp nào
@@ -303,6 +308,17 @@ class AttendanceService:
         """
         Cập nhật trạng thái điểm danh thủ công cho danh sách thành viên.
 
+        TOÀN VẸN DỮ LIỆU (audit F01 — regression bắt buộc):
+            1. VALIDATE TOÀN BỘ items TRƯỚC KHI ghi: shape, kiểu member_id,
+               trạng thái hợp lệ, member tồn tại, không trùng member_id.
+            2. GHI trong MỘT `transaction.atomic()` — mọi lỗi giữa chừng
+               (save fail, DB error) rollback toàn bộ, không để lại trạng
+               thái "một phần đã lưu" trong khi API báo thất bại.
+
+        Chính sách phiên CLOSED: override VẪN được phép (BCN chốt lại số
+        liệu sau khi đóng phiên là nghiệp vụ hợp lệ — ghi audit qua
+        `overridden_by`; không đổi policy tùy tiện).
+
         Args:
             session: phiên điểm danh đích.
             items: [{"member_id": int, "trang_thai": "CO_MAT|VANG|CO_PHEP|DI_MUON"}].
@@ -311,44 +327,97 @@ class AttendanceService:
         Returns:
             Số bản ghi đã cập nhật. Member chưa có record trong phiên
             (tham gia muộn) → tạo mới bản ghi với trạng thái chỉ định.
+
+        Raises:
+            ValidationException: bất kỳ item nào sai → KHÔNG ghi gì cả.
         """
+        from django.db import transaction as db_transaction  # noqa: PLC0415
+
+        if not isinstance(items, list) or not items:
+            raise ValidationException(
+                "Danh sách override rỗng hoặc không hợp lệ.",
+                errors={"items": "Cần ít nhất một bản ghi cần cập nhật."},
+            )
+
         valid_statuses = set(AttendanceRecord.TrangThaiDiemDanh.values)
-        updated = 0
-        for item in items:
+
+        # ---- BƯỚC 1: VALIDATE TOÀN BỘ (không ghi gì khi có bất kỳ lỗi nào) ----
+        parsed: list[tuple[int, str]] = []  # (member_id, trang_thai)
+        seen_ids: set[int] = set()
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise ValidationException(
+                    f"Item thứ {idx + 1} không hợp lệ (cần object).",
+                    errors={"items": f"Dòng {idx + 1} phải là object {{member_id, trang_thai}}."},
+                )
             member_id = item.get("member_id")
             trang_thai = item.get("trang_thai")
 
             if trang_thai not in valid_statuses:
                 raise ValidationException(
                     f"Trạng thái điểm danh không hợp lệ: {trang_thai}",
-                    errors={"trang_thai": trang_thai},
+                    errors={"items": f"Dòng {idx + 1}: trạng thái '{trang_thai}' không nằm trong {sorted(valid_statuses)}."},
                 )
-            if not cls._repo().member_exists(member_id):
+            # bool là instance của int — loại rõ để tránh member_id=True đi qua
+            if not isinstance(member_id, int) or isinstance(member_id, bool) or member_id <= 0:
                 raise ValidationException(
-                    f"Không tồn tại thành viên với member_id={member_id}",
-                    errors={"member_id": member_id},
+                    f"member_id không hợp lệ: {member_id!r}",
+                    errors={"items": f"Dòng {idx + 1}: member_id phải là số nguyên dương."},
                 )
+            if member_id in seen_ids:
+                raise ValidationException(
+                    f"member_id={member_id} xuất hiện nhiều lần trong danh sách.",
+                    errors={"items": f"Dòng {idx + 1}: member_id={member_id} bị trùng."},
+                )
+            seen_ids.add(member_id)
+            parsed.append((member_id, trang_thai))
 
-            record, created = cls._repo().get_or_create_record(
-                session=session,
-                member_id=member_id,
-                defaults={"trang_thai": trang_thai},
+        missing_ids = seen_ids - cls._repo().filter_existing_member_ids(seen_ids)
+        if missing_ids:
+            sample = sorted(missing_ids)[:5]
+            raise ValidationException(
+                f"Không tồn tại thành viên với member_id={sample}"
+                + (f" (và {len(missing_ids) - len(sample)} ID khác)" if len(missing_ids) > len(sample) else ""),
+                errors={"member_id": [str(i) for i in sample]},
             )
-            if not created:
-                record.trang_thai = trang_thai
-            record.overridden_by = actor
-            if trang_thai == AttendanceRecord.TrangThaiDiemDanh.CO_PHEP:
-                record.is_suspicious = False  # có phép → xóa cờ nghi vấn
-            record.save()
 
-            updated += 1
+        # ---- BƯỚC 2: GHI ATOMIC — all-or-nothing ----
+        updated = 0
+        with db_transaction.atomic():
+            for member_id, trang_thai in parsed:
+                record, created = cls._repo().get_or_create_record(
+                    session=session,
+                    member_id=member_id,
+                    defaults={"trang_thai": trang_thai},
+                )
+                if not created:
+                    record.trang_thai = trang_thai
+                record.overridden_by = actor
+                if trang_thai == AttendanceRecord.TrangThaiDiemDanh.CO_PHEP:
+                    record.is_suspicious = False  # có phép → xóa cờ nghi vấn
+                record.save()
+                updated += 1
 
-        logger.info("BCN %s override %s bản ghi của phiên %s", actor, updated, session.id)
+        logger.info(
+            "BCN %s override %s bản ghi của phiên %s (atomic)", actor, updated, session.id
+        )
         return updated
 
     # ------------------------------------------------------------------
     # Tra cứu
     # ------------------------------------------------------------------
+    @classmethod
+    def list_records_for_session(
+        cls,
+        session: AttendanceSession,
+        trang_thai: Optional[str] = None,
+        search: Optional[str] = None,
+    ):
+        """Bản ghi điểm danh của một phiên (BCN audit — view tự phân trang)."""
+        return cls._repo().list_records_for_session(
+            session, trang_thai=trang_thai, search=search
+        )
+
     @classmethod
     def get_session_or_404(cls, session_id: int) -> AttendanceSession:
         """Lấy phiên theo id — không thấy → NotFoundException (404 envelope)."""

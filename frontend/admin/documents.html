@@ -197,15 +197,8 @@
     if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
     return (b / 1048576).toFixed(1) + " MB";
   }
-  /** Chuẩn hóa URL file (relative /media/... → tuyệt đối cùng origin) */
-  function fileUrl(f) {
-    if (!f) return "";
-    if (/^https?:\/\//i.test(f)) return f;
-    const origin = location.protocol.startsWith("http")
-      ? location.origin
-      : String(window.API_BASE || "").replace(/\/api\/v1\/?$/, "");
-    return origin + (f.startsWith("/") ? "" : "/") + f;
-  }
+  /* (audit F05) ĐÃ BỎ fileUrl(): mọi truy cập tệp giờ đi qua API cùng origin
+     (/documents/{id}/download|preview/) — không fetch URL media/storage trực tiếp. */
   function downloadName(doc) {
     const base = String(doc.tieu_de || "tai-lieu").replace(/[\\/:*?"<>|]+/g, " ").trim();
     const ext = (doc.file_type || String(doc.file || "").split(".").pop() || "").toLowerCase();
@@ -337,31 +330,34 @@
     let blobUrl = null;
     (async () => {
       try {
-        // Backend đặt X-Frame-Options: DENY → lấy blob (kèm Bearer) rồi nhúng blob URL
-        const res = await fetch(fileUrl(doc.file), {
-          headers: { Authorization: `Bearer ${ApiClient.getAccessToken()}` },
-        });
-        if (!res.ok) throw new ApiError(`Không xem trước được tài liệu (HTTP ${res.status}).`, res.status);
-        const blob = await res.blob();
+        // Audit F05: preview đi qua API CÙNG ORIGIN (/documents/{id}/preview/)
+        // — cùng phạm vi quyền với download, có refresh tự động, KHÔNG tăng
+        // luot_tai. Tuyệt đối không fetch URL media/storage trực tiếp kèm
+        // Bearer (DEBUG=False không serve /media/; origin khác bị CSP chặn).
+        const blob = await ApiClient.getBlob(`/documents/${doc.id}/preview/`);
         if (blob.size === 0) throw new Error("Tệp rỗng hoặc không truy cập được.");
         blobUrl = URL.createObjectURL(blob);
+        // Hàm mount ĐẶT TÊN RIÊNG — method shorthand `onMount(...) {}` không có
+        // binding tên trong thân nên `onMount._onClose = ...` từng throw
+        // ReferenceError (phát hiện qua E2E) → blob URL không bao giờ được revoke.
+        const mount = (backdrop, close) => {
+          backdrop.querySelector("[data-close]").addEventListener("click", close);
+          const frame = backdrop.querySelector("#preview-frame");
+          frame.src = blobUrl;
+          frame.addEventListener("load", () => {
+            frame.classList.remove("hidden");
+            const loading = backdrop.querySelector("#preview-loading");
+            if (loading) loading.remove();
+          });
+          // Dọn blob URL khi modal đóng (openModal gọi mount._onClose)
+          mount._onClose = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
+        };
         openModal({
           title: `Xem trước — ${doc.tieu_de}`,
           bodyHTML: `<div class="preview-loading" id="preview-loading">Đang nạp bản xem trước...</div>
                      <iframe class="preview-frame hidden" id="preview-frame" title="Bản xem trước PDF"></iframe>`,
           footerHTML: `<button class="btn btn-outline" data-close>Đóng</button>`,
-          onMount(backdrop, close) {
-            backdrop.querySelector("[data-close]").addEventListener("click", close);
-            const frame = backdrop.querySelector("#preview-frame");
-            frame.src = blobUrl;
-            frame.addEventListener("load", () => {
-              frame.classList.remove("hidden");
-              const loading = backdrop.querySelector("#preview-loading");
-              if (loading) loading.remove();
-            });
-            // Dọn blob URL khi modal đóng (được gán trước khi close() có thể chạy)
-            onMount._onClose = () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
-          },
+          onMount: mount,
         });
       } catch (err) {
         console.error(err);
