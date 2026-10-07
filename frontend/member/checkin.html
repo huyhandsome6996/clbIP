@@ -359,7 +359,7 @@
     /* ================= Shell Controller (Đồng bộ với home.html) ================= */
     const $ = (id) => document.getElementById(id);
 
-    function initMemberShell(activeKey) {
+    function initMemberShell(user) {
       const sidebar = $("main-sidebar");
       const contentArea = $("content-area");
       const toggleBtn = $("sidebar-toggle-btn");
@@ -435,9 +435,9 @@
         navFeedback.addEventListener("click", openFeedbackModal);
       }
 
-      function updateUserInfo(user) {
-        if (!user) return;
-        const name = user.ho_ten || user.email || "Thành viên";
+      function updateUserInfo(u) {
+        if (!u) return;
+        const name = u.ho_ten || u.email || "Thành viên";
         const init = Utils.initials(name);
         if ($("sb-avatar")) $("sb-avatar").textContent = init;
         if ($("sb-name")) $("sb-name").textContent = name;
@@ -451,8 +451,7 @@
         if ($("me-name")) $("me-name").textContent = name;
       }
 
-      const cached = Auth.cachedUser();
-      updateUserInfo(cached);
+      updateUserInfo(user || Auth.cachedUser());
 
       (async () => {
         try {
@@ -553,11 +552,11 @@
     }
 
     function renderMemberNav(active) {
-      initMemberShell(active);
+      // Legacy compatibility no-op
     }
 
 
-(function () {
+    (function () {
       "use strict";
 
       /* ================= State ================= */
@@ -571,19 +570,7 @@
       };
 
       /* ================= Nav member (FRONTEND_CONTRACT §6) ================= */
-      function renderMemberNav(active) { initMemberShell(active); }" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
-            ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
-        ).join("");
-        document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
-        document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
-        const me = Auth.cachedUser();
-        const av = document.getElementById("me-avatar");
-        if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
-        const nm = document.getElementById("me-name");
-        if (nm && me) nm.textContent = me.ho_ten || me.email;
-        const lv = document.getElementById("me-level");
-        if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
-      }
+      /* renderMemberNav handled by shell controller */
 
       /* ================= Haversine (R = 6371000 m) ================= */
       function haversine(lat1, lon1, lat2, lon2) {
@@ -948,9 +935,15 @@
         }
       }
 
-      renderMemberNav("checkin");
-      Auth.requireRole(["MEMBER", "BCN", "ADMIN"]).then(init).catch(() => {});
+      (async () => {
+        let user;
+        try { user = await Auth.requireRole(["MEMBER"]); } catch { return; }
+        initMemberShell(user);
+        renderMemberNav("checkin");
+        init();
+      })();
     })();
+  
 </script>
 </body>
 </html>
