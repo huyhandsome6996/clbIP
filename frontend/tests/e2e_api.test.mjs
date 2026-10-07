@@ -55,18 +55,38 @@ async function main() {
   // 3) F06 — filter trang_thai canonical (ACTIVE/INACTIVE/LEAVE)
   const f06 = await api("/members/?trang_thai=ACTIVE&page_size=50", { token: bcn.access });
   assert(f06.status === 200 && f06.env.success, "E2E-F06: GET /members/?trang_thai= → 200");
-  const totalMembers = f06.env.data.pagination?.total_items ?? f06.env.data.items.length;
+  // N04: assert ĐÚNG TRẠNG THÁI của items (không chỉ 200) — mọi item trả về ACTIVE
+  const f06Items = f06.env.data.items || [];
+  assert(
+    f06Items.length > 0 && f06Items.every((m) => m.trang_thai_hd === "ACTIVE"),
+    `E2E-F06b: ${f06Items.length} items trả về đều trang_thai_hd=ACTIVE`,
+  );
+  const totalMembers = f06.env.data.pagination?.total_items ?? f06Items.length;
   assert(totalMembers >= 130, `E2E-§6: total_members authoritative = ${totalMembers} (≥130)`);
 
-  // Người #121 chọn được qua search (page_size 20 không che mất)
+  // Người #121 chọn được qua search (page_size 20 không che mất) — N04: assert
+  // IDENTITY chính xác (email khớp, đúng 1 kết quả), không chỉ count/status
   const m121 = await api("/members/?search=e2e-member121", { token: bcn.access });
-  const m121found = (m121.env.data.items || []).some((m) => m.user_email === "e2e-member121@clbip.test" || (m.ho_ten || "").includes("121"));
-  assert(m121.status === 200 && m121found, "E2E-§6: thành viên #121 chọn được (search + total)");
+  const m121Items = m121.env.data.items || [];
+  const m121exact = m121Items.filter((m) => m.user_email === "e2e-member121@clbip.test");
+  assert(
+    m121.status === 200 && m121exact.length === 1 && !!m121exact[0].id,
+    "E2E-§6: thành viên #121 chọn được — identity khớp (email + id)",
+  );
+  const member121Id = m121exact[0] && m121exact[0].id;
 
-  // 4) F09 — events search
+  // 4) F09 — events search: assert đúng sự kiện khớp + no-match → 0 items
   const f09 = await api("/events/?search=E2E", { token: bcn.access });
   const evTotal = f09.env.data.pagination?.total_items ?? (f09.env.data.items || []).length;
-  assert(f09.status === 200 && evTotal >= 25, `E2E-F09: search=E2E → ${evTotal} sự kiện (≥25)`);
+  assert(f09.status === 200 && evTotal >= 25, `E2E-F09a: search=E2E → ${evTotal} sự kiện (≥25)`);
+  const f09Items = f09.env.data.items || [];
+  assert(
+    f09Items.length > 0 && f09Items.every((ev) => (ev.ten_hoat_dong || "").includes("E2E")),
+    "E2E-F09b: mọi sự kiện trả về khớp từ khóa (ten_hoat_dong chứa E2E)",
+  );
+  const f09none = await api("/events/?search=KHONGTONTAI-XYZ-981", { token: bcn.access });
+  const noneTotal = f09none.env.data.pagination?.total_items ?? 0;
+  assert(f09none.status === 200 && noneTotal === 0, "E2E-F09c: search không khớp → 200 + 0 items");
 
   // 5) F10 — records của phiên OPEN + phân trang thật
   const sessions = await api("/attendance/sessions/?trang_thai=OPEN&page_size=50", { token: bcn.access });
@@ -78,12 +98,34 @@ async function main() {
   assert(recs.status === 200 && recTotal >= 121, `E2E-F10b: records phiên → total ${recTotal} (≥121, authoritative)`);
   const recsP2 = await api(`/attendance/sessions/${openSession.id}/records/?page=2&page_size=50`, { token: bcn.access });
   assert(recsP2.status === 200 && (recsP2.env.data.items || []).length > 0, "E2E-F10c: trang 2 có dữ liệu (phân trang thật)");
+  // N04: records search tìm ĐÚNG member121 (identity, không chỉ status 200)
+  const rec121 = await api(`/attendance/sessions/${openSession.id}/records/?search=e2e-member121`, { token: bcn.access });
+  const rec121Items = rec121.env.data.items || [];
+  assert(
+    rec121.status === 200 && rec121Items.length >= 1 &&
+      rec121Items.every((r) => (r.member_mssv || "").includes("121") || (r.member_ten || "").includes("121")),
+    "E2E-F10d: records search=member121 → đúng định danh member đó",
+  );
 
-  // 6) Vé #25 của E2EEV001 nhìn được qua phân trang
+  // 6) Vé #25 của E2EEV001 nhìn được qua phân trang — N04: assert identity
+  // (member025 + ma_ve) ở TRANG 2, không chỉ status 200
   const mainEv = await api("/events/?search=E2EEV001", { token: bcn.access });
-  const mainEvId = (mainEv.env.data.items || [])[0]?.id;
+  const mainEvItem = (mainEv.env.data.items || [])[0];
+  assert(!!mainEvItem && !!mainEvItem.id, "E2E-§6a: tìm được sự kiện E2EEV001 (identity)");
+  const mainEvId = mainEvItem && mainEvItem.id;
   const tickets = await api(`/events/${mainEvId}/registrations/?page=2&page_size=50`, { token: bcn.access });
-  assert(tickets.status === 200, "E2E-§6: vé phân trang — trang 2 đọc được (vé #25 trong tầm)");
+  const t2Items = tickets.env.data.items || [];
+  assert(
+    tickets.status === 200 && t2Items.length > 0,
+    "E2E-§6b: vé phân trang — trang 2 có dữ liệu",
+  );
+  // vé #25 → thành viên e2e-member025: tìm identity qua search trang sau
+  const reg25 = await api(`/events/${mainEvId}/registrations/?page_size=100&page=2`, { token: bcn.access });
+  const reg25Items = reg25.env.data.items || [];
+  assert(
+    reg25.status === 200 && reg25Items.some((r) => (r.member_ten || "").includes("025")),
+    "E2E-§6c: vé của member025 đọc được ở trang sau (không mất vé trang 2+)",
+  );
 
   // 7) F12 — has_voted per user
   const polls = await api("/polls/", { token: member.access });
@@ -115,7 +157,12 @@ async function main() {
   await new Promise((r) => setTimeout(r, 1500)); // qua cửa sổ throttle 1s — replay là kịch bản mạng chậm, không phải flood
   const t2 = await api("/funds/", { method: "POST", token: bcn.access, body: txBody, headers: { "Idempotency-Key": idemKey } });
   assert(t1.status === 201, "E2E-IDEMa: POST quỹ lần đầu → 201");
-  assert(t2.status === 200 && t2.env.data.id === t1.env.data.id, "E2E-IDEMb: retry cùng key → replay cùng phiếu (không trùng)");
+  assert(
+    t2.status === 200 && t2.env.data.id === t1.env.data.id &&
+      t2.env.data.ma_phieu === t1.env.data.ma_phieu,
+    "E2E-IDEMb: retry cùng key → replay cùng phiếu (id + ma_phieu GIỐNG NHAU)",
+  );
+  assert(!!t1.env.data.ma_phieu && t1.env.data.ma_phieu.startsWith("PT"), "E2E-IDEMc: mã phiếu đúng định danh (PT-...)");
 
   // 9) F13 — Chart.js vendor cùng origin (CSP-friendly)
   const chart = await fetch(`${BASE}/frontend/assets/chart.umd.min.js`);

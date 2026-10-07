@@ -87,9 +87,11 @@ function makeApiSandbox(scenarios) {
 /* ------------------------------------------------------------------ */
 function extractInlineScript(htmlPath) {
   const html = fs.readFileSync(htmlPath, "utf8");
-  const m = html.match(/<script>([\s\S]*?)<\/script>/);
-  if (!m) throw new Error("Không tìm thấy inline script trong " + htmlPath);
-  return m[1];
+  const blocks = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  if (!blocks.length) throw new Error("Không tìm thấy inline script trong " + htmlPath);
+  // Trang tri-view (N01) có 2 script inline: PAGE_DEFAULT_VIEW (ngắn) + engine
+  // (dài) — lấy script DÀI NHẤT là engine chính của trang.
+  return blocks.reduce((a, b) => (b.length > a.length ? b : a));
 }
 
 /**
@@ -107,15 +109,30 @@ function makeAttendanceSandbox({ apiGet, apiGetError } = {}) {
   // KHÔNG bị sửa (expose chỉ tồn tại trong sandbox test).
   const lastIdx = source.lastIndexOf("})();");
   if (lastIdx === -1) throw new Error("Không tìm thấy dấu kết thúc IIFE");
+  // N01: engine tri-view mới quản timer nonce TRONG state (nonceInterval/
+  // nonceRetryTimer/nonceAutoRetries) — expose theo kiến trúc mới, hợp đồng
+  // hành vi R03 giữ nguyên.
   const exposeCall =
-    "__clbipExpose({ fetchNonce, invalidateNonceUI, stopNonceLoops, stopNonceTimer, state," +
-    " timers: () => ({ interval: nonceTimer, retry: nonceRetryTimer, autoRetries: nonceAutoRetries }) });";
+    "__clbipExpose({ fetchNonce, startNonceLoop, refreshNonce: () => startNonceLoop(state.openSession && state.openSession.id), invalidateNonceUI, stopNonceLoops, stopNonceTimer, armNonceInterval, state," +
+    " timers: () => ({ interval: state.nonceInterval, retry: state.nonceRetryTimer, autoRetries: state.nonceAutoRetries }) });";
   const patched = source.slice(0, lastIdx) + exposeCall + "\n" + source.slice(lastIdx);
 
   const elements = new Map();
   const el = (id) => {
     if (!elements.has(id)) {
-      elements.set(id, { id, textContent: "", style: {}, value: "", addEventListener: () => {} });
+      // innerText ↔ textContent dùng chung bộ nhớ (engine thật viết bằng
+      // innerText — DOM thật coi chúng tương đương ở mức text thuần)
+      const e = {
+        id, style: {}, value: "", _text: "",
+        addEventListener: () => {},
+      };
+      Object.defineProperty(e, "textContent", {
+        get() { return e._text; }, set(v) { e._text = String(v); },
+      });
+      Object.defineProperty(e, "innerText", {
+        get() { return e._text; }, set(v) { e._text = String(v); },
+      });
+      elements.set(id, e);
     }
     return elements.get(id);
   };

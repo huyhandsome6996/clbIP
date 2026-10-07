@@ -44,4 +44,3 @@ class Migration(migrations.Migration):
         ),
         migrations.RunPython(ensure_anchor_row, remove_anchor_row),
     ]
-
