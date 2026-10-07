@@ -93,6 +93,22 @@
     .radar-pulse {
       animation: pulse-subtle 2s infinite ease-in-out;
     }
+
+    /* Smooth View Enter Transition */
+    @keyframes viewFadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .view-enter {
+      animation: viewFadeSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.04); opacity: 0.85; }
+    }
+    .radar-pulse {
+      animation: pulse-subtle 2s infinite ease-in-out;
+    }
   </style>
 </head>
 <body class="h-full bg-slate-50 text-slate-700 antialiased font-sans flex overflow-hidden">
@@ -105,157 +121,101 @@
 
 <!-- FIXED LEFT SIDEBAR (260px desktop) -->
 
-<aside class="fixed top-0 bottom-0 left-0 w-[260px] bg-navy-900 border-r border-white/10 flex flex-col z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none" id="shell-sidebar">
-
-<!-- Brand Header -->
-
-<div class="h-[68px] px-5 flex items-center gap-3 border-b border-white/10 shrink-0">
-
-<div class="w-10 h-10 rounded-full bg-white p-1 ring-2 ring-cyan-500/40 shadow-sm shadow-cyan-500/30 flex items-center justify-center shrink-0">
-
-<img id="brand-logo" src="/frontend/assets/logo.png" alt="CLB IP Logo" class="w-full h-full object-contain rounded-full" />
-
-</div>
-
-<div class="overflow-hidden">
-
-<div class="flex items-center gap-1.5">
-
-<span class="font-heading font-bold text-sm tracking-tight text-white leading-tight">CLB IP ĐHSP HUẾ</span>
-
-</div>
-
-<p class="text-[11px] text-cyan-400 font-medium flex items-center gap-1.5 mt-0.5">
-
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-
+<aside id="shell-sidebar" class="fixed top-0 bottom-0 left-0 w-[260px] bg-navy-900 border-r border-white/10 flex flex-col z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+    <!-- Brand Header -->
+    <div class="h-[68px] px-5 flex items-center gap-3 border-b border-white/10 shrink-0">
+      <div class="w-10 h-10 rounded-full bg-white p-1 ring-2 ring-cyan-500/40 shadow-sm shadow-cyan-500/30 flex items-center justify-center shrink-0">
+        <img id="brand-logo" src="/frontend/assets/logo.png" alt="CLB IP Logo" class="w-full h-full object-contain rounded-full" />
+      </div>
+      <div class="overflow-hidden">
+        <div class="flex items-center gap-1.5">
+          <span class="font-heading font-bold text-sm tracking-tight text-white leading-tight">CLB IP ĐHSP HUẾ</span>
+        </div>
+        <p class="text-[11px] text-cyan-400 font-medium flex items-center gap-1.5 mt-0.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           Quản trị 2.0 • Khoa Tin học
-
         </p>
+      </div>
+    </div>
 
-</div>
+    <!-- Navigation Area -->
+    <div class="flex-1 overflow-y-auto px-3.5 py-4 space-y-6">
+      <!-- Section 1: Điều Hành Phổ Thông -->
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400/80 px-3 py-1.5 font-mono">QUẢN LÝ ĐIỀU HÀNH</p>
+        <nav id="side-nav" class="space-y-1 mt-1">
+          <!-- Dashboard -->
+          <a id="nav-dashboard" href="/frontend/admin/dashboard.html#dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">dashboard</span>
+            <span>Dashboard</span>
+          </a>
 
-</div>
+          <!-- Thành viên -->
+          <a id="nav-members" href="/frontend/admin/members.html#members" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">group</span>
+            <span>Thành viên</span>
+            <span id="nav-badge-mem" class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300">48</span>
+          </a>
 
-<!-- Navigation Area -->
+          <!-- Quỹ CLB -->
+          <a id="nav-funds" href="/frontend/admin/funds.html#funds" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">account_balance_wallet</span>
+            <span>Quỹ CLB</span>
+          </a>
 
-<div class="flex-1 overflow-y-auto px-3.5 py-4 space-y-6">
+          <!-- Divider -->
+          <div class="pt-2 border-t border-white/10 my-2"></div>
 
-<!-- Section 1: Điều Hành Phổ Thông -->
+          <!-- Section 2: Phân Hệ Chuyên Sâu -->
+          <p class="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90 px-3 py-1 font-mono">PHÂN HỆ CHUYÊN SÂU</p>
 
-<div>
+          <!-- Sự kiện & Hoạt động -->
+          <a id="nav-events" onclick="switchView('events'); return false;" href="#events" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25">
+            <span class="material-symbols-outlined text-[20px] text-white">event</span>
+            <span class="truncate">Sự kiện &amp; Hoạt động</span>
+            <span class="ml-auto text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-white/20 text-white font-bold">V4</span>
+          </a>
 
-<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400/80 px-3 py-1.5 font-mono">QUẢN LÝ ĐIỀU HÀNH</p>
-
-<nav class="space-y-1 mt-1" id="side-nav">
-
-<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-medium text-xs transition-all" href="/frontend/admin/dashboard.html#dashboard">
-
-<span class="material-symbols-outlined text-[20px] text-slate-400">dashboard</span>
-
-<span>Dashboard</span>
-
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-medium text-xs transition-all" href="/frontend/admin/members.html#members">
-
-<span class="material-symbols-outlined text-[20px] text-slate-400">group</span>
-
-<span>Thành viên</span>
-
-<span class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300">48</span>
-
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-medium text-xs transition-all" href="/frontend/admin/funds.html#funds">
-
-<span class="material-symbols-outlined text-[20px] text-slate-400">account_balance_wallet</span>
-
-<span>Quỹ CLB</span>
-
-</a>
-
-<!-- Active Tri-view Links in this Portal -->
-
-<div class="pt-2 border-t border-white/10 my-2"></div>
-
-<p class="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90 px-3 py-1 font-mono">PHÂN HỆ CHUYÊN SÂU</p>
-
-<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-xs transition-all bg-cyan-500 text-white shadow-md shadow-cyan-500/25" id="nav-events" onclick="switchView('events')">
-
-<span class="material-symbols-outlined text-[20px]">event</span>
-
-<span class="truncate">Sự kiện &amp; Hoạt động</span>
-
-<span class="ml-auto text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-white/20 text-white font-bold">V4</span>
-
-</button>
-
-<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all text-slate-300 hover:text-white hover:bg-white/5" id="nav-attendance" onclick="switchView('attendance')">
-
-<span class="material-symbols-outlined text-[20px] text-slate-400">explore</span>
-
-<span class="truncate">Điểm danh GPS</span>
-
-<span class="ml-auto flex items-center gap-1 text-[10px] text-emerald-400 font-mono">
-
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-
+          <!-- Điểm danh GPS -->
+          <a id="nav-attendance" onclick="switchView('attendance'); return false;" href="#attendance" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">explore</span>
+            <span class="truncate">Điểm danh GPS</span>
+            <span class="ml-auto flex items-center gap-1 text-[10px] text-emerald-400 font-mono">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
               Live
-
             </span>
+          </a>
 
-</button>
+          <!-- Tài liệu & Học liệu -->
+          <a id="nav-documents" onclick="switchView('documents'); return false;" href="#documents" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">menu_book</span>
+            <span class="truncate">Tài liệu &amp; Học liệu</span>
+            <span id="nav-badge-docs" class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300">48</span>
+          </a>
+        </nav>
+      </div>
 
-<button class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all text-slate-300 hover:text-white hover:bg-white/5" id="nav-documents" onclick="switchView('documents')">
+      <!-- Quick Switcher Box inside Sidebar -->
+      <div class="p-3 bg-navy-850/80 rounded-2xl border border-white/10">
+        <p class="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider mb-2">CHẾ ĐỘ XEM TRỰC TIẾP</p>
+        <div id="sb-quick-grid" class="grid grid-cols-3 gap-1">
 
-<span class="material-symbols-outlined text-[20px] text-slate-400">menu_book</span>
+          <button id="sb-qview-events" class="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-center transition-all" onclick="switchView('events')">V4: Sự kiện</button>
+          <button id="sb-qview-attendance" class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-slate-400 hover:bg-white/5 text-center transition-all" onclick="switchView('attendance')">V5: GPS</button>
+          <button id="sb-qview-documents" class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-slate-400 hover:bg-white/5 text-center transition-all" onclick="switchView('documents')">V6: Học liệu</button>
 
-<span class="truncate">Tài liệu &amp; Học liệu</span>
+        </div>
+      </div>
+    </div>
 
-<span class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300">48</span>
-
-</button>
-
-</nav>
-
-</div>
-
-<!-- Quick Switcher Box inside Sidebar -->
-
-<div class="p-3 bg-navy-850/80 rounded-2xl border border-white/10">
-
-<p class="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider mb-2">CHẾ ĐỘ XEM TRỰC TIẾP</p>
-
-<div class="grid grid-cols-3 gap-1">
-
-<button class="px-2 py-1.5 rounded-lg text-[10px] font-bold text-center transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/30" onclick="switchView('events')">V4: Sự kiện</button>
-
-<button class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-center transition-all text-slate-400 hover:bg-white/5" onclick="switchView('attendance')">V5: GPS</button>
-
-<button class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-center transition-all text-slate-400 hover:bg-white/5" onclick="switchView('documents')">V6: Học liệu</button>
-
-</div>
-
-</div>
-
-</div>
-
-<!-- Sidebar Footer -->
-
-<div class="p-3 border-t border-white/10 bg-navy-950/40">
-
-<button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 font-semibold text-xs transition-all" id="btn-logout">
-
-<span class="material-symbols-outlined text-lg">logout</span>
-
-<span>Đăng xuất phiên làm việc</span>
-
-</button>
-
-</div>
-
-</aside>
+    <!-- Sidebar Footer -->
+    <div class="p-3 border-t border-white/10 bg-navy-950/40 shrink-0">
+      <button id="btn-logout" class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 font-semibold text-xs transition-all duration-200">
+        <span class="material-symbols-outlined text-lg">logout</span>
+        <span>Đăng xuất phiên làm việc</span>
+      </button>
+    </div>
+  </aside>
 
 <!-- MAIN WRAPPER (Shift right by 260px on desktop) -->
 
@@ -2911,12 +2871,24 @@
     views.forEach(v => {
       const el = document.getElementById('view-' + v);
       const navBtn = document.getElementById('nav-' + v);
+      const qBtn = document.getElementById('sb-qview-' + v);
       const tbBtn = document.getElementById('tb-' + v);
 
       if (v === viewName) {
-        if (el) el.classList.remove('hidden');
+        if (el) {
+          el.classList.remove('hidden');
+          // fccdb09: animation chuyển view mượt (fade-slide)
+          el.classList.remove('view-enter');
+          void el.offsetWidth;
+          el.classList.add('view-enter');
+        }
         if (navBtn) {
-          navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all bg-cyan-500 text-white shadow-md shadow-cyan-500/25";
+          navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25";
+          const icon = navBtn.querySelector('.material-symbols-outlined');
+          if (icon) icon.className = "material-symbols-outlined text-[20px] text-white";
+        }
+        if (qBtn) {
+          qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-bold text-center transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/30";
         }
         if (tbBtn) {
           tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-navy-900 shadow-sm";
@@ -2924,7 +2896,12 @@
       } else {
         if (el) el.classList.add('hidden');
         if (navBtn) {
-          navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all text-slate-300 hover:text-white hover:bg-white/10";
+          navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group";
+          const icon = navBtn.querySelector('.material-symbols-outlined');
+          if (icon) icon.className = "material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200";
+        }
+        if (qBtn) {
+          qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-medium text-center transition-all text-slate-400 hover:bg-white/5";
         }
         if (tbBtn) {
           tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-navy-900 transition-all";
