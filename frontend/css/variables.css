@@ -15,18 +15,21 @@
   --c-indigo-soft: #EEF0FE;
   --c-violet: #8B5CF6;
   --c-violet-strong: #7C3AED;
-  --c-navy: #0F4C81;
-  --c-navy-deep: #0A3A64;
-  --c-navy-ink: #082C4D;
+  --c-navy: #103B64;
+  --c-navy-deep: #174E82;
+  --c-navy-ink: #0D2D4D;
+  --c-silver: #D0D0D4;
+  --c-silver-light: #F1F3F5;
+  --c-silver-dark: #A8A8AE;
 
   /* ---- Semantic (giá trị chung, override theo theme bên dưới) ---- */
-  --c-success: #16A34A;
+  --c-success: #10B981;
   --c-success-soft: #DCFCE7;
-  --c-danger: #DC2626;
+  --c-danger: #EF4444;
   --c-danger-soft: #FEE2E2;
-  --c-warning: #D97706;
+  --c-warning: #F59E0B;
   --c-warning-soft: #FEF3C7;
-  --c-info: #0284C7;
+  --c-info: #00A3FF;
   --c-info-soft: #E0F2FE;
 
   /* ---- Radii (SHAPE LOCK) ---- */
