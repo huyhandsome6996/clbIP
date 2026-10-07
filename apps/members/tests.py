@@ -422,7 +422,9 @@ class MemberPasswordPolicyTests(TestCase):
         self.bcn = make_user("pwd-bcn@clbip.vn", role="BCN", ho_ten="BCN Mật Khẩu")
 
     def test_tao_member_khong_password_nhan_mat_khau_ngau_nhien(self) -> None:
-        """"""
+        """F03 (audit 10/2026): credential trả ĐÚNG 1 LẦN trong
+        `data.initial_password` — KHÔNG nằm trong message (envelope có thể
+        vào log) và không còn mật khẩu mặc định công khai CLBIP@2026."""
         self.client.force_authenticate(user=self.bcn)
         res = self.client.post(
             "/api/v1/members/",
@@ -430,10 +432,12 @@ class MemberPasswordPolicyTests(TestCase):
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        self.assertIn("Mật khẩu khởi tạo", res.data["message"])
-        self.assertNotIn("CLBIP@2026", res.data["message"])
-        # Mật khẩu in ra phải dùng được để đăng nhập (không phải mặc định công khai)
-        password = res.data["message"].split("Mật khẩu khởi tạo: ")[1].split(" ")[0]
+        # Mật khẩu NẰM TRONG data (một lần), KHÔNG nằm trong message/log
+        password = res.data["data"].get("initial_password")
+        self.assertTrue(password)
+        self.assertNotIn(password, res.data["message"])
+        self.assertNotIn("CLBIP@2026", str(res.data))
+        # Mật khẩu trả về phải dùng được để đăng nhập (không phải mặc định công khai)
         login = self.client.post(
             "/api/v1/auth/token/", {"email": "ngau-nhien@clbip.vn", "password": password}, format="json",
         )

@@ -39,6 +39,22 @@ class PeriodLockedException(BusinessException):
     default_message = "Kỳ sổ sách đã bị khóa. Không thể thay đổi giao dịch thuộc kỳ này!"
 
 
+class IdempotencyKeyConflictException(BusinessException):
+    """
+    Idempotency-Key đã được dùng cho một yêu cầu CÓ NỘI DUNG KHÁC (audit F02).
+
+    Trả 409 — KHÔNG replay giao dịch cũ (sai ý định) và KHÔNG ghi mới
+    (mất ý nghĩa chống ghi trùng). Client phải kiểm tra sổ quỹ rồi dùng
+    key mới nếu chắc chắn muốn ghi giao dịch mới.
+    """
+
+    status_code = 409
+    default_message = (
+        "Idempotency-Key này đã được dùng cho một giao dịch khác. "
+        "Vui lòng kiểm tra sổ quỹ trước khi gửi lại với khóa mới."
+    )
+
+
 class FundInvariantViolationException(BusinessException):
     status_code = 500
     default_message = "Phát hiện bất biến số dư quỹ bị vi phạm. Giao dịch đã bị từ chối!"

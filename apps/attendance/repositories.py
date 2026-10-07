@@ -17,7 +17,8 @@ ràng — apps.events chưa có repository riêng tại thời điểm refactor.
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
-from django.db.models import QuerySet
+from django.db import transaction as db_transaction
+from django.db.models import Q, QuerySet
 
 from apps.attendance.models import AttendanceRecord, AttendanceSession
 from apps.members.models import MemberProfile
@@ -43,6 +44,11 @@ class IAttendanceRepository(ABC):
     def get_session(self, session_id: int) -> AttendanceSession:
         """Lấy phiên theo pk — raise `AttendanceSession.DoesNotExist` nếu thiếu."""
 
+    @abstractmethod
+    def get_session_for_update(self, session_id: int) -> AttendanceSession:
+        """Lấy phiên VỚI KHÓA BI (select_for_update) — chốt serialization
+        chung cho check-in / bulk_override / close_session (review R04)."""
+
     # ------------------------------------------------------------------
     # AttendanceRecord
     # ------------------------------------------------------------------
@@ -53,6 +59,12 @@ class IAttendanceRepository(ABC):
     @abstractmethod
     def get_record_for_member(self, session: AttendanceSession, member: MemberProfile) -> AttendanceRecord:
         """Bản ghi điểm danh của một thành viên trong một phiên."""
+
+    @abstractmethod
+    def get_record_for_member_locked(
+        self, session: AttendanceSession, member: MemberProfile
+    ) -> AttendanceRecord:
+        """Bản ghi + row lock (select_for_update) — gọi trong transaction.atomic."""
 
     @abstractmethod
     def get_or_create_record(
@@ -78,6 +90,19 @@ class IAttendanceRepository(ABC):
     @abstractmethod
     def member_exists(self, member_id: int) -> bool:
         """Thành viên có tồn tại theo pk? (bulk_override validate)."""
+
+    @abstractmethod
+    def filter_existing_member_ids(self, member_ids: set[int]) -> set[int]:
+        """Lọc trong tập ID nào thực sự tồn tại (bulk validate — 1 query)."""
+
+    @abstractmethod
+    def list_records_for_session(
+        self,
+        session: AttendanceSession,
+        trang_thai: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> QuerySet[AttendanceRecord]:
+        """Bản ghi điểm danh của một phiên (BCN xem/audit — phân trang ở view)."""
 
     @abstractmethod
     def get_member_profile_for_user(self, user) -> Optional[MemberProfile]:
@@ -119,6 +144,18 @@ class DjangoAttendanceRepository(IAttendanceRepository):
         """Lấy phiên theo pk — caller tự xử lý DoesNotExist → NotFoundException."""
         return AttendanceSession.objects.get(pk=session_id)
 
+    def get_session_for_update(self, session_id: int) -> AttendanceSession:
+        """
+        Lấy phiên VỚI KHÓA BI (select_for_update) — review R04.
+
+        ⚠️ Bắt buộc gọi bên trong `transaction.atomic()`. Thứ tự khóa thống
+        nhất: SESSION trước → RECORD sau. check-in / bulk_override /
+        close_session cùng chờ nhau ở chốt phiên này → tuần tự hóa toàn bộ
+        mutation của một phiên, không còn check-in chèn record sau khi close
+        đã chốt danh sách (hoặc override đè metadata trong lúc check-in ghi).
+        """
+        return AttendanceSession.objects.select_for_update().get(pk=session_id)
+
     # ------------------------------------------------------------------
     # AttendanceRecord
     # ------------------------------------------------------------------
@@ -143,6 +180,23 @@ class DjangoAttendanceRepository(IAttendanceRepository):
     ) -> AttendanceRecord:
         """Bản ghi của `member` trong `session` — raise DoesNotExist nếu thiếu."""
         return AttendanceRecord.objects.get(session=session, member=member)
+
+    @db_transaction.atomic
+    def get_record_for_member_locked(
+        self, session: AttendanceSession, member: MemberProfile
+    ) -> AttendanceRecord:
+        """
+        Bản ghi của `member` trong `session` — `select_for_update` (row lock).
+
+        review 13-a P2-4: hai check-in song song cùng member/session tuần tự
+        hóa tại đây → chỉ 1 request ghi được, request kia bắt duplicate 409.
+        `@atomic` tự bảo đảm có transaction quanh select_for_update (an toàn
+        ngay cả khi caller chưa bọc atomic); SQLite lock là no-op toàn bảng,
+        MySQL production khóa đúng dòng.
+        """
+        return AttendanceRecord.objects.select_for_update().get(
+            session=session, member=member
+        )
 
     def get_or_create_record(
         self, session: AttendanceSession, member_id: int, defaults: dict
@@ -201,6 +255,51 @@ class DjangoAttendanceRepository(IAttendanceRepository):
         chưa có phương thức `exists()` tương ứng trong repository của nó.
         """
         return MemberProfile.objects.filter(pk=member_id).exists()
+
+    def filter_existing_member_ids(self, member_ids: set[int]) -> set[int]:
+        """
+        Trả về tập ID thực sự tồn tại trong `MemberProfile` (1 query duy nhất).
+
+        Dùng bởi `AttendanceService.bulk_override` — validate TOÀN BỘ danh sách
+        trước khi ghi (audit F01: hết lỗi "API báo thất bại nhưng một phần dữ
+        liệu đã đổi").
+        """
+        if not member_ids:
+            return set()
+        return set(
+            MemberProfile.objects.filter(pk__in=member_ids).values_list("pk", flat=True)
+        )
+
+    def list_records_for_session(
+        self,
+        session: AttendanceSession,
+        trang_thai: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> QuerySet[AttendanceRecord]:
+        """
+        Bản ghi điểm danh của một phiên (audit F10 — khoảng trống chức năng:
+        BCN cần bảng xem kết quả theo phiên sau override/đóng phiên).
+
+        - `trang_thai`: lọc theo choices (giá trị lạ bị service chặn trước).
+        - `search`: khớp họ tên / MSSV / email thành viên (icontains).
+        Không trả tọa độ GPS thô — BCN xem `khoang_cach_m` + `is_suspicious`
+        là đủ để audit anti-cheat (giảm PII trong payload).
+        """
+        qs = AttendanceRecord.objects.filter(session=session).select_related(
+            "member", "member__user", "overridden_by"
+        )
+        if trang_thai:
+            qs = qs.filter(trang_thai=trang_thai)
+        if search:
+            qs = qs.filter(
+                Q(member__ho_ten__icontains=search)
+                # ⚠ `mssv` trên MemberProfile là property (field thật nằm trên
+                # User) — ORM chỉ query được qua `member__user__mssv` (fix
+                # F-13b-01: trước đây dùng member__mssv → FieldError 500).
+                | Q(member__user__mssv__icontains=search)
+                | Q(member__user__email__icontains=search)
+            )
+        return qs.order_by("member__ho_ten", "id")
 
     def get_member_profile_for_user(self, user) -> Optional[MemberProfile]:
         """

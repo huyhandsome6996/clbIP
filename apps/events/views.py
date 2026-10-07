@@ -6,7 +6,7 @@ Lọc/sort theo WHITELIST (chống SQL Injection qua order_by — Security §2.1
 Toàn bộ truy vấn ORM nằm ở apps/events/repositories.py (Repository Pattern)
 — view KHÔNG đụng trực tiếp vào `.objects` của model nào.
 """
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -77,7 +77,13 @@ class EventListCreateView(APIView):
 
     @extend_schema(
         summary="Danh sách sự kiện",
-        description="Lọc theo `trang_thai`, `loai_hd`; sắp xếp qua `sort` (whitelist).",
+        description="Lọc theo `trang_thai`, `loai_hd`, tìm `search` (tên/mã hoạt động); sắp xếp qua `sort` (whitelist).",
+        parameters=[
+            OpenApiParameter("trang_thai", str, OpenApiParameter.QUERY),
+            OpenApiParameter("loai_hd", str, OpenApiParameter.QUERY),
+            OpenApiParameter("search", str, OpenApiParameter.QUERY, description="Tìm theo tên / mã hoạt động"),
+            OpenApiParameter("sort", str, OpenApiParameter.QUERY),
+        ],
         responses=ActivityEventListSerializer(many=True),
         tags=["Events"],
     )
@@ -89,12 +95,16 @@ class EventListCreateView(APIView):
         loai_hd = request.query_params.get("loai_hd")
         if loai_hd and loai_hd not in ActivityEvent.LoaiHoatDong.values:
             loai_hd = None
+        # Audit F09/C6: search tên/mã hoạt động cho selector (cap 100 ký tự)
+        search = (request.query_params.get("search") or "").strip()[:100] or None
 
         sort = request.query_params.get("sort", "-thoi_gian_bat_dau")
         if sort not in EVENT_SORT_WHITELIST:
             sort = "-thoi_gian_bat_dau"
 
-        queryset = EventService.list_events(trang_thai=trang_thai, loai_hd=loai_hd, sort=sort)
+        queryset = EventService.list_events(
+            trang_thai=trang_thai, loai_hd=loai_hd, sort=sort, search=search
+        )
 
         paginator = StandardPagination()
         page_items = paginator.paginate_queryset(queryset, request, view=self)

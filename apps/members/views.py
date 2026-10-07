@@ -104,16 +104,29 @@ class MemberListCreateView(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs) -> Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # QA-Audit P0/DoD: mật khẩu trống → sinh ngẫu nhiên và hiển thị ĐÚNG 1
-        # lần trong message (BCN gửi cho thành viên qua kênh riêng) — không còn
-        # mật khẩu mặc định công khai CLBIP@2026
-        password = serializer.validated_data.get("password") or get_random_string(14)
+        # QA-Audit P0/DoD + audit F03: mật khẩu trống → sinh ngẫu nhiên.
+        # Credential trả về ĐÚNG 1 LẦN trong `data.initial_password` (response
+        # create riêng) — KHÔNG đưa vào message/envelope log, KHÔNG nằm trong
+        # list/detail/profile360/export (những endpoint đó trả serializer riêng
+        # không có field này). Admin tự nhập mật khẩu → không echo.
+        admin_password: str = serializer.validated_data.get("password") or ""
+        generated = not admin_password
+        password = admin_password or get_random_string(14)
         profile = MemberService.create_member(
             {**serializer.validated_data, "password": password}, request.user
         )
+        data = MemberProfileListSerializer(profile).data
+        if generated:
+            data["initial_password"] = password
         return created(
-            data=MemberProfileListSerializer(profile).data,
-            message=f"Thêm thành viên thành công. Mật khẩu khởi tạo: {password} (chỉ hiển thị một lần)",
+            data=data,
+            message=(
+                "Thêm thành viên thành công. Mật khẩu khởi tạo hiển thị một lần "
+                "trường 'initial_password' — hãy sao chép và gửi cho thành viên "
+                "qua kênh riêng."
+                if generated
+                else "Thêm thành viên thành công."
+            ),
         )
 
 

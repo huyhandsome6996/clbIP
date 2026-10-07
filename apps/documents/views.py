@@ -280,3 +280,51 @@ class DocumentDownloadView(generics.GenericAPIView):
             content_type=DocumentService.CONTENT_TYPES.get(ext, "application/octet-stream"),
             status=status.HTTP_200_OK,
         )
+
+
+# ======================================================================
+# GET /api/v1/documents/<id>/preview/ — stream PDF xem trước (audit F05)
+# ======================================================================
+class DocumentPreviewView(generics.GenericAPIView):
+    """
+    Stream tài liệu để XEM TRƯỚC (inline) — KHÔNG tăng luot_tai.
+
+    Audit F05: frontend cũ fetch thẳng `doc.file` (media/storage URL) kèm
+    Bearer → hỏng khi DEBUG=False (không ai serve /media/) và gửi JWT tới
+    origin lưu trữ khác. Preview giờ ĐI QUA API cùng origin, cùng phạm vi
+    quyền với download (can_view), cùng Content-Type whitelist; chỉ khác
+    as_attachment=False và không đếm lượt tải.
+    """
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = DocumentSerializer
+
+    @extend_schema(
+        summary="Xem trước tài liệu (inline, không tăng lượt tải)",
+        description=(
+            "Stream nội dung tệp dạng inline phục vụ iframe xem trước PDF. "
+            "Cùng phạm vi quyền với download; không tăng luot_tai, không cộng XP."
+        ),
+        responses={
+            200: OpenApiResponse(description="Nội dung nhị phân của tệp (inline)"),
+            404: OpenApiResponse(description="Không tìm thấy tài liệu/tệp"),
+        },
+    )
+    def get(self, request: Request, pk: int) -> Response:
+        doc = DocumentService.get_or_404(pk)
+        if not DocumentService.can_view(doc, request.user):
+            raise NotFoundException("Không tìm thấy tài liệu yêu cầu.")
+
+        ext = doc.file_ext or f".{doc.file_type}"
+        try:
+            file_handle = doc.file.open("rb")
+        except (FileNotFoundError, ValueError) as exc:
+            raise NotFoundException("Tệp không còn tồn tại trên máy chủ.") from exc
+
+        return FileResponse(
+            file_handle,
+            as_attachment=False,
+            filename=f"{doc.tieu_de}{ext}",
+            content_type=DocumentService.CONTENT_TYPES.get(ext, "application/octet-stream"),
+            status=status.HTTP_200_OK,
+        )

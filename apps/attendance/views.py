@@ -11,12 +11,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.attendance.serializers import (
+    AttendanceRecordAdminSerializer,
     AttendanceRecordSerializer,
     AttendanceSessionSerializer,
     BulkOverrideSerializer,
     CheckInSerializer,
     SessionCreateSerializer,
 )
+from apps.attendance.models import AttendanceRecord
 from apps.attendance.services import AttendanceNonceService, AttendanceService
 from apps.common.throttles import CheckInRateThrottle
 from apps.attendance.services.attendance_service import LATE_AFTER_MINUTES
@@ -278,6 +280,50 @@ class BulkOverrideView(APIView):
                 "errors": None,
             }
         )
+
+
+# ======================================================================
+# GET /api/v1/attendance/sessions/{id}/records/ — bảng bản ghi theo phiên
+# (audit F10 — khoảng trống chức năng: BCN kiểm tra kết quả check-in /
+#  override / đóng phiên; KHÔNG expose cho MEMBER)
+# ======================================================================
+class SessionRecordsView(APIView):
+    """Bảng bản ghi điểm danh của MỘT phiên — chỉ BCN/ADMIN, có phân trang."""
+
+    permission_classes = [IsBCNOrAdmin]
+
+    VALID_STATUS_FILTERS = set(AttendanceRecord.TrangThaiDiemDanh.values)
+
+    @extend_schema(
+        summary="Bản ghi điểm danh theo phiên (BCN/ADMIN)",
+        description=(
+            "Danh sách bản ghi của một phiên (cả OPEN lẫn CLOSED) có phân trang, "
+            "lọc trạng thái (?trang_thai=CO_MAT|CO_PHEP|DI_MUON|VANG) và tìm kiếm "
+            "(?search= theo tên/MSSV/email). Không trả tọa độ GPS thô."
+        ),
+        responses=AttendanceRecordAdminSerializer(many=True),
+        tags=["Attendance"],
+    )
+    def get(self, request, pk: int):
+        session = AttendanceService.get_session_or_404(pk)
+        qp = request.query_params
+        trang_thai = (qp.get("trang_thai") or "").strip()
+        if trang_thai and trang_thai not in self.VALID_STATUS_FILTERS:
+            from apps.common.exceptions import ValidationException  # noqa: PLC0415
+
+            raise ValidationException(
+                f"Tham số trang_thai không hợp lệ: {trang_thai!r}",
+                errors={"trang_thai": f"Chỉ nhận: {sorted(self.VALID_STATUS_FILTERS)}"},
+            )
+        # Cap 100 ký tự — đồng bộ với events view (review 13-a NOTE-5)
+        search = (qp.get("search") or "").strip()[:100] or None
+        queryset = AttendanceService.list_records_for_session(
+            session, trang_thai=trang_thai or None, search=search or None
+        )
+        paginator = StandardPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        items = AttendanceRecordAdminSerializer(page, many=True).data
+        return _paginated_envelope(items, paginator.page, "Lấy bản ghi điểm danh của phiên")
 
 
 # ======================================================================
