@@ -3,17 +3,100 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check-in GPS — CLB IP ĐHSP Huế</title>
+  <title>Điểm danh GPS — Cổng sinh viên CLB IP ĐHSP Huế</title>
+  <meta name="description" content="Cổng sinh viên CLB Tin học Thực hành — Trường ĐH Sư phạm, ĐH Huế.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+  <!-- CSS Hệ Thống Chuẩn 2.0 -->
   <link rel="stylesheet" href="/frontend/css/variables.css">
-  <link rel="stylesheet" href="/frontend/css/base.css">
   <link rel="stylesheet" href="/frontend/css/components.css">
+  <link rel="stylesheet" href="/frontend/css/landing.css">
   <link rel="stylesheet" href="/frontend/css/glassmorphism.css">
-  <link rel="stylesheet" href="/frontend/css/responsive.css">
+  
+  <!-- Circular Favicon for Browser Tab (Khung tròn logo CLB IP) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/frontend/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/frontend/assets/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/frontend/assets/favicon-circle.png">
+  <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
+  <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
+
   <style>
-    /* ---- page-scoped styles (không đụng css dùng chung) ---- */
+
+    /* ===== Shell Layout & Animation Styles (Đồng bộ home.html) ===== */
+    html, body { margin: 0; padding: 0; }
+    body { overscroll-behavior: none; }
+    ::-webkit-scrollbar { display: none; }
+    * { scrollbar-width: none; }
+
+    .w-13 { width: 3.25rem; }  .h-13 { height: 3.25rem; }
+    .w-15 { width: 3.75rem; }  .h-15 { height: 3.75rem; }
+    .scrollbar-none::-webkit-scrollbar { display: none; }
+
+    /* Sidebar: mobile drawer (<1024px) */
+    .burger-btn { display: none; }
+    #mobile-scrim {
+      position: fixed; inset: 0; z-index: 45;
+      background: rgba(19, 27, 46, 0.45); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity .25s ease;
+    }
+    #mobile-scrim.show { opacity: 1; pointer-events: auto; }
+    @media (max-width: 1023.5px) {
+      .burger-btn { display: inline-flex; }
+      #main-sidebar { transform: translateX(-100%); transition: transform .3s ease; }
+      #main-sidebar.nav-open { transform: translateX(0); box-shadow: 16px 0 48px rgba(19,27,46,.18); }
+      #content-area { padding-left: 0 !important; }
+    }
+
+    /* Skeleton */
+    .skel { position: relative; overflow: hidden; border-radius: 10px; background: #e2e7ff; }
+    .skel::after {
+      content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+      animation: skelMove 1.4s infinite;
+    }
+    @keyframes skelMove { 100% { transform: translateX(100%); } }
+
+    /* Dropdowns */
+    .dd {
+      position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
+      min-width: 264px; max-width: 320px; display: none;
+      background: #ffffff; border: 1px solid rgba(199,196,215,.5);
+      border-radius: 16px; box-shadow: 0 12px 40px rgba(19,27,46,.14);
+      padding: 8px;
+    }
+    .dd.open { display: block; }
+    .dd-item { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left;
+      padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 18px; color: #131b2e; }
+    .dd-item:hover { background: #f2f3ff; }
+    .dd-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      color: #767586; padding: 6px 12px 4px; }
+
+    /* Modal góp ý */
+    .lp-backdrop {
+      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px;
+      background: rgba(19,27,46,.5); backdrop-filter: blur(6px);
+    }
+    .lp-modal {
+      width: 100%; max-width: 520px; max-height: 86dvh; overflow: auto;
+      background: linear-gradient(160deg, #ffffff, #f2f3ff);
+      border: 1px solid rgba(199,196,215,.6); border-radius: 24px;
+      box-shadow: 0 24px 80px rgba(40,48,68,.35); padding: 24px;
+    }
+    .lp-input {
+      width: 100%; border: 1px solid #c7c4d7; border-radius: 14px; background: #ffffff;
+      padding: 12px 14px; font-size: 14px; color: #131b2e; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .lp-input:focus { border-color: #4648d4; box-shadow: 0 0 0 3px rgba(70,72,212,.15); }
+    .lp-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #464554; margin-bottom: 6px; }
+    .lp-error { color: #93000a; font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
+    .lp-error.show { display: block; }
+
+
+    /* ===== Page-scoped styles (checkin.html) ===== */
+/* ---- page-scoped styles (không đụng css dùng chung) ---- */
     .section-title {
       display: flex; align-items: center; gap: 8px;
       font-size: var(--text-sm); font-weight: 800;
@@ -89,24 +172,149 @@
       border: 1px dashed rgba(245,158,11,.5); background: rgba(245,158,11,.07);
     }
   </style>
-  <!-- Circular Favicon for Browser Tab (Khung tròn logo CLB IP) -->
-  <link rel="icon" type="image/png" sizes="32x32" href="/frontend/assets/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="64x64" href="/frontend/assets/favicon-64.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="/frontend/assets/favicon-circle.png">
-  <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
-  <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 </head>
-<body>
-  <div class="member-shell">
-    <header class="member-header">
-      <div class="flex items-center gap-3">
-        <span class="avatar" id="me-avatar"></span>
-        <div><div class="bold small" id="me-name">…</div><div class="xs muted" id="me-level">…</div></div>
-      </div>
-      <button class="btn btn-ghost btn-icon" id="btn-logout" aria-label="Đăng xuất"><span id="logout-icon"></span></button>
-    </header>
+<body class="bg-background font-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
 
-    <section>
+<!-- ================= COLLAPSIBLE LEFT SIDEBAR ================= -->
+<aside id="main-sidebar" class="fixed top-0 left-0 h-screen z-50 bg-surface-container-lowest/95 backdrop-blur-xl border-r border-outline-variant/30 transition-all duration-300 ease-in-out flex flex-col justify-between shadow-[4px_0_24px_rgba(70,72,212,0.06)] w-72">
+  <!-- Brand & toggle -->
+  <div class="p-4 border-b border-surface-container/80 flex items-center justify-between gap-3 min-h-[76px]">
+    <div class="flex items-center gap-3 overflow-hidden">
+      <div class="w-11 h-11 rounded-xl bg-white p-1 border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(70,72,212,0.15)] overflow-hidden">
+        <img src="/frontend/assets/logo.png" alt="Logo CLB IP" class="w-full h-full object-contain">
+      </div>
+      <div class="sidebar-text flex flex-col min-w-0 transition-opacity duration-200">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="font-headline-sm text-headline-sm font-bold text-on-surface leading-tight tracking-tight">CLB IP</span>
+          <span class="px-1.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] tracking-wide uppercase font-bold">ĐHSP Huế</span>
+        </div>
+        <span class="font-label-sm text-[11px] text-outline tracking-normal truncate">Code your Future • Khoa Tin học</span>
+      </div>
+    </div>
+    <button aria-label="Toggle sidebar" title="Thu gọn / Mở rộng Sidebar" type="button"
+      class="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-variant text-on-surface-variant flex items-center justify-center transition-colors shrink-0" id="sidebar-toggle-btn">
+      <span class="material-symbols-outlined text-[20px] transition-transform duration-300" id="toggle-icon">chevron_left</span>
+    </button>
+  </div>
+
+  <!-- Nav -->
+  <nav class="p-3 flex-1 overflow-y-auto space-y-1.5" aria-label="Điều hướng chính">
+    <div class="sidebar-text px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-outline">Điều hướng</div>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/home.html" >
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-on-surface-variant group-hover:scale-110 transition-transform" >home</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Trang chủ</span>
+      
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/events.html" >
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-secondary group-hover:scale-110 transition-transform" >confirmation_number</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Sự kiện &amp; Vé</span>
+      <span class="sidebar-text ml-auto px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[11px] font-bold">Mới</span>
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold shadow-[0_4px_14px_rgba(70,72,212,0.28)] transition-all" href="/frontend/member/checkin.html" aria-current="page">
+      <span class="material-symbols-outlined text-[22px] shrink-0" style="font-variation-settings: 'FILL' 1;">radar</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Điểm danh GPS</span>
+      <span class="sidebar-text ml-auto w-2 h-2 rounded-full bg-tertiary animate-ping"></span>
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/leaderboard.html" >
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-amber-500 group-hover:scale-110 transition-transform" >military_tech</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Đua Top Bảng Vàng</span>
+      
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/documents.html" >
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-primary-container group-hover:scale-110 transition-transform" >menu_book</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Kho Học Liệu</span>
+      
+    </a>
+    <a class="group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" href="/frontend/member/events.html" >
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-on-surface-variant group-hover:scale-110 transition-transform" >calendar_month</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Lịch Sinh Hoạt</span>
+      
+    </a>
+    <button class="w-full group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all" type="button" id="nav-feedback-btn">
+      <span class="material-symbols-outlined text-[22px] shrink-0 text-error group-hover:scale-110 transition-transform">mark_chat_unread</span>
+      <span class="sidebar-text whitespace-nowrap overflow-hidden transition-all">Hòm Thư</span>
+    </button>
+  </nav>
+
+  <!-- Mini profile card -->
+  <div class="p-3 border-t border-surface-container/80 bg-surface-container-low/50">
+    <a href="/frontend/member/profile.html" class="p-2 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center gap-3 hover:shadow-md transition-shadow">
+      <div class="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-primary via-secondary to-tertiary shrink-0">
+        <div class="w-full h-full rounded-full bg-primary flex items-center justify-center">
+          <span class="text-on-primary text-[13px] font-bold" id="sb-avatar">…</span>
+        </div>
+      </div>
+      <div class="sidebar-text flex-1 min-w-0">
+        <p class="font-label-md text-label-md text-on-surface font-bold truncate" id="sb-name">Đang tải…</p>
+        <div class="flex items-center gap-1.5">
+          <span class="font-label-sm text-[11px] text-secondary font-bold truncate" id="sb-level">…</span>
+          <span class="text-outline text-[10px]">•</span>
+          <span class="font-label-sm text-[11px] text-tertiary font-semibold" id="sb-xp">…</span>
+        </div>
+      </div>
+    </a>
+  </div>
+</aside>
+<div id="mobile-scrim" aria-hidden="true"></div>
+
+<!-- ================= TOPBAR + CONTENT ================= -->
+<div class="transition-all duration-300 ease-in-out pl-72 flex flex-col min-h-screen" id="content-area">
+  <header class="sticky top-0 z-40 bg-surface-container-lowest/85 backdrop-blur-xl border-b border-outline-variant/30 h-16 flex items-center px-4 sm:px-6 justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <button class="burger-btn w-9 h-9 rounded-full bg-surface-container-high text-on-surface-variant items-center justify-center" id="btn-burger" aria-label="Mở menu điều hướng" type="button">
+        <span class="material-symbols-outlined text-[20px]">menu</span>
+      </button>
+      <div class="hidden sm:flex items-center gap-2 text-on-surface-variant font-label-md text-label-md min-w-0">
+        <span class="material-symbols-outlined text-[18px] text-primary">radar</span>
+        <span class="whitespace-nowrap">Cổng sinh viên</span>
+        <span class="text-outline">/</span>
+        <span class="text-on-surface font-bold whitespace-nowrap">Điểm danh GPS Haversine</span>
+      </div>
+      <div class="sm:hidden font-label-md text-label-md font-bold text-on-surface truncate">Điểm danh GPS</div>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0 relative">
+      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container/70 shadow-[0_2px_8px_rgba(186,26,26,0.08)]" id="pill-streak" hidden>
+        <span class="font-label-md text-label-md">🔥</span>
+        <span class="font-label-md text-label-md text-on-error-container font-semibold whitespace-nowrap" id="pill-streak-text">… ngày chuyên cần</span>
+      </div>
+      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tertiary-fixed shadow-[0_2px_8px_rgba(0,101,119,0.08)]" id="pill-xp" hidden>
+        <span class="font-label-md text-label-md">⚡</span>
+        <span class="font-label-md text-label-md text-on-tertiary-fixed font-bold whitespace-nowrap" id="pill-xp-text">… XP</span>
+      </div>
+      <div class="relative">
+        <button aria-label="Thông báo" type="button" class="relative w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-variant hover:text-on-surface flex items-center justify-center text-on-surface-variant transition-colors" id="btn-bell">
+          <span class="material-symbols-outlined text-[20px]">notifications</span>
+          <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-surface-container-lowest hidden" id="bell-dot"></span>
+        </button>
+        <div class="dd" id="dd-bell" role="menu" aria-label="Thông báo đã ghim">
+          <div class="dd-title">Thông báo đã ghim</div>
+          <div id="dd-bell-items"><div class="dd-item text-on-surface-variant">Đang tải…</div></div>
+        </div>
+      </div>
+      <div class="relative">
+        <button type="button" class="flex items-center gap-2 pl-1 py-1 pr-2 rounded-full bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer" id="btn-user" aria-haspopup="menu">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-on-primary font-bold text-xs" id="topbar-avatar">…</div>
+          <span class="hidden md:inline font-label-md text-label-md text-on-surface font-medium pr-1" id="topbar-name">…</span>
+        </button>
+        <div class="dd" id="dd-user" role="menu" aria-label="Tài khoản">
+          <div class="dd-title" id="dd-user-name">Tài khoản</div>
+          <a class="dd-item" href="/frontend/member/profile.html" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-primary">person</span> Hồ sơ của tôi
+          </a>
+          <button class="dd-item" type="button" id="btn-logout" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-error">logout</span> Đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN BODY ================= -->
+  <main class="w-full flex-1 bg-background relative overflow-hidden">
+    <div class="pointer-events-none absolute -top-40 -left-40 w-96 h-96 rounded-full bg-primary/5 blur-3xl"></div>
+    <div class="pointer-events-none absolute top-1/3 -right-40 w-96 h-96 rounded-full bg-secondary/5 blur-3xl"></div>
+    <div class="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+<section>
       <h1 class="page-title" style="margin:0 0 4px">Check-in GPS 📍</h1>
       <p class="small muted" style="margin:0">Đến đúng chỗ, nhập đúng mã — XP về tay ngay!</p>
     </section>
@@ -127,9 +335,18 @@
     </section>
 
     <div style="height:8px"></div>
-  </div>
+    </div>
+  </main>
+</div>
 
-  <nav class="bottom-nav" id="bottom-nav"></nav>
+<!-- Compatibility elements for legacy references -->
+<div id="legacy-bridge" class="hidden" aria-hidden="true">
+  <span id="me-avatar"></span>
+  <span id="me-name"></span>
+  <span id="me-level"></span>
+  <span id="logout-icon"></span>
+  <nav id="bottom-nav"></nav>
+</div>
 
   <script src="/frontend/js/api.js"></script>
   <script src="/frontend/js/icons.js"></script>
@@ -137,7 +354,208 @@
   <script src="/frontend/js/utils.js"></script>
   <script src="/frontend/js/auth.js"></script>
   <script src="/frontend/js/celebration.js"></script>
-  <script>
+<script>
+
+    /* ================= Shell Controller (Đồng bộ với home.html) ================= */
+    const $ = (id) => document.getElementById(id);
+
+    function initMemberShell(user) {
+      const sidebar = $("main-sidebar");
+      const contentArea = $("content-area");
+      const toggleBtn = $("sidebar-toggle-btn");
+      const toggleIcon = $("toggle-icon");
+      const scrim = $("mobile-scrim");
+      let isCollapsed = localStorage.getItem("clbip_sb_collapsed") === "1";
+
+      function applyCollapseState(collapsed) {
+        const texts = document.querySelectorAll(".sidebar-text");
+        if (collapsed) {
+          if (sidebar) { sidebar.classList.remove("w-72"); sidebar.classList.add("w-20"); }
+          if (contentArea) { contentArea.classList.remove("pl-72"); contentArea.classList.add("pl-20"); }
+          if (toggleIcon) toggleIcon.textContent = "chevron_right";
+          if (toggleBtn) toggleBtn.title = "Mở rộng Sidebar";
+          texts.forEach((el) => el.classList.add("hidden"));
+        } else {
+          if (sidebar) { sidebar.classList.remove("w-20"); sidebar.classList.add("w-72"); }
+          if (contentArea) { contentArea.classList.remove("pl-20"); contentArea.classList.add("pl-72"); }
+          if (toggleIcon) toggleIcon.textContent = "chevron_left";
+          if (toggleBtn) toggleBtn.title = "Thu gọn Sidebar";
+          texts.forEach((el) => el.classList.remove("hidden"));
+        }
+      }
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          isCollapsed = !isCollapsed;
+          localStorage.setItem("clbip_sb_collapsed", isCollapsed ? "1" : "0");
+          applyCollapseState(isCollapsed);
+        });
+        applyCollapseState(isCollapsed);
+      }
+
+      function closeDrawer() {
+        if (sidebar) sidebar.classList.remove("nav-open");
+        if (scrim) scrim.classList.remove("show");
+      }
+
+      const btnBurger = $("btn-burger");
+      if (btnBurger && sidebar && scrim) {
+        btnBurger.addEventListener("click", () => {
+          sidebar.classList.add("nav-open");
+          scrim.classList.add("show");
+        });
+        scrim.addEventListener("click", closeDrawer);
+        sidebar.querySelectorAll("a").forEach((a) => a.addEventListener("click", closeDrawer));
+      }
+
+      function closeAllDd() {
+        document.querySelectorAll(".dd.open").forEach((d) => d.classList.remove("open"));
+      }
+      function bindDropdown(btnId, ddId) {
+        const btn = $(btnId), dd = $(ddId);
+        if (!btn || !dd) return;
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const willOpen = !dd.classList.contains("open");
+          closeAllDd();
+          if (willOpen) dd.classList.add("open");
+        });
+        dd.addEventListener("click", (e) => e.stopPropagation());
+      }
+      bindDropdown("btn-bell", "dd-bell");
+      bindDropdown("btn-user", "dd-user");
+      document.addEventListener("click", closeAllDd);
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllDd(); });
+
+      const btnLogout = $("btn-logout");
+      if (btnLogout) btnLogout.addEventListener("click", () => Auth.logout());
+
+      const navFeedback = $("nav-feedback-btn");
+      if (navFeedback) {
+        navFeedback.addEventListener("click", openFeedbackModal);
+      }
+
+      function updateUserInfo(u) {
+        if (!u) return;
+        const name = u.ho_ten || u.email || "Thành viên";
+        const init = Utils.initials(name);
+        if ($("sb-avatar")) $("sb-avatar").textContent = init;
+        if ($("sb-name")) $("sb-name").textContent = name;
+        if ($("topbar-avatar")) $("topbar-avatar").textContent = init;
+        const parts = name.trim().split(" ");
+        if ($("topbar-name")) $("topbar-name").textContent = parts[parts.length - 1] || name;
+        if ($("dd-user-name")) $("dd-user-name").textContent = name;
+
+        // Legacy compatibility
+        if ($("me-avatar")) $("me-avatar").textContent = init;
+        if ($("me-name")) $("me-name").textContent = name;
+      }
+
+      updateUserInfo(user || Auth.cachedUser());
+
+      (async () => {
+        try {
+          const me = await ApiClient.get("/gamification/me/");
+          const xp = Number(me?.xp ?? me?.xp_points ?? 0);
+          const level = Number(me?.level ?? me?.current_level ?? 1);
+          const streak = Number(me?.streak_count ?? 0);
+          if ($("sb-level")) $("sb-level").textContent = `Lv.${level}`;
+          if ($("sb-xp")) $("sb-xp").textContent = `${Utils.fmtNum(xp)} XP`;
+          if ($("me-level")) $("me-level").textContent = `Level ${level} · ${Utils.fmtNum(xp)} XP`;
+          if (streak > 0 && $("pill-streak") && $("pill-streak-text")) {
+            $("pill-streak").hidden = false;
+            $("pill-streak-text").textContent = `${streak} ngày chuyên cần`;
+          }
+          if ($("pill-xp") && $("pill-xp-text")) {
+            $("pill-xp").hidden = false;
+            $("pill-xp-text").textContent = `${Utils.fmtNum(xp)} XP`;
+          }
+        } catch (_) {}
+
+        try {
+          const pinned = await ApiClient.get("/posts/", { is_pinned: true });
+          const items = Array.isArray(pinned) ? pinned : (pinned?.items || []);
+          const dot = $("bell-dot");
+          const box = $("dd-bell-items");
+          if (items.length > 0) {
+            if (dot) dot.classList.remove("hidden");
+            if (box) {
+              box.innerHTML = items.slice(0, 5).map(p => `
+                <a class="dd-item hover:bg-surface-container transition-colors" href="/frontend/member/home.html#post-${p.id}">
+                  <span class="material-symbols-outlined text-[18px] text-primary shrink-0">push_pin</span>
+                  <div class="min-w-0">
+                    <div class="font-bold text-xs truncate">${Utils.escapeHtml(p.tieu_de)}</div>
+                    <div class="text-[11px] text-outline truncate">${Utils.fmtDateTime(p.created_at)}</div>
+                  </div>
+                </a>
+              `).join("");
+            }
+          } else if (box) {
+            box.innerHTML = `<div class="p-3 text-center text-xs text-outline">Không có thông báo mới</div>`;
+          }
+        } catch (_) {}
+      })();
+    }
+
+    function openFeedbackModal() {
+      const backdrop = document.createElement("div");
+      backdrop.className = "lp-backdrop";
+      backdrop.innerHTML = `
+        <div class="lp-modal" role="dialog" aria-modal="true" aria-label="Góp ý ẩn danh">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">Góp ý ẩn danh 💌</h3>
+            <button type="button" aria-label="Đóng" class="lp-close w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+          <div class="space-y-3">
+            <label class="lp-label" for="fb-content">Nội dung góp ý</label>
+            <textarea id="fb-content" class="lp-input" rows="4" maxlength="1000"
+              placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
+            <p class="lp-error" id="fb-error"></p>
+            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary-container transition-all" id="fb-submit">
+              <span class="material-symbols-outlined text-[18px]">send</span><span>Gửi góp ý</span>
+            </button>
+          </div>
+        </div>`;
+      const close = () => backdrop.remove();
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+      backdrop.querySelector(".lp-close").addEventListener("click", close);
+      document.body.appendChild(backdrop);
+
+      const ta = backdrop.querySelector("#fb-content");
+      const errEl = backdrop.querySelector("#fb-error");
+      const btn = backdrop.querySelector("#fb-submit");
+      ta.focus();
+      btn.addEventListener("click", async () => {
+        const noi_dung = ta.value.trim();
+        errEl.classList.remove("show");
+        if (!noi_dung) {
+          errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+          errEl.classList.add("show");
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "Đang gửi…";
+        try {
+          await ApiClient.post("/feedback/", { noi_dung });
+          close();
+          Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
+        } catch (err) {
+          errEl.textContent = err.message || "Không gửi được góp ý.";
+          errEl.classList.add("show");
+          btn.disabled = false;
+          btn.textContent = "Gửi góp ý";
+        }
+      });
+    }
+
+    function renderMemberNav(active) {
+      // Legacy compatibility no-op
+    }
+
+
     (function () {
       "use strict";
 
@@ -152,29 +570,7 @@
       };
 
       /* ================= Nav member (FRONTEND_CONTRACT §6) ================= */
-      function renderMemberNav(active) {
-        const items = [
-          ["home", "home", "Nhà", "/frontend/member/home.html"],
-          ["events", "calendar", "Sự kiện", "/frontend/member/events.html"],
-          ["checkin", "compass", "Check-in", "/frontend/member/checkin.html", true],
-          ["leaderboard", "trophy", "Xếp hạng", "/frontend/member/leaderboard.html"],
-          ["profile", "user", "Hồ sơ", "/frontend/member/profile.html"],
-          ["documents", "book-open", "Tài liệu", "/frontend/member/documents.html"],
-        ];
-        document.getElementById("bottom-nav").innerHTML = items.map(([k, ic, label, href, cta]) =>
-          `<a href="${href}" class="${k === active ? "active" : ""}${cta ? " nav-cta" : ""}" ${k === active ? 'aria-current="page"' : ""}>
-            ${Icons.render(ic, cta ? 24 : 21)}<span>${label}</span></a>`
-        ).join("");
-        document.getElementById("logout-icon").innerHTML = Icons.render("logout", 20);
-        document.getElementById("btn-logout").addEventListener("click", () => Auth.logout());
-        const me = Auth.cachedUser();
-        const av = document.getElementById("me-avatar");
-        if (av && me) av.textContent = Utils.initials(me.ho_ten || me.email);
-        const nm = document.getElementById("me-name");
-        if (nm && me) nm.textContent = me.ho_ten || me.email;
-        const lv = document.getElementById("me-level");
-        if (lv && me) lv.textContent = `Level ${me.current_level ?? "?"} · ${me.xp_points ?? 0} XP`;
-      }
+      /* renderMemberNav handled by shell controller */
 
       /* ================= Haversine (R = 6371000 m) ================= */
       function haversine(lat1, lon1, lat2, lon2) {
@@ -539,9 +935,15 @@
         }
       }
 
-      renderMemberNav("checkin");
-      Auth.requireRole(["MEMBER"]).then(init).catch(() => {});
+      (async () => {
+        let user;
+        try { user = await Auth.requireRole(["MEMBER"]); } catch { return; }
+        initMemberShell(user);
+        renderMemberNav("checkin");
+        init();
+      })();
     })();
-  </script>
+  
+</script>
 </body>
 </html>
