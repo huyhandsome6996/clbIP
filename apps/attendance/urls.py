@@ -11,6 +11,7 @@ from apps.attendance.views import (
     SessionDetailView,
     SessionListCreateView,
     SessionNonceView,
+    SessionRecordsView,
 )
 
 urlpatterns = [
@@ -22,6 +23,11 @@ urlpatterns = [
         "sessions/<int:pk>/bulk-override/",
         BulkOverrideView.as_view(),
         name="attendance_bulk_override",
+    ),
+    path(
+        "sessions/<int:pk>/records/",
+        SessionRecordsView.as_view(),
+        name="attendance_session_records",
     ),
     path("check-in/", CheckInView.as_view(), name="attendance_checkin"),
     path("me/", MyAttendanceHistoryView.as_view(), name="attendance_me"),

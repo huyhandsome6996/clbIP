@@ -15,7 +15,7 @@ from typing import Optional
 from django.db.models import QuerySet
 
 from apps.common.timeutils import local_day_range, local_range_inclusive
-from apps.funds.models import FundPeriodLock, FundTransaction
+from apps.funds.models import FundLedgerAnchor, FundPeriodLock, FundTransaction
 
 
 class IFundRepository(ABC):
@@ -24,6 +24,11 @@ class IFundRepository(ABC):
     @abstractmethod
     def get_last_transaction_for_update(self) -> Optional[FundTransaction]:
         """Lấy giao dịch MỚI NHẤT kèm pessimistic lock (select_for_update)."""
+
+    @abstractmethod
+    def get_ledger_anchor_for_update(self) -> "FundLedgerAnchor":
+        """Khóa hàng NEO bi sổ (singleton pk=1) — serialization point chung
+        cho mọi writer, kể cả khi SỔ RỖNG (review R04)."""
 
     @abstractmethod
     def get_last_transaction(self) -> Optional[FundTransaction]:
@@ -104,6 +109,36 @@ class DjangoFundRepository(IFundRepository):
             .order_by("-id")
             .first()
         )
+
+    def get_ledger_anchor_for_update(self) -> FundLedgerAnchor:
+        """
+        Khóa hàng NEO bi sổ (pk=1) — review R04.
+
+        Trước đây chỉ khóa "dòng cuối" → sổ RỖNG không có hàng để khóa, hai
+        giao dịch song song cùng đọc số dư 0 và cùng ghi → mất cập nhật chuỗi
+        số dư. Hàng neo tồn tại vĩnh viễn (data migration 0004) nên luôn là
+        chốt khóa ổn định đúng 1 hàng cho MỌI writer.
+
+        Tự hồi phục: nếu hàng chưa có (DB cũ chưa chạy data-migration, hàng
+        bị mất, hay môi trường test flush) → tạo ngay tại chỗ trong SAVEPOINT
+        rồi khóa lại. Hai writer đua nhau tạo → thua IntegrityError ở
+        savepoint (không hỏng transaction ngoài) → khóa hàng của bên thắng.
+
+        ⚠️ Bắt buộc gọi bên trong `transaction.atomic()`.
+        """
+        try:
+            return FundLedgerAnchor.objects.select_for_update().get(pk=1)
+        except FundLedgerAnchor.DoesNotExist:
+            from django.db import IntegrityError, transaction  # noqa: PLC0415
+
+            try:
+                with transaction.atomic():  # SAVEPOINT — lỗi cục bộ
+                    FundLedgerAnchor.objects.create(
+                        pk=1, ghi_chu="Hàng neo khóa bi sổ (tự hồi phục)"
+                    )
+            except IntegrityError:
+                pass  # writer khác đã tạo — đi tiếp để khóa
+            return FundLedgerAnchor.objects.select_for_update().get(pk=1)
 
     def get_last_transaction(self) -> Optional[FundTransaction]:
         """Giao dịch mới nhất — chỉ đọc, không khóa bi."""

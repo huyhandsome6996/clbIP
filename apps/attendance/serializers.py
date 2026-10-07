@@ -119,3 +119,41 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
             "overridden_by",
             "created_at",
         ]
+
+
+class AttendanceRecordAdminSerializer(serializers.ModelSerializer):
+    """
+    Bản ghi điểm danh cho BẢNG QUẢN TRỊ theo phiên (audit F10 — BCN/ADMIN).
+
+    Khác AttendanceRecordSerializer (/me/ cá nhân):
+    - Thêm member_mssv / member_lop / overridden_by_ho_ten phục vụ audit BCN.
+    - KHÔNG trả tọa độ GPS thô (vi_do/kinh_do thiết bị) — BCN audit bằng
+      khoang_cach_m + is_suspicious; giảm PII trong payload danh sách.
+    """
+
+    member_ten = serializers.CharField(source="member.ho_ten", read_only=True)
+    member_mssv = serializers.CharField(source="member.mssv", read_only=True)
+    member_lop = serializers.CharField(source="member.lop", read_only=True)
+    overridden_by_email = serializers.CharField(
+        source="overridden_by.email", read_only=True, default=None
+    )
+
+    class Meta:
+        model = AttendanceRecord
+        fields = [
+            "id",
+            "member",
+            "member_ten",
+            "member_mssv",
+            "member_lop",
+            "trang_thai",
+            "khoang_cach_m",
+            "checked_in_at",
+            "device_id",
+            "is_suspicious",
+            "xp_awarded",
+            "overridden_by",
+            "overridden_by_email",
+            "created_at",
+            "updated_at",
+        ]

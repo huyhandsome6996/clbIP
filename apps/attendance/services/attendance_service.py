@@ -15,6 +15,7 @@ from datetime import timedelta
 from typing import ClassVar, Optional
 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
@@ -110,10 +111,25 @@ class AttendanceService:
 
     @classmethod
     def close_session(cls, session: AttendanceSession, closed_by: Optional[object] = None) -> AttendanceSession:
-        """Đóng phiên — chốt danh sách điểm danh."""
-        session.trang_thai = AttendanceSession.TrangThai.CLOSED
-        session.dong_phien_at = timezone.now()
-        session.save(update_fields=["trang_thai", "dong_phien_at", "updated_at"])
+        """
+        Đóng phiên — chốt danh sách điểm danh.
+
+        Review R04: bọc atomic + khóa hàng PHIÊN — close và check-in /
+        bulk_override tuần tự hóa trên cùng chốt; double-close gọi hai lần
+        vẫn an toàn (lần sau thấy CLOSED → giữ nguyên mốc dong_phien_at).
+        """
+        with transaction.atomic():
+            try:
+                session = cls._repo().get_session_for_update(session.id)
+            except AttendanceSession.DoesNotExist:
+                raise NotFoundException("Không tìm thấy phiên điểm danh.")
+            if session.trang_thai == AttendanceSession.TrangThai.CLOSED:
+                return session  # đã đóng rồi — idempotent, không đè mốc thời gian
+
+            session.trang_thai = AttendanceSession.TrangThai.CLOSED
+            session.dong_phien_at = timezone.now()
+            session.save(update_fields=["trang_thai", "dong_phien_at", "updated_at"])
+
         logger.info(
             "Đóng phiên %s bởi %s", session.id, getattr(closed_by, "email", None)
         )
@@ -161,60 +177,81 @@ class AttendanceService:
         if session.hieu_luc_den and now > session.hieu_luc_den:
             raise SessionClosedException("Phiên điểm danh đã hết hiệu lực.")
 
-        # 2. Bản ghi trong phiên (được tạo VẮNG khi mở phiên)
-        try:
-            record = cls._repo().get_record_for_member(session, member)
-        except AttendanceRecord.DoesNotExist:
-            raise NotFoundException("Bạn không có bản ghi điểm danh trong phiên này.")
+        # 2→5. Bản ghi + duplicate check + anti-cheat + ghi — TOÀN BỘ trong MỘT
+        #      atomic block với ROW LOCK (review 13-a P2-4): hai check-in song
+        #      song cùng member/session tuần tự hóa ở bước fetch → chỉ 1 request
+        #      ghi được, request còn lại bắt duplicate 409. XP không đúp vì
+        #      ledger idempotent; invariant "một lần check-in" giờ chặt hơn.
+        with transaction.atomic():
+            # R04: khóa PHIÊN trước (thứ tự khóa thống nhất: session → record).
+            # check-in / bulk_override / close_session tuần tự hóa trên cùng
+            # chốt phiên; re-check OPEN dưới khóa để không ghi record sau khi
+            # phiên đã bị đóng giữa chừng.
+            try:
+                session = cls._repo().get_session_for_update(session_id)
+            except AttendanceSession.DoesNotExist:
+                raise NotFoundException("Không tìm thấy phiên điểm danh.")
+            if session.trang_thai != AttendanceSession.TrangThai.OPEN:
+                raise SessionClosedException("Phiên điểm danh đã đóng hoặc chưa mở.")
 
-        # 3. Chặn check-in trùng
-        if record.trang_thai == AttendanceRecord.TrangThaiDiemDanh.CO_MAT:
-            raise DuplicateDataException("Bạn đã điểm danh phiên này rồi!")
+            try:
+                record = cls._repo().get_record_for_member_locked(session, member)
+            except AttendanceRecord.DoesNotExist:
+                raise NotFoundException("Bạn không có bản ghi điểm danh trong phiên này.")
 
-        # 4. Anti-Cheat Engine — raise nếu vi phạm bất kỳ lớp nào
-        is_valid, dist = GPSAntiCheatEngine.validate_checkin(
-            member=member,
-            session=session,
-            client_lat=client_lat,
-            client_lon=client_lon,
-            client_time=client_time,
-            device_id=device_id,
-            nonce=nonce,
-            is_mock=is_mock,
-            accuracy=accuracy,
-        )
+            # 3. Chặn check-in trùng — CẢ CO_MAT lẫn DI_MUON (audit F07: trước đây
+            # chỉ chặn CO_MAT nên check-in muộn gửi lại vẫn ghi đè metadata/XP).
+            # Raise TRƯỚC mọi mutation → checked_in_at/device/GPS/XP không bị sửa.
+            if record.trang_thai in (
+                AttendanceRecord.TrangThaiDiemDanh.CO_MAT,
+                AttendanceRecord.TrangThaiDiemDanh.DI_MUON,
+            ):
+                raise DuplicateDataException("Bạn đã điểm danh phiên này rồi!")
 
-        # 5. Xác định đúng giờ / muộn + XP tương ứng (server-authoritative)
-        late_deadline = session.mo_phien_at + timedelta(minutes=LATE_AFTER_MINUTES)
-        if now > late_deadline:
-            trang_thai = AttendanceRecord.TrangThaiDiemDanh.DI_MUON
-            xp_total = clb["XP_ATTENDANCE_LATE"]
-        else:
-            trang_thai = AttendanceRecord.TrangThaiDiemDanh.CO_MAT
-            minutes_early = (session.mo_phien_at - now).total_seconds() / 60.0
-            xp_total = clb["XP_ATTENDANCE"]
-            if minutes_early >= 15:
-                xp_total += clb["XP_ATTENDANCE_EARLY_BONUS"]
+            # 4. Anti-Cheat Engine — raise nếu vi phạm bất kỳ lớp nào
+            is_valid, dist = GPSAntiCheatEngine.validate_checkin(
+                member=member,
+                session=session,
+                client_lat=client_lat,
+                client_lon=client_lon,
+                client_time=client_time,
+                device_id=device_id,
+                nonce=nonce,
+                is_mock=is_mock,
+                accuracy=accuracy,
+            )
 
-        record.trang_thai = trang_thai
-        record.khoang_cach_m = dist
-        record.vi_do = client_lat
-        record.kinh_do = client_lon
-        record.checked_in_at = now
-        record.device_id = device_id or ""
-        record.xp_awarded = xp_total
-        record.save(
-            update_fields=[
-                "trang_thai",
-                "khoang_cach_m",
-                "vi_do",
-                "kinh_do",
-                "checked_in_at",
-                "device_id",
-                "xp_awarded",
-                "updated_at",
-            ]
-        )
+            # 5. Xác định đúng giờ / muộn + XP tương ứng (server-authoritative)
+            late_deadline = session.mo_phien_at + timedelta(minutes=LATE_AFTER_MINUTES)
+            if now > late_deadline:
+                trang_thai = AttendanceRecord.TrangThaiDiemDanh.DI_MUON
+                xp_total = clb["XP_ATTENDANCE_LATE"]
+            else:
+                trang_thai = AttendanceRecord.TrangThaiDiemDanh.CO_MAT
+                minutes_early = (session.mo_phien_at - now).total_seconds() / 60.0
+                xp_total = clb["XP_ATTENDANCE"]
+                if minutes_early >= 15:
+                    xp_total += clb["XP_ATTENDANCE_EARLY_BONUS"]
+
+            record.trang_thai = trang_thai
+            record.khoang_cach_m = dist
+            record.vi_do = client_lat
+            record.kinh_do = client_lon
+            record.checked_in_at = now
+            record.device_id = device_id or ""
+            record.xp_awarded = xp_total
+            record.save(
+                update_fields=[
+                    "trang_thai",
+                    "khoang_cach_m",
+                    "vi_do",
+                    "kinh_do",
+                    "checked_in_at",
+                    "device_id",
+                    "xp_awarded",
+                    "updated_at",
+                ]
+            )
 
         # 6a. Streak chuyên cần 🔥
         cls._update_streak(member, now)
@@ -303,6 +340,17 @@ class AttendanceService:
         """
         Cập nhật trạng thái điểm danh thủ công cho danh sách thành viên.
 
+        TOÀN VẸN DỮ LIỆU (audit F01 — regression bắt buộc):
+            1. VALIDATE TOÀN BỘ items TRƯỚC KHI ghi: shape, kiểu member_id,
+               trạng thái hợp lệ, member tồn tại, không trùng member_id.
+            2. GHI trong MỘT `transaction.atomic()` — mọi lỗi giữa chừng
+               (save fail, DB error) rollback toàn bộ, không để lại trạng
+               thái "một phần đã lưu" trong khi API báo thất bại.
+
+        Chính sách phiên CLOSED: override VẪN được phép (BCN chốt lại số
+        liệu sau khi đóng phiên là nghiệp vụ hợp lệ — ghi audit qua
+        `overridden_by`; không đổi policy tùy tiện).
+
         Args:
             session: phiên điểm danh đích.
             items: [{"member_id": int, "trang_thai": "CO_MAT|VANG|CO_PHEP|DI_MUON"}].
@@ -311,44 +359,130 @@ class AttendanceService:
         Returns:
             Số bản ghi đã cập nhật. Member chưa có record trong phiên
             (tham gia muộn) → tạo mới bản ghi với trạng thái chỉ định.
+
+        Raises:
+            ValidationException: bất kỳ item nào sai → KHÔNG ghi gì cả.
         """
+        from django.db import transaction as db_transaction  # noqa: PLC0415
+
+        if not isinstance(items, list) or not items:
+            raise ValidationException(
+                "Danh sách override rỗng hoặc không hợp lệ.",
+                errors={"items": "Cần ít nhất một bản ghi cần cập nhật."},
+            )
+
         valid_statuses = set(AttendanceRecord.TrangThaiDiemDanh.values)
-        updated = 0
-        for item in items:
+
+        # ---- BƯỚC 1: VALIDATE TOÀN BỘ (không ghi gì khi có bất kỳ lỗi nào) ----
+        parsed: list[tuple[int, str]] = []  # (member_id, trang_thai)
+        seen_ids: set[int] = set()
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise ValidationException(
+                    f"Item thứ {idx + 1} không hợp lệ (cần object).",
+                    errors={"items": f"Dòng {idx + 1} phải là object {{member_id, trang_thai}}."},
+                )
             member_id = item.get("member_id")
             trang_thai = item.get("trang_thai")
 
             if trang_thai not in valid_statuses:
                 raise ValidationException(
                     f"Trạng thái điểm danh không hợp lệ: {trang_thai}",
-                    errors={"trang_thai": trang_thai},
+                    errors={"items": f"Dòng {idx + 1}: trạng thái '{trang_thai}' không nằm trong {sorted(valid_statuses)}."},
                 )
-            if not cls._repo().member_exists(member_id):
+            # bool là instance của int — loại rõ để tránh member_id=True đi qua
+            if not isinstance(member_id, int) or isinstance(member_id, bool) or member_id <= 0:
                 raise ValidationException(
-                    f"Không tồn tại thành viên với member_id={member_id}",
-                    errors={"member_id": member_id},
+                    f"member_id không hợp lệ: {member_id!r}",
+                    errors={"items": f"Dòng {idx + 1}: member_id phải là số nguyên dương."},
+                )
+            if member_id in seen_ids:
+                raise ValidationException(
+                    f"member_id={member_id} xuất hiện nhiều lần trong danh sách.",
+                    errors={"items": f"Dòng {idx + 1}: member_id={member_id} bị trùng."},
+                )
+            seen_ids.add(member_id)
+            parsed.append((member_id, trang_thai))
+
+        missing_ids = seen_ids - cls._repo().filter_existing_member_ids(seen_ids)
+        if missing_ids:
+            sample = sorted(missing_ids)[:5]
+            raise ValidationException(
+                f"Không tồn tại thành viên với member_id={sample}"
+                + (f" (và {len(missing_ids) - len(sample)} ID khác)" if len(missing_ids) > len(sample) else ""),
+                errors={"member_id": [str(i) for i in sample]},
+            )
+
+        # ---- BƯỚC 2: GHI ATOMIC — all-or-nothing ----
+        updated = 0
+        with db_transaction.atomic():
+            # R04: khóa PHIÊN trước (thứ tự: session → record) — override,
+            # check-in và close_session cùng serialization point; re-check
+            # trạng thái dưới khóa để không ghi vào phiên đang chuyển trạng
+            # thái giữa chừng.
+            try:
+                session = cls._repo().get_session_for_update(session.id)
+            except AttendanceSession.DoesNotExist:
+                raise NotFoundException("Không tìm thấy phiên điểm danh.")
+            # N02 (review ac51233): phục hồi policy gốc theo docstring — override
+            # quản trị hợp lệ trên CẢ phiên OPEN và CLOSED (BCN chốt lại số liệu
+            # sau khi đóng phiên là nghiệp vụ đã cam kết; audit vẫn ghi
+            # `overridden_by`). Khóa phiên giữ nguyên serialization với
+            # close/check-in — serialization không phải lý do cấm sửa điểm
+            # danh sau đóng. Luồng SV tự check-in (check_in) VẪN chặn nghiêm
+            # sau khi đóng — hai luồng có chính sách riêng, không đụng nhau.
+            if session.trang_thai not in (
+                AttendanceSession.TrangThai.OPEN,
+                AttendanceSession.TrangThai.CLOSED,
+            ):
+                raise SessionClosedException(
+                    "Phiên điểm danh ở trạng thái không hợp lệ — không override được."
                 )
 
-            record, created = cls._repo().get_or_create_record(
-                session=session,
-                member_id=member_id,
-                defaults={"trang_thai": trang_thai},
-            )
-            if not created:
-                record.trang_thai = trang_thai
-            record.overridden_by = actor
-            if trang_thai == AttendanceRecord.TrangThaiDiemDanh.CO_PHEP:
-                record.is_suspicious = False  # có phép → xóa cờ nghi vấn
-            record.save()
+            for member_id, trang_thai in parsed:
+                record, created = cls._repo().get_or_create_record(
+                    session=session,
+                    member_id=member_id,
+                    defaults={"trang_thai": trang_thai},
+                )
+                if not created:
+                    record.trang_thai = trang_thai
+                record.overridden_by = actor
+                if trang_thai == AttendanceRecord.TrangThaiDiemDanh.CO_PHEP:
+                    record.is_suspicious = False  # có phép → xóa cờ nghi vấn
+                # review 13-a P2-1: save CHỈ các field override — tránh
+                # lost-update đè metadata check-in (GPS/device/checked_in_at)
+                # khi BCN override đồng thời với member đang check-in.
+                record.save(
+                    update_fields=[
+                        "trang_thai",
+                        "overridden_by",
+                        "is_suspicious",
+                        "updated_at",
+                    ]
+                )
+                updated += 1
 
-            updated += 1
-
-        logger.info("BCN %s override %s bản ghi của phiên %s", actor, updated, session.id)
+        logger.info(
+            "BCN %s override %s bản ghi của phiên %s (atomic)", actor, updated, session.id
+        )
         return updated
 
     # ------------------------------------------------------------------
     # Tra cứu
     # ------------------------------------------------------------------
+    @classmethod
+    def list_records_for_session(
+        cls,
+        session: AttendanceSession,
+        trang_thai: Optional[str] = None,
+        search: Optional[str] = None,
+    ):
+        """Bản ghi điểm danh của một phiên (BCN audit — view tự phân trang)."""
+        return cls._repo().list_records_for_session(
+            session, trang_thai=trang_thai, search=search
+        )
+
     @classmethod
     def get_session_or_404(cls, session_id: int) -> AttendanceSession:
         """Lấy phiên theo id — không thấy → NotFoundException (404 envelope)."""

@@ -326,14 +326,18 @@ class EventService:
         trang_thai: Optional[str] = None,
         loai_hd: Optional[str] = None,
         sort: str = "-thoi_gian_bat_dau",
+        search: Optional[str] = None,
     ) -> QuerySet[ActivityEvent]:
         """
         Danh sách sự kiện kèm annotation `active_reg_count` (chống N+1).
 
         `trang_thai` / `loai_hd` đã được view validate theo choices, `sort`
         đã được view ràng buộc whitelist EVENT_SORT_WHITELIST (Security §2.1).
+        `search`: khớp tên/mã hoạt động (audit F09 — selector cần search thật).
         """
-        return cls._repo().list_events(trang_thai=trang_thai, loai_hd=loai_hd, sort=sort)
+        return cls._repo().list_events(
+            trang_thai=trang_thai, loai_hd=loai_hd, sort=sort, search=search
+        )
 
     @classmethod
     def list_tickets_for_member(cls, member: MemberProfile) -> QuerySet[EventRegistration]:
@@ -469,8 +473,24 @@ class EventTaskService:
             )
 
     # ------------------------------------------------------------------
-    # Tạo task — validate DAG trước khi commit
+    # KHÓA ĐỒ THỊ DAG (review R01 — 07/10/2026)
     # ------------------------------------------------------------------
+    @classmethod
+    def _lock_event_graph(cls, event_id: int) -> None:
+        """
+        Khóa hàng SỰ KIỆN (select_for_update) — điểm tuần tự hóa chung cho MỌI
+        mutation đồ thị phụ thuộc (create/complete/reopen/set_dependencies).
+
+        Review R01: trước đây `complete_task` chỉ khóa task đích và đọc
+        dependencies không khóa — cặp tác vụ (reopen tiền nhiệm) × (complete
+        hậu nhiệm) chạy song song có thể đọc chéo snapshot cũ và cùng commit,
+        phá bất biến "task completed ⇒ tiền nhiệm completed". Mọi writer
+        cùng chờ khóa event trước, rồi mới khóa task → đồ thị được sửa
+        tuần tự. THỨ TỰ KHÓA THỐNG NHẤT: event → task (tránh deadlock).
+        """
+        if cls._repo().get_event_for_update(event_id) is None:
+            raise NotFoundException("Không tìm thấy sự kiện.")
+
     @classmethod
     def create_task(
         cls,
@@ -484,10 +504,16 @@ class EventTaskService:
         Tạo task mới cho sự kiện rồi set M2M depends_on; sau đó validate DAG
         toàn sự kiện. Nếu phát hiện chu trình → raise trong atomic → ROLLBACK
         toàn bộ (task vừa tạo không còn tồn tại).
+
+        Review R01: mở đầu bằng khóa hàng sự kiện — mọi writer đồ thị tuần
+        tự theo cùng thứ tự khóa event → task.
         """
         depends_on_ids = list(depends_on_ids or [])
         with transaction.atomic():
-            event = cls._get_event_or_404(event_id)
+            cls._lock_event_graph(event_id)
+            event = cls._repo().get_event_by_id(event_id)
+            if event is None:
+                raise NotFoundException("Không tìm thấy sự kiện.")
             cls._validate_depends_ids(event, depends_on_ids)
 
             task = cls._repo().create_task(
@@ -523,11 +549,41 @@ class EventTaskService:
         """
         depends_on_ids = list(depends_on_ids or [])
         with transaction.atomic():
+            # Thứ tự khóa thống nhất (R01): event trước, task sau.
+            ref = cls._repo().get_task_by_id(task_id)
+            if ref is None:
+                raise NotFoundException("Không tìm thấy task.")
+            cls._lock_event_graph(ref.event_id)
+
             task = cls._repo().get_task_for_update(task_id)
             if task is None:
                 raise NotFoundException("Không tìm thấy task.")
             event = task.event
             cls._validate_depends_ids(event, depends_on_ids)
+
+            # R01 — BẤT BIẾN DAG: task đã HOÀN THÀNH chỉ được phụ thuộc vào
+            # tiền nhiệm ĐÃ HOÀN THÀNH. set_dependencies thay toàn bộ tập
+            # phụ thuộc → kiểm tra trên tập MỚI đủ để giữ bất biến (các
+            # mutation khác đã tự bảo vệ cạnh của mình).
+            if task.is_completed and depends_on_ids:
+                incomplete = [
+                    {"id": d.pk, "ten_task": d.ten_task}
+                    for d in cls._repo().get_tasks_by_ids(depends_on_ids)
+                    if not d.is_completed
+                ]
+                if incomplete:
+                    logger.warning(
+                        "set_dependencies task %s (completed) nhận %s tiền nhiệm "
+                        "chưa hoàn thành → từ chối (R01)",
+                        task_id,
+                        len(incomplete),
+                    )
+                    raise ValidationException(
+                        f"Không thể gán phụ thuộc: task '{task.ten_task}' đã hoàn "
+                        f"thành nhưng còn {len(incomplete)} tiền nhiệm chưa hoàn "
+                        "thành — mở lại các tiền nhiệm trước hoặc bỏ gán.",
+                        errors={"depends_on": incomplete},
+                    )
 
             task_ids = cls._repo().get_task_ids(event)
             # Giả lập: bỏ các cạnh cũ trỏ VÀO task, thêm cạnh mới (dep → task)
@@ -651,6 +707,13 @@ class EventTaskService:
         phân quyền đã tách sang `assert_can_update` để cả view lẫn service
         khác gọi được).
         """
+        # Thứ tự khóa thống nhất (R01): event trước, task sau — complete
+        # tuần tự với reopen/set_dependencies của cùng sự kiện.
+        ref = cls._repo().get_task_by_id(task_id)
+        if ref is None:
+            raise NotFoundException("Không tìm thấy task.")
+        cls._lock_event_graph(ref.event_id)
+
         task = cls._repo().get_task_for_update(task_id)
         if task is None:
             raise NotFoundException("Không tìm thấy task.")
@@ -675,12 +738,81 @@ class EventTaskService:
         """
         Mở lại task đã hoàn thành (is_completed=False).
 
+        BẤT BIẾN DAG (audit F08): "task đã hoàn thành thì mọi tiền nhiệm của nó
+        cũng đã hoàn thành". Reopen tiền nhiệm khi còn hậu nhiệm (trực tiếp HOẶC
+        gián tiếp qua chuỗi phụ thuộc) đã hoàn thành sẽ phá bất biến đó → CHẶN
+        400 kèm danh sách task chặn, KHÔNG âm thầm thay đổi nhiều task
+        (chính sách chặn được ưu tiên hơn cascade theo đề nghị audit).
+
         KHÔNG hoàn lại XP đã cộng (XP ledger là bất biến — xem
         GamificationService với idempotency_key "task_<id>").
+
+        Review R01: bọc `transaction.atomic()` + khóa hàng sự kiện TRƯỚC rồi
+        mới re-fetch task với khóa bi — reopen và complete/set_dependencies
+        của cùng sự kiện tuần tự hóa trên cùng một điểm khóa, không còn khe
+        hở đọc-ghi chéo snapshot (reopen đọc descendants cũ trong khi complete
+        đang ghi hậu nhiệm).
         """
-        task.is_completed = False
-        task.save(update_fields=["is_completed", "updated_at"])
-        return task
+        with transaction.atomic():
+            cls._lock_event_graph(task.event_id)  # LOCK 1 (thứ tự: event → task)
+            locked = cls._repo().get_task_for_update(task.pk)  # LOCK 2
+            if locked is None:
+                raise NotFoundException("Không tìm thấy task.")
+            task = locked
+
+            blockers = cls._completed_descendants(task)
+            if blockers:
+                preview = ", ".join(f"#{tid} {tname}" for tid, tname in blockers[:5])
+                more = f" và {len(blockers) - 5} task khác" if len(blockers) > 5 else ""
+                raise ValidationException(
+                    f"Không thể mở lại '{task.ten_task}' vì còn "
+                    f"{len(blockers)} task phụ thuộc đã hoàn thành: {preview}{more}. "
+                    "Hãy mở lại các task phụ thuộc trước (theo thứ tự ngược).",
+                    errors={
+                        "blocking_tasks": [
+                            {"id": tid, "ten_task": tname} for tid, tname in blockers
+                        ]
+                    },
+                )
+
+            task.is_completed = False
+            task.save(update_fields=["is_completed", "updated_at"])
+            return task
+
+    @classmethod
+    def _completed_descendants(cls, task: EventTask) -> list[tuple[int, str]]:
+        """
+        Tìm HẬU NHIỆM (trực tiếp + gián tiếp) của `task` đang is_completed=True.
+
+        Duyệt BFS trên đồ thị phụ thuộc đảo (dep → người phụ thuộc) giới hạn
+        trong CÙNG sự kiện — tái dùng `_dependency_edges` (dữ liệu qua repo).
+        Trả về [(id, ten_task)] theo thứ tự duyệt (ổn định để test + hiển thị).
+        """
+        event = task.event
+        edges = cls._dependency_edges(event)  # (tiền nhiệm, hậu nhiệm)
+        # Kề đảo: từ một task → các task phụ thuộc nó
+        dependents: dict[int, list[int]] = {}
+        for prev_id, next_id in edges:
+            dependents.setdefault(prev_id, []).append(next_id)
+
+        tasks = {t.id: t for t in cls._repo().list_tasks_for_plan(event)}
+
+        visited: set[int] = set()
+        queue = [task.id]
+        blockers: list[tuple[int, str]] = []
+        while queue:
+            current = queue.pop(0)
+            for nxt in dependents.get(current, []):
+                if nxt in visited:
+                    continue
+                visited.add(nxt)
+                nxt_task = tasks.get(nxt)
+                if nxt_task is None:
+                    continue  # dữ liệu lạ — bỏ qua an toàn
+                if nxt_task.is_completed:
+                    blockers.append((nxt_task.id, nxt_task.ten_task))
+                queue.append(nxt)  # vẫn đi tiếp qua cả hậu nhiệm chưa hoàn thành
+        return blockers
 
     @staticmethod
     def _award_xp_for_completion(task: EventTask) -> None:
