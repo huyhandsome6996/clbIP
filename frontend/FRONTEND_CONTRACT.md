@@ -32,7 +32,7 @@
 - Dùng `ApiClient.getList(endpoint, params)` → `{items, pagination}` (pagination có thể null).
 - Lỗi: `err.status` (0 = mạng), `err.message` (tiếng Việt sẵn), `err.errors` (field errors DRF).
 - **Khởi tạo state sau khi guard chạy xong**: bọc trong try/catch hoặc `.then` — vì `Auth.requireRole()` redirect bằng `window.location.href` (không dừng JS ngay).
-- **File/blob (audit F04)**: dùng `ApiClient.getBlob(endpoint)` (trả Blob, refresh single-flight đúng 1 lần khi 401, refresh fail → tự forceLogout) hoặc `ApiClient.download(endpoint, filename)`. KHÔNG fetch URL media/storage trực tiếp kèm Bearer (CSP + DEBUG=False đều chặn).
+- **File/blob (audit F04 + review R02)**: dùng `ApiClient.getBlob(endpoint)` (trả Blob, refresh single-flight đúng 1 lần khi 401) hoặc `ApiClient.download(endpoint, filename)`. KHÔNG fetch URL media/storage trực tiếp kèm Bearer (CSP + DEBUG=False đều chặn). **Chính sách 401 cuối (R02)**: refresh fail → forceLogout; refresh OK nhưng retry vẫn 401 → forceLogout; 401 mà không có refresh token → forceLogout ngay. 403/404/429/5xx/network KHÔNG refresh, KHÔNG logout. `forceLogout` dedup — nhiều request cùng chết chỉ điều hướng 1 lần.
 
 ## 2. Auth flow (đã có sẵn — chỉ dùng lại)
 ```js
@@ -106,7 +106,7 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | POST `/attendance/sessions/` | `{ten_phien, vi_do, kinh_do, ban_kinh_m?, event?, hieu_luc_den?}` (BCN) | phiên + tự tạo VẮNG cho mọi member |
 | GET `/attendance/sessions/{id}/` | — | detail |
 | POST `/attendance/sessions/{id}/close/` | — (BCN) | đóng phiên |
-| GET `/attendance/sessions/{id}/nonce/` | — (BCN) | `{nonce: "123456"}` mã xoay 60s — hiển thị máy chiếu |
+| GET `/attendance/sessions/{id}/nonce/` | — (BCN) | `{nonce: "123456"}` mã xoay 60s — hiển thị máy chiếu. **Vòng đời UI (R03)**: hết hạn → vô hiệu hóa mã NGAY (placeholder `······`, remaining = 0, không âm); fetch lỗi → toast 1 lần + tự thử lại TỐI ĐA 1 lần sau 5s rồi chỉ retry thủ công (nút Lấy mã mới); đổi/đóng phiên dọn sạch interval + backoff |
 | POST `/attendance/sessions/{id}/bulk-override/` | `{items: [{member_id, trang_thai: CO_MAT|VANG|CO_PHEP|DI_MUON}]}` (BCN) — **dùng HTTP PUT (không phải POST!)** | `{updated: n}`. **Audit F01**: atomic — validate TOÀN BỘ trước, có 1 item sai → 400 và KHÔNG ghi gì cả (all-or-nothing) |
 | GET `/attendance/sessions/{id}/records/` | `?trang_thai=CO_MAT|CO_PHEP|DI_MUON|VANG&search=&page=` (BCN) — **audit F10**: bảng bản ghi theo phiên | items: `{id, member, member_ten, member_mssv, member_lop, trang_thai, khoang_cach_m, checked_in_at, device_id, is_suspicious, xp_awarded, overridden_by, overridden_by_email, created_at, updated_at}` (không có GPS thô) + pagination |
 | POST `/attendance/check-in/` | `{session_id, latitude, longitude, client_time (ISO), device_id, nonce, is_mock?, accuracy?}` | record: `{id, session, session_ten, member, member_ten, trang_thai CO_MAT|DI_MUON, khoang_cach_m, ...}` + `xp_gained` + `streak_count` |
