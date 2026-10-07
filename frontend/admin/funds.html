@@ -86,93 +86,123 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #94a3b8;
     }
+  
+    /* Smooth View Enter Transition */
+    @keyframes viewFadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .view-enter {
+      animation: viewFadeSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.04); opacity: 0.85; }
+    }
+    .radar-pulse {
+      animation: pulse-subtle 2s infinite ease-in-out;
+    }
   </style>
 </head>
 <body class="h-full flex overflow-hidden font-sans text-slate-700 antialiased selection:bg-cyan-500 selection:text-white">
 
   <!-- Mobile Scrim backdrop -->
-  <div id="scrim" class="fixed inset-0 bg-navy-900/60 z-40 lg:hidden hidden backdrop-blur-xs transition-opacity duration-300"></div>
+  <div id="scrim" class="fixed inset-0 bg-navy-950/60 z-40 md:hidden hidden backdrop-blur-xs transition-opacity duration-300" onclick="toggleSidebar(false)"></div>
 
   <!-- ========================================================================= -->
   <!-- 1. SHARED ADMIN SIDEBAR (Fixed Left, 260px desktop width)                -->
   <!-- ========================================================================= -->
-  <aside id="shell-sidebar" class="w-[260px] flex-shrink-0 bg-navy-900 flex flex-col justify-between border-r border-white/10 z-50 fixed inset-y-0 left-0 -translate-x-full lg:translate-x-0 lg:static transition-transform duration-300 ease-in-out">
-    
-    <!-- Top Brand & Navigation -->
-    <div class="flex flex-col flex-1 overflow-y-auto">
-      <!-- Brand Header -->
-      <div class="h-[74px] px-5 flex items-center gap-3.5 border-b border-white/10">
-        <div class="w-11 h-11 rounded-full bg-white p-1 ring-2 ring-cyan-500/30 flex items-center justify-center flex-shrink-0 shadow-sm shadow-cyan-500/20">
-          <img id="brand-logo" src="/frontend/assets/logo.png" alt="CLB IP Logo" class="w-full h-full object-contain rounded-full" />
+  <aside id="shell-sidebar" class="fixed top-0 bottom-0 left-0 w-[260px] bg-navy-900 border-r border-white/10 flex flex-col z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+    <!-- Brand Header -->
+    <div class="h-[68px] px-5 flex items-center gap-3 border-b border-white/10 shrink-0">
+      <div class="w-10 h-10 rounded-full bg-white p-1 ring-2 ring-cyan-500/40 shadow-sm shadow-cyan-500/30 flex items-center justify-center shrink-0">
+        <img id="brand-logo" src="/frontend/assets/logo.png" alt="CLB IP Logo" class="w-full h-full object-contain rounded-full" />
+      </div>
+      <div class="overflow-hidden">
+        <div class="flex items-center gap-1.5">
+          <span class="font-heading font-bold text-sm tracking-tight text-white leading-tight">CLB IP ĐHSP HUẾ</span>
         </div>
-        <div class="flex flex-col min-w-0">
-          <span class="font-heading font-extrabold text-[15px] tracking-tight text-white leading-snug truncate">CLB IP ĐHSP HUẾ</span>
-          <span class="text-[11px] font-medium text-cyan-400 tracking-wide flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            Quản trị 2.0 • Khoa Tin học
-          </span>
-        </div>
+        <p class="text-[11px] text-cyan-400 font-medium flex items-center gap-1.5 mt-0.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Quản trị 2.0 • Khoa Tin học
+        </p>
+      </div>
+    </div>
+
+    <!-- Navigation Area -->
+    <div class="flex-1 overflow-y-auto px-3.5 py-4 space-y-6">
+      <!-- Section 1: Điều Hành Phổ Thông -->
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400/80 px-3 py-1.5 font-mono">QUẢN LÝ ĐIỀU HÀNH</p>
+        <nav id="side-nav" class="space-y-1 mt-1">
+          <!-- Dashboard -->
+          <a id="nav-dashboard" onclick="switchView('dashboard'); return false;" href="#dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">dashboard</span>
+            <span>Dashboard</span>
+          </a>
+
+          <!-- Thành viên -->
+          <a id="nav-members" onclick="switchView('members'); return false;" href="#members" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">group</span>
+            <span>Thành viên</span>
+            <span id="nav-badge-mem" class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300">48</span>
+          </a>
+
+          <!-- Quỹ CLB -->
+          <a id="nav-funds" onclick="switchView('funds'); return false;" href="#funds" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25">
+            <span class="material-symbols-outlined text-[20px] text-white">account_balance_wallet</span>
+            <span>Quỹ CLB</span>
+          </a>
+
+          <!-- Divider -->
+          <div class="pt-2 border-t border-white/10 my-2"></div>
+
+          <!-- Section 2: Phân Hệ Chuyên Sâu -->
+          <p class="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90 px-3 py-1 font-mono">PHÂN HỆ CHUYÊN SÂU</p>
+
+          <!-- Sự kiện & Hoạt động -->
+          <a id="nav-events" href="/frontend/admin/events.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">event</span>
+            <span class="truncate">Sự kiện &amp; Hoạt động</span>
+            <span class="ml-auto text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-white/20 text-white font-bold">V4</span>
+          </a>
+
+          <!-- Điểm danh GPS -->
+          <a id="nav-attendance" href="/frontend/admin/attendance.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">explore</span>
+            <span class="truncate">Điểm danh GPS</span>
+            <span class="ml-auto flex items-center gap-1 text-[10px] text-emerald-400 font-mono">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              Live
+            </span>
+          </a>
+
+          <!-- Tài liệu & Học liệu -->
+          <a id="nav-documents" href="/frontend/admin/documents.html" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">menu_book</span>
+            <span class="truncate">Tài liệu &amp; Học liệu</span>
+            <span id="nav-badge-docs" class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300">48</span>
+          </a>
+        </nav>
       </div>
 
-      <!-- Navigation Section -->
-      <nav id="side-nav" class="px-3.5 py-4 space-y-1">
-        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400/80 px-3 py-2">
-          QUẢN LÝ ĐIỀU HÀNH
+      <!-- Quick Switcher Box inside Sidebar -->
+      <div class="p-3 bg-navy-850/80 rounded-2xl border border-white/10">
+        <p class="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider mb-2">CHẾ ĐỘ XEM TRỰC TIẾP</p>
+        <div id="sb-quick-grid" class="grid grid-cols-3 gap-1">
+          
+          <button id="sb-qview-dashboard" class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-slate-400 hover:bg-white/5 text-center transition-all" onclick="switchView('dashboard')">V1: Dash</button>
+          <button id="sb-qview-members" class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-slate-400 hover:bg-white/5 text-center transition-all" onclick="switchView('members')">V2: Nhân sự</button>
+          <button id="sb-qview-funds" class="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-center transition-all" onclick="switchView('funds')">V3: Sổ quỹ</button>
+        
         </div>
-
-        <!-- 3 Interactive View Switchers for the 3-in-1 layout -->
-        <a href="#dashboard" onclick="switchView('dashboard'); return false;" id="nav-dashboard" class="nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-heading text-sm font-bold bg-cyan-500 text-white shadow-md shadow-cyan-500/25 transition-all">
-          <span class="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">dashboard</span>
-          <span>Dashboard</span>
-        </a>
-
-        <a href="#members" onclick="switchView('members'); return false;" id="nav-members" class="nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sans text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all">
-          <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 transition-colors">group</span>
-          <span>Thành viên</span>
-          <span id="nav-badge-mem" class="ml-auto text-[11px] font-mono bg-white/10 px-1.5 py-0.5 rounded-md text-slate-300">...</span>
-        </a>
-
-        <a href="#funds" onclick="switchView('funds'); return false;" id="nav-funds" class="nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sans text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all">
-          <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 transition-colors">account_balance_wallet</span>
-          <span>Quỹ CLB</span>
-          <span id="nav-badge-fund" class="ml-auto w-2 h-2 rounded-full bg-emerald-400"></span>
-        </a>
-
-        <a href="/frontend/admin/events.html" class="nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sans text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all opacity-85">
-          <span class="material-symbols-outlined text-[20px] text-slate-500 group-hover:text-cyan-400">event</span>
-          <span>Sự kiện</span>
-          <span class="ml-auto text-[10px] bg-cyan-500/20 text-cyan-300 font-semibold px-2 py-0.5 rounded-full">Sự kiện</span>
-        </a>
-
-        <a href="/frontend/admin/attendance.html" class="nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sans text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all opacity-85">
-          <span class="material-symbols-outlined text-[20px] text-slate-500 group-hover:text-cyan-400">explore</span>
-          <span>Điểm danh GPS</span>
-          <span class="ml-auto text-[10px] bg-amber-500/20 text-amber-300 font-semibold px-2 py-0.5 rounded-full">Live</span>
-        </a>
-
-        <a href="/frontend/admin/documents.html" class="nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sans text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all opacity-85">
-          <span class="material-symbols-outlined text-[20px] text-slate-500 group-hover:text-cyan-400">menu_book</span>
-          <span>Tài liệu &amp; Quy chế</span>
-        </a>
-
-        <div class="pt-4 text-[10px] font-bold uppercase tracking-wider text-slate-400/80 px-3 py-2">
-          CHẾ ĐỘ XEM TRỰC TIẾP
-        </div>
-        <div class="px-3 py-2 bg-navy-850 border border-white/5 rounded-xl space-y-1.5 text-xs text-slate-300">
-          <div class="text-[11px] text-slate-400 font-medium">Chuyển View nhanh (3-trong-1):</div>
-          <div class="grid grid-cols-3 gap-1 pt-1">
-            <button onclick="switchView('dashboard')" class="px-2 py-1 bg-white/10 hover:bg-cyan-500 hover:text-white rounded text-[11px] font-medium text-center transition-colors">V1: Dash</button>
-            <button onclick="switchView('members')" class="px-2 py-1 bg-white/10 hover:bg-cyan-500 hover:text-white rounded text-[11px] font-medium text-center transition-colors">V2: Nhân sự</button>
-            <button onclick="switchView('funds')" class="px-2 py-1 bg-white/10 hover:bg-cyan-500 hover:text-white rounded text-[11px] font-medium text-center transition-colors">V3: Sổ quỹ</button>
-          </div>
-        </div>
-      </nav>
+      </div>
     </div>
 
     <!-- Sidebar Footer -->
-    <div class="p-3.5 border-t border-white/10 bg-navy-850/60">
-      <button id="btn-logout" class="w-full flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 font-sans text-xs font-semibold transition-all">
-        <span class="material-symbols-outlined text-[18px]">logout</span>
+    <div class="p-3 border-t border-white/10 bg-navy-950/40 shrink-0">
+      <button id="btn-logout" class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 font-semibold text-xs transition-all duration-200">
+        <span class="material-symbols-outlined text-lg">logout</span>
         <span>Đăng xuất phiên làm việc</span>
       </button>
     </div>
@@ -181,13 +211,13 @@
   <!-- ========================================================================= -->
   <!-- 2. MAIN APPLICATION CONTENT WRAPPER WITH TOPBAR                           -->
   <!-- ========================================================================= -->
-  <div id="shell" class="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50">
+  <div id="shell" class="flex-1 md:ml-[260px] flex flex-col min-w-0 h-full overflow-hidden bg-slate-50">>>
     
     <!-- TOPBAR (Sticky Top, 68px height) -->
     <header class="h-[68px] flex-shrink-0 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-6 sm:px-8 flex items-center justify-between z-30 shadow-xs">
       <!-- Left side: Mobile burger & Title -->
       <div class="flex items-center gap-3.5">
-        <button id="btn-burger" class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Mở menu">
+        <button id="btn-burger" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" onclick="toggleSidebar(true)" aria-label="Mở menu">
           <span id="burger-icon" class="material-symbols-outlined text-[24px]">menu</span>
         </button>
         <div>
@@ -984,72 +1014,77 @@
     }
 
     // 2. View Switcher (3-in-1 layout)
+    window.toggleSidebar = function(open) {
+      const sb = document.getElementById('shell-sidebar');
+      const scrim = document.getElementById('scrim');
+      if (open) {
+        if (sb) sb.classList.remove('-translate-x-full');
+        if (scrim) scrim.classList.remove('hidden');
+      } else {
+        if (sb) sb.classList.add('-translate-x-full');
+        if (scrim) scrim.classList.add('hidden');
+      }
+    };
+    window.toggleMobileMenu = function() {
+      const sb = document.getElementById('shell-sidebar');
+      window.toggleSidebar(sb ? sb.classList.contains('-translate-x-full') : false);
+    };
     window.switchView = function(viewName) {
-      const vDash = document.getElementById('view-dashboard');
-      const vMem = document.getElementById('view-members');
-      const vFund = document.getElementById('view-funds');
+      const views = ['dashboard', 'members', 'funds'];
+      views.forEach(v => {
+        const el = document.getElementById('view-' + v);
+        const navBtn = document.getElementById('nav-' + v);
+        const qBtn = document.getElementById('sb-qview-' + v);
+        const tbBtn = document.getElementById('tb-' + (v === 'dashboard' ? 'dash' : v === 'members' ? 'mem' : 'fund'));
 
-      const navDash = document.getElementById('nav-dashboard');
-      const navMem = document.getElementById('nav-members');
-      const navFund = document.getElementById('nav-funds');
-
-      const tbDash = document.getElementById('tb-dash');
-      const tbMem = document.getElementById('tb-mem');
-      const tbFund = document.getElementById('tb-fund');
+        if (v === viewName) {
+          if (el) {
+            el.classList.remove('hidden');
+            el.classList.remove('view-enter');
+            void el.offsetWidth;
+            el.classList.add('view-enter');
+          }
+          if (navBtn) {
+            navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25";
+            const icon = navBtn.querySelector('.material-symbols-outlined');
+            if (icon) icon.className = "material-symbols-outlined text-[20px] text-white";
+          }
+          if (qBtn) {
+            qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-bold text-center transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/30";
+          }
+          if (tbBtn) {
+            tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-navy-900 shadow-sm";
+          }
+        } else {
+          if (el) el.classList.add('hidden');
+          if (navBtn) {
+            navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group";
+            const icon = navBtn.querySelector('.material-symbols-outlined');
+            if (icon) icon.className = "material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200";
+          }
+          if (qBtn) {
+            qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-medium text-center transition-all text-slate-400 hover:bg-white/5";
+          }
+          if (tbBtn) {
+            tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-navy-900 transition-all";
+          }
+        }
+      });
 
       const topTitle = document.getElementById('topbar-title');
       const topCrumb = document.getElementById('topbar-crumb');
-
-      // Hide all
-      vDash.classList.add('hidden');
-      vMem.classList.add('hidden');
-      vFund.classList.add('hidden');
-
-      // Reset nav classes
-      [navDash, navMem, navFund].forEach(item => {
-        if (!item) return;
-        item.className = 'nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sans text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all';
-      });
-
-      // Reset topbar pills
-      [tbDash, tbMem, tbFund].forEach(item => {
-        if (!item) return;
-        item.className = 'px-3 py-1.5 rounded-lg text-slate-500 hover:text-navy-900 transition-all';
-      });
-
       if (viewName === 'dashboard') {
-        vDash.classList.remove('hidden');
-        navDash.className = 'nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-heading text-sm font-bold bg-cyan-500 text-white shadow-md shadow-cyan-500/25 transition-all';
-        if (tbDash) tbDash.className = 'px-3 py-1.5 rounded-lg bg-white shadow-xs text-navy-900 font-bold transition-all';
-        topTitle.innerText = 'Tổng quan điều hành';
-        topCrumb.innerText = 'Executive Dashboard';
-        loadDashboardData();
+        if (topTitle) topTitle.innerText = "Dashboard Điều Hành";
+        if (topCrumb) topCrumb.innerHTML = '<span>Cổng Quản Trị</span><span class="material-symbols-outlined text-sm">chevron_right</span><span class="text-cyan-600 font-semibold">Tổng quan 2.0</span>';
       } else if (viewName === 'members') {
-        vMem.classList.remove('hidden');
-        navMem.className = 'nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-heading text-sm font-bold bg-cyan-500 text-white shadow-md shadow-cyan-500/25 transition-all';
-        if (tbMem) tbMem.className = 'px-3 py-1.5 rounded-lg bg-white shadow-xs text-navy-900 font-bold transition-all';
-        topTitle.innerText = 'Hồ sơ & Danh sách thành viên';
-        topCrumb.innerText = 'Member Management 360°';
-        loadMembersData();
+        if (topTitle) topTitle.innerText = "Quản Lý Nhân Sự & Thành Viên";
+        if (topCrumb) topCrumb.innerHTML = '<span>Cổng Quản Trị</span><span class="material-symbols-outlined text-sm">chevron_right</span><span class="text-cyan-600 font-semibold">Hồ sơ 360° & Đột phá</span>';
       } else if (viewName === 'funds') {
-        vFund.classList.remove('hidden');
-        navFund.className = 'nav-item group flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-heading text-sm font-bold bg-cyan-500 text-white shadow-md shadow-cyan-500/25 transition-all';
-        if (tbFund) tbFund.className = 'px-3 py-1.5 rounded-lg bg-white shadow-xs text-navy-900 font-bold transition-all';
-        topTitle.innerText = 'Sổ quỹ & Tài chính minh bạch';
-        topCrumb.innerText = 'Treasury & Fund Ledger';
-        loadFundsData();
+        if (topTitle) topTitle.innerText = "Sổ Quỹ & Minh Bạch Tài Chính";
+        if (topCrumb) topCrumb.innerHTML = '<span>Cổng Quản Trị</span><span class="material-symbols-outlined text-sm">chevron_right</span><span class="text-cyan-600 font-semibold">Thu chi & Ngân quỹ</span>';
       }
 
-      // Update hash without jump
-      if (location.hash !== '#' + viewName) {
-        history.replaceState(null, '', '#' + viewName);
-      }
-
-      // Close mobile drawer if opened
-      if (window.innerWidth < 1024 && sidebar) {
-        sidebar.classList.add('-translate-x-full');
-        scrim.classList.add('hidden');
-      }
+      window.toggleSidebar(false);
     };
 
     // 3. Member Sub-tab Switcher (Danh sách vs Cơ cấu BCN)
