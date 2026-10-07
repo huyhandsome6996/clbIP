@@ -112,6 +112,12 @@
     }
     .imgwrap img { position: relative; width: 100%; height: 100%; object-fit: cover; }
   </style>
+  <!-- Circular Favicon for Browser Tab (Khung tròn logo CLB IP) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/frontend/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/frontend/assets/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/frontend/assets/favicon-circle.png">
+  <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
+  <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 </head>
 <body class="bg-background font-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
 
@@ -120,8 +126,8 @@
   <!-- Brand & toggle -->
   <div class="p-4 border-b border-surface-container/80 flex items-center justify-between gap-3 min-h-[76px]">
     <div class="flex items-center gap-3 overflow-hidden">
-      <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(70,72,212,0.35)]">
-        <span class="text-on-primary font-headline-sm text-headline-sm font-extrabold tracking-wider">IP</span>
+      <div class="w-11 h-11 rounded-xl bg-white p-1 border border-outline-variant/30 flex items-center justify-center shrink-0 shadow-[0_4px_14px_rgba(70,72,212,0.15)] overflow-hidden">
+        <img src="/frontend/assets/logo.png" alt="Logo CLB IP" class="w-full h-full object-contain">
       </div>
       <div class="sidebar-text flex flex-col min-w-0 transition-opacity duration-200">
         <div class="flex items-center gap-1.5 flex-wrap">
