@@ -9,9 +9,11 @@ F08: reopen task tiền nhiệm khi còn hậu nhiệm (trực tiếp hoặc GI�
 """
 import uuid
 from datetime import timedelta
+from unittest import skipIf
 
 from django.core.cache import cache
-from django.test import override_settings
+from django.db import connection
+from django.test import TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -159,3 +161,193 @@ class EventSearchParamTests(EventTestBase):
         res = self.client.get("/api/v1/events/", {"search": "zzz-khong-ton-tai"})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["data"]["pagination"]["total_items"], 0)
+
+
+# ======================================================================
+# R01 (QA review 69db15d — P1): bất biến DAG phải giữ ở MỌI mutation
+# ======================================================================
+@override_settings(AXES_ENABLED=False)
+class ReviewR01DagSetDependenciesTests(EventTestBase):
+    """
+    R01 — `set_dependencies` chỉ kiểm tra chu trình, chưa chặn "task COMPLETED
+    nhận TIỀN NHIỆM chưa hoàn thành". Bất biến: "task đã hoàn thành thì mọi
+    tiền nhiệm của nó cũng đã hoàn thành" phải giữ cả khi THAY PHỤ THUỘC.
+    """
+
+    @staticmethod
+    def _make(event, ten: str, completed: bool) -> EventTask:
+        return EventTask.objects.create(event=event, ten_task=ten, is_completed=completed)
+
+    def test_r01_completed_task_add_incomplete_prereq_blocked(self):
+        """Probe của review: B completed nhận tiền nhiệm A incomplete → chặn."""
+        event = self.make_event()
+        a = self._make(event, "A", completed=False)
+        b = self._make(event, "B", completed=True)
+        with self.assertRaises(ValidationException):
+            EventTaskService.set_dependencies(b.id, [a.id])
+
+    def test_r01_blocked_set_preserves_task_state(self):
+        """Chặn xong: B giữ nguyên completed + phụ thuộc cũ KHÔNG bị xóa."""
+        event = self.make_event()
+        a = self._make(event, "A", completed=False)
+        b = self._make(event, "B", completed=True)
+        c = self._make(event, "C", completed=True)
+        b.depends_on.set([c])
+
+        with self.assertRaises(ValidationException):
+            EventTaskService.set_dependencies(b.id, [a.id])
+
+        b.refresh_from_db()
+        self.assertTrue(b.is_completed)
+        self.assertEqual(
+            sorted(b.depends_on.values_list("id", flat=True)), [c.id],
+            "Phụ thuộc cũ phải được bảo toàn khi set_dependencies bị chặn.",
+        )
+        a.refresh_from_db()
+        self.assertFalse(a.is_completed)
+
+    def test_r01_completed_task_all_prereqs_completed_ok(self):
+        """B completed + toàn bộ tiền nhiệm completed → set hợp lệ."""
+        event = self.make_event()
+        a = self._make(event, "A", completed=True)
+        b = self._make(event, "B", completed=True)
+        task = EventTaskService.set_dependencies(b.id, [a.id])
+        self.assertEqual(sorted(task.depends_on.values_list("id", flat=True)), [a.id])
+
+    def test_r01_mixed_prereqs_blocked_and_lists_incomplete(self):
+        """Danh sách trộn completed + incomplete → chặn, errors nêu đúng id."""
+        event = self.make_event()
+        done = self._make(event, "DONE", completed=True)
+        pending = self._make(event, "PENDING", completed=False)
+        b = self._make(event, "B", completed=True)
+        with self.assertRaises(ValidationException) as ctx:
+            EventTaskService.set_dependencies(b.id, [done.id, pending.id])
+        errors = ctx.exception.errors or {}
+        self.assertIn(pending.id, [t["id"] for t in errors.get("depends_on", [])])
+
+    def test_r01_incomplete_task_accepts_incomplete_prereq(self):
+        """Task chưa hoàn thành nhận tiền nhiệm chưa hoàn thành — hợp lệ."""
+        event = self.make_event()
+        a = self._make(event, "A", completed=False)
+        b = self._make(event, "B", completed=False)
+        task = EventTaskService.set_dependencies(b.id, [a.id])
+        self.assertEqual(sorted(task.depends_on.values_list("id", flat=True)), [a.id])
+
+    def test_r01_replace_incomplete_prereq_of_completed_task_with_completed_ok(self):
+        """B completed đang treo tiền nhiệm incomplete (dữ liệu cũ) → có thể
+        tự sửa lại bằng set_dependencies với tiền nhiệm completed."""
+        event = self.make_event()
+        done = self._make(event, "DONE", completed=True)
+        b = self._make(event, "B", completed=True)
+        stale = self._make(event, "STALE", completed=False)
+        b.depends_on.set([stale])
+        task = EventTaskService.set_dependencies(b.id, [done.id])
+        self.assertEqual(sorted(task.depends_on.values_list("id", flat=True)), [done.id])
+
+
+# ======================================================================
+# R01 — race reopen(TIỀN NHIỆM) × complete(HẬU NHIỆM): phải tuần tự hóa
+# ======================================================================
+@override_settings(AXES_ENABLED=False)
+class ReviewR01GraphConcurrencyTests(TransactionTestCase):
+    """
+    Trước fix R01: `reopen_task` đọc descendants rồi save NGOÀI transaction
+    chung, `complete_task` chỉ khóa task đích — hai thread (reopen A) ×
+    (complete B với B depends_on A) có thể đọc chéo snapshot cũ và CÙNG
+    commit → A incomplete nhưng B completed (phá bất biến).
+
+    Sau fix: cả hai mutation khóa hàng SỰ KIỆN trước (thứ tự event → task)
+    → tuần tự. Kết quả khả dĩ: (1) complete B thắng → reopen A bị chặn do
+    B completed; (2) reopen A thắng → complete B bị chặn do A chưa xong.
+    Cả hai nhánh đều giữ bất biến — test assert bất biến sau khi cả hai
+    thread kết thúc, KHÔNG assert thread nào thắng (không deterministic).
+    """
+
+    databases = {"default"}
+
+    @staticmethod
+    def _make_event() -> ActivityEvent:
+        now = timezone.now()
+        return ActivityEvent.objects.create(
+            ma_hd=f"EVR01{uuid.uuid4().hex[:8].upper()}",
+            ten_hoat_dong="Race DAG",
+            loai_hd="WORKSHOP",
+            thoi_gian_bat_dau=now + timedelta(days=1),
+            thoi_gian_ket_thuc=now + timedelta(days=2),
+            dia_diem="Huế",
+        )
+
+    @skipIf(
+        connection.vendor == "sqlite",
+        "SQLite khóa toàn bảng khi 2 connection cùng ghi — race test chỉ chạy "
+        "đúng ý trên MySQL/MariaDB/PostgreSQL (CSDL chính của dự án là MySQL).",
+    )
+    def test_r01_reopen_prereq_vs_complete_descendant_serialized(self):
+        from threading import Barrier, Thread
+
+        from django.db import connections
+
+        event = self._make_event()
+        a = EventTask.objects.create(event=event, ten_task="A", is_completed=True)
+        b = EventTask.objects.create(event=event, ten_task="B", is_completed=False)
+        b.depends_on.set([a])
+
+        barrier = Barrier(2)
+        outcomes: list[str] = []
+
+        def do_reopen() -> None:
+            try:
+                task = EventTaskService.get_task_or_404(a.id)
+                barrier.wait(timeout=15)
+                EventTaskService.reopen_task(task)
+                outcomes.append("reopen-ok")
+            except ValidationException:
+                outcomes.append("reopen-blocked")
+            except Exception as exc:  # pragma: no cover — chỉ để lộ lỗi bất ngờ
+                outcomes.append(f"reopen-unexpected:{exc!r}")
+            finally:
+                connections.close_all()
+
+        def do_complete() -> None:
+            try:
+                barrier.wait(timeout=15)
+                EventTaskService.complete_task(b.id)
+                outcomes.append("complete-ok")
+            except ValidationException:
+                outcomes.append("complete-blocked")
+            except Exception as exc:  # pragma: no cover
+                outcomes.append(f"complete-unexpected:{exc!r}")
+            finally:
+                connections.close_all()
+
+        threads = [Thread(target=do_reopen), Thread(target=do_complete)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+
+        a.refresh_from_db()
+        b.refresh_from_db()
+
+        # Không thread nào crash ngoài dự kiến
+        self.assertFalse(
+            [o for o in outcomes if "unexpected" in o],
+            f"Có exception bất ngờ: {outcomes}",
+        )
+        # BẤT BIẾN sau commit: B completed ⇒ A completed
+        self.assertFalse(
+            b.is_completed and not a.is_completed,
+            f"Bất biến DAG bị phá bởi race! a={a.is_completed}, b={b.is_completed}, outcomes={outcomes}",
+        )
+        # Tuần tự hóa → ĐÚNG MỘT trong hai pattern hợp lệ:
+        #   (a) reopen thắng: A incomplete → complete B bị chặn (còn tiền nhiệm)
+        #   (b) complete thắng: B completed → reopen A bị chặn (hậu nhiệm done)
+        pattern_a = outcomes == ["reopen-ok", "complete-blocked"] or set(outcomes) == {
+            "reopen-ok",
+            "complete-blocked",
+        }
+        pattern_b = set(outcomes) == {"complete-ok", "reopen-blocked"}
+        self.assertTrue(
+            pattern_a or pattern_b,
+            f"Outcome không hợp lệ (phá bất biến hoặc lỗi): {outcomes}",
+        )
