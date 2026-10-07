@@ -1076,12 +1076,15 @@
       if (viewName === 'dashboard') {
         if (topTitle) topTitle.innerText = "Dashboard Điều Hành";
         if (topCrumb) topCrumb.innerHTML = '<span>Cổng Quản Trị</span><span class="material-symbols-outlined text-sm">chevron_right</span><span class="text-cyan-600 font-semibold">Tổng quan 2.0</span>';
+        loadDashboardData();
       } else if (viewName === 'members') {
         if (topTitle) topTitle.innerText = "Quản Lý Nhân Sự & Thành Viên";
         if (topCrumb) topCrumb.innerHTML = '<span>Cổng Quản Trị</span><span class="material-symbols-outlined text-sm">chevron_right</span><span class="text-cyan-600 font-semibold">Hồ sơ 360° & Đột phá</span>';
+        loadMembersData();
       } else if (viewName === 'funds') {
         if (topTitle) topTitle.innerText = "Sổ Quỹ & Minh Bạch Tài Chính";
         if (topCrumb) topCrumb.innerHTML = '<span>Cổng Quản Trị</span><span class="material-symbols-outlined text-sm">chevron_right</span><span class="text-cyan-600 font-semibold">Thu chi & Ngân quỹ</span>';
+        loadFundsData();
       }
 
       window.toggleSidebar(false);
