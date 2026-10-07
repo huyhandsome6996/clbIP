@@ -39,7 +39,7 @@
 | # | Tính năng | Trạng thái | Minh chứng |
 |---|-----------|:----------:|------------|
 | 16 | Ghi sổ thu/chi atomic + pessimistic lock `select_for_update` + số dư chạy | ✅ Done | `apps/funds/services.py` `FundService.execute_transaction` (`_execute_locked`) · `POST /api/v1/funds/` |
-| 17 | Idempotency key chống ghi trùng (replay trả lại phiếu cũ — 200 thay vì 500) | ✅ Done | `FundService.execute_transaction_idempotent` · `FundTransaction.idempotency_key` (migration `0002_fundtransaction_idempotency_key`) · `apps/funds/views.py` đọc header `Idempotency-Key` (lưu ý: frontend hiện chưa gửi header này) |
+| 17 | Idempotency key chống ghi trùng (replay trả lại phiếu cũ — 200 thay vì 500) + **chặn conflict payload khác (409 — audit F02)** | ✅ Done | `FundService.execute_transaction_idempotent` · `FundTransaction.idempotency_key` + `request_fingerprint` (migration `0002`, `0003_fundtransaction_request_fingerprint`) · cùng key + payload khác → `IdempotencyKeyConflictException` 409 · frontend `funds.html` reset key khi sửa form |
 | 18 | Factory Pattern phiếu thu/chi + Strategy cập nhật số dư | ✅ Done | `apps/funds/services.py` `IncomeTransaction` / `ExpenseTransaction` / `TransactionFactory` / `apply_to_balance` |
 | 19 | Khóa sổ theo kỳ (chặn ghi mới vào ngày thuộc kỳ đã khóa) | ✅ Done | `POST /api/v1/funds/lock-period/` + `GET /api/v1/funds/locks/` · `exists_locked_period_containing` · UI "Khóa sổ kỳ" trong `frontend/admin/funds.html` |
 | 20 | Thống kê tổng thu / tổng chi / số dư + cờ cảnh báo quỹ thấp (<200.000đ) | ✅ Done | `GET /api/v1/funds/stats/` · `FundService.get_stats` + `CLB_SETTINGS["FUND_LOW_BALANCE_THRESHOLD"]` |
@@ -70,7 +70,7 @@
 | 35 | Dynamic Nonce 60s (secret HMAC 48 ký tự, hiển thị lên máy chiếu) | ✅ Done | `GET /api/v1/attendance/sessions/{id}/nonce/` · `apps/attendance/services/nonce.py` · UI nonce đếm ngược trong `frontend/admin/attendance.html` |
 | 36 | Check-in GPS 7 lớp anti-cheat (mock GPS / accuracy / clock-skew / nonce / device reuse / teleport / Haversine radius) | ✅ Done | `POST /api/v1/attendance/check-in/` · `apps/attendance/services/anti_cheat.py` `GPSAntiCheatEngine.validate_checkin` · `core/algorithms/geo_haversine.py` |
 | 37 | Đóng phiên — chốt danh sách điểm danh | ✅ Done | `POST /api/v1/attendance/sessions/{id}/close/` · `close_session` |
-| 38 | Cập nhật thủ công hàng loạt trạng thái (Có mặt/Có phép/Vắng/Muộn) | ✅ Done | `PUT /api/v1/attendance/sessions/{id}/bulk-override/` ⚠️ **PUT, không phải POST** như spec §5 · `AttendanceService.bulk_override` · modal override trong `frontend/admin/attendance.html` |
+| 38 | Cập nhật thủ công hàng loạt trạng thái (Có mặt/Có phép/Vắng/Muộn) — **atomic all-or-nothing (audit F01)** | ✅ Done | `PUT /api/v1/attendance/sessions/{id}/bulk-override/` ⚠️ **PUT, không phải POST** như spec §5 · `AttendanceService.bulk_override` (validate toàn bộ trước khi ghi + transaction.atomic) · modal override trong `frontend/admin/attendance.html` (picker search + phân trang 20/trang — audit F09) |
 | 39 | Lịch sử điểm danh cá nhân + chuỗi streak 🔥 | ✅ Done | `GET /api/v1/attendance/me/` · `_update_streak` · `frontend/member/checkin.html` + `frontend/member/profile.html` |
 
 ### F. Gamification (6)

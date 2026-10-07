@@ -32,6 +32,7 @@
 - Dùng `ApiClient.getList(endpoint, params)` → `{items, pagination}` (pagination có thể null).
 - Lỗi: `err.status` (0 = mạng), `err.message` (tiếng Việt sẵn), `err.errors` (field errors DRF).
 - **Khởi tạo state sau khi guard chạy xong**: bọc trong try/catch hoặc `.then` — vì `Auth.requireRole()` redirect bằng `window.location.href` (không dừng JS ngay).
+- **File/blob (audit F04 + review R02)**: dùng `ApiClient.getBlob(endpoint)` (trả Blob, refresh single-flight đúng 1 lần khi 401) hoặc `ApiClient.download(endpoint, filename)`. KHÔNG fetch URL media/storage trực tiếp kèm Bearer (CSP + DEBUG=False đều chặn). **Chính sách 401 cuối (R02)**: refresh fail → forceLogout; refresh OK nhưng retry vẫn 401 → forceLogout; 401 mà không có refresh token → forceLogout ngay. 403/404/429/5xx/network KHÔNG refresh, KHÔNG logout. `forceLogout` dedup — nhiều request cùng chết chỉ điều hướng 1 lần.
 
 ## 2. Auth flow (đã có sẵn — chỉ dùng lại)
 ```js
@@ -56,8 +57,8 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 ### 3.2 Members — `/members` (BCN: CRUD mọi người; MEMBER: chỉ xem)
 | Method + Path | Body/Query | Response |
 |---|---|---|
-| GET `/members/` | `?page=&search=&lop=&trang_thai_hd=` | items: `{id, mssv, ho_ten, email, lop, sdt, gioi_tinh, avatar, xp_points, current_level, streak_count, trang_thai_hd, is_active, created_at}` |
-| POST `/members/` | `{email, mssv, ho_ten, password, lop?, sdt?, gioi_tinh? NAM|NU|KHAC, ngay_sinh?}` | profile mới |
+| GET `/members/` | `?page=&search=&lop=&trang_thai=` (⚠ audit F06: query list dùng `trang_thai` — `trang_thai_hd` CHỈ là tên trường write/response) | items: `{id, mssv, ho_ten, email, lop, sdt, gioi_tinh, avatar, xp_points, current_level, streak_count, trang_thai_hd, is_active, created_at}` |
+| POST `/members/` | `{email, mssv, ho_ten, password?, lop?, sdt?, gioi_tinh? NAM|NU|KHAC, ngay_sinh?}` | profile mới; **audit F03**: để trống `password` → response data có thêm `initial_password` (hiển thị ĐÚNG 1 LẦN — mọi endpoint đọc khác không trả credential) |
 | GET `/members/{id}/` | — | như list item |
 | PATCH `/members/{id}/` | `{email?, mssv?, ho_ten?, lop?, sdt?, gioi_tinh?, ngay_sinh?, trang_thai_hd? ACTIVE|HOAT_DONG|BAO_LUU|... , role?}` | profile |
 | GET `/members/search/?q=` | `q` (tối thiểu 1 ký tự) | `{items:[{id, mssv, ho_ten, lop, ...}]}` — Trie autocomplete (chú ý: có bọc items) |
@@ -71,7 +72,7 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | Method + Path | Body/Query | Response |
 |---|---|---|
 | GET `/funds/` | `?loai_gd=THU|CHI&from_date=&to_date=&sort=-ngay_gd&page=` | items: `{id, ma_phieu, loai_gd, so_tien, nguoi_thuc_hien, hinh_thuc, ngay_gd, ghi_chu, so_du_sau, is_locked, created_by_ho_ten...}` |
-| POST `/funds/` | `{loai_gd: "THU"|"CHI", so_tien: int(>0), nguoi_thuc_hien: str, hinh_thuc: "TIEN_MAT"|"CHUYEN_KHOAN", ngay_gd?, ghi_chu?}` | giao dịch + so_du_sau |
+| POST `/funds/` | `{loai_gd: "THU"|"CHI", so_tien: int(>0), nguoi_thuc_hien: str, hinh_thuc: "TIEN_MAT"|"CHUYEN_KHOAN", ngay_gd?, ghi_chu?}` + header `Idempotency-Key` | giao dịch + so_du_sau. **Audit F02**: cùng key + cùng payload → replay 200 (trả phiếu cũ); cùng key + payload khác → **409** `IdempotencyKeyConflictException` — client phải reset key, KHÔNG tự ghi đè |
 | GET `/funds/stats/` | — | `{total_income, total_expense, balance, low_balance}` |
 | POST `/funds/lock-period/` | `{ten_ky, tu_ngay, den_ngay, ghi_chu?}` | `{...}` khóa sổ |
 | GET `/funds/locks/` | — | items: `{id, ten_ky, tu_ngay, den_ngay, locked_by, locked_at, ghi_chu}` |
@@ -80,19 +81,20 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 ### 3.4 Events — `/events`
 | Method + Path | Body/Query | Response |
 |---|---|---|
-| GET `/events/` | `?trang_thai=&page=` | items: `{id, ma_hd, ten_hoat_dong, loai_hd, thoi_gian_bat_dau, thoi_gian_ket_thuc, dia_diem, trang_thai, so_luong_toi_da, tong_kinh_phi_du_tru, poster, registered_count}` |
+| GET `/events/` | `?trang_thai=&loai_hd=&search=&sort=&page=` (audit F09: `search` khớp tên/mã hoạt động) | items: `{id, ma_hd, ten_hoat_dong, loai_hd, thoi_gian_bat_dau, thoi_gian_ket_thuc, dia_diem, trang_thai, so_luong_toi_da, tong_kinh_phi_du_tru, poster, registered_count}` |
 | POST `/events/` | `{ten_hoat_dong, mo_ta?, loai_hd, thoi_gian_bat_dau, thoi_gian_ket_thuc, dia_diem, vi_do?, kinh_do?, ban_kinh_m?, so_luong_toi_da?, tong_kinh_phi_du_tru?}` | event |
 | GET `/events/{id}/` | — | detail + `vi_do, kinh_do, ban_kinh_m, mo_ta, budget_details[], created_by_email` |
 | PATCH `/events/{id}/` | partial | event |
 | GET `/events/{id}/tasks/` | — | **PLAN (không phải items!):** `{tasks:[{id, event, ten_task, nguoi_phu_trach, nguoi_phu_trach_ten, depends_on_detail:[{id,ten_task}], is_completed, deadline}], is_valid_dag, topological_order:[taskId], cycle:[taskId]|null, executable_now:[taskId]}` |
 | POST `/events/{id}/tasks/` | `{ten_task, nguoi_phu_trach?, depends_on?: [taskIds], deadline?}` | task |
-| PATCH `/events/{id}/tasks/{taskId}/` | `{is_completed: bool}` (đã thêm endpoint mới) | task — `is_completed:true` tự cộng XP người phụ trách. KHÓA checkbox khi `executable_now` không chứa task (DAG) |
+| PATCH `/events/{id}/tasks/{taskId}/` | `{is_completed: bool}` (đã thêm endpoint mới) | task — `is_completed:true` tự cộng XP người phụ trách. KHÓA checkbox khi `executable_now` không chứa task (DAG). **Audit F08**: `is_completed:false` khi còn hậu nhiệm (trực tiếp/gián tiếp) đã hoàn thành → **400** + `errors.blocking_tasks: [{id, ten_task}]` |
 | GET `/events/{id}/tasks/topological-order/` | — | **DAG**: mảng id theo thứ tự topo hợp lệ (Kahn) hoặc báo deadlock (cycle) |
 | GET `/events/my-tickets/` | — | **MẢNG** vé của chính tôi (member): EventRegistrationSerializer — render QR theo `ma_ve` |
 | POST `/events/{id}/register/` | — (user hiện tại) | `{id, ma_ve, trang_thai, member, member_ten, event, event_ten, created_at}` — `ma_ve` dùng render QR |
 | POST `/events/{id}/cancel-registration/` | — | hủy vé |
 | GET `/events/{id}/registrations/` | — | items: EventRegistrationSerializer |
-| GET `/events/{id}/budget/` | — | dự trù kinh phí |
+| GET `/events/{id}/budget/` | — | `{items:[...], tong_kinh_phi_du_tru}` |
+| POST `/events/{id}/budget/` | `{ten_hang_muc, so_tien>0, ghi_chu?}` (BCN) | hạng mục mới + tổng tự tính lại |
 | GET/POST `/events/{id}/communications/` | POST `{tieu_de, noi_dung?...}` (field chính là `tieu_de`) | truyền thông |
 
 *Ghi chú: cả `POST /events/{id}/register/` lẫn hủy vé trả envelope với `data` = EventRegistrationSerializer.
@@ -104,12 +106,13 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | POST `/attendance/sessions/` | `{ten_phien, vi_do, kinh_do, ban_kinh_m?, event?, hieu_luc_den?}` (BCN) | phiên + tự tạo VẮNG cho mọi member |
 | GET `/attendance/sessions/{id}/` | — | detail |
 | POST `/attendance/sessions/{id}/close/` | — (BCN) | đóng phiên |
-| GET `/attendance/sessions/{id}/nonce/` | — (BCN) | `{nonce: "123456"}` mã xoay 60s — hiển thị máy chiếu |
-| POST `/attendance/sessions/{id}/bulk-override/` | `{items: [{member_id, trang_thai: CO_MAT|VANG|CO_PHEP|DI_MUON}]}` (BCN) — **dùng HTTP PUT (không phải POST!)** | `{updated: n}` |
+| GET `/attendance/sessions/{id}/nonce/` | — (BCN) | `{nonce: "123456"}` mã xoay 60s — hiển thị máy chiếu. **Vòng đời UI (R03)**: hết hạn → vô hiệu hóa mã NGAY (placeholder `······`, remaining = 0, không âm); fetch lỗi → toast 1 lần + tự thử lại TỐI ĐA 1 lần sau 5s rồi chỉ retry thủ công (nút Lấy mã mới); đổi/đóng phiên dọn sạch interval + backoff |
+| PUT `/attendance/sessions/{id}/bulk-override/` | `{items: [{member_id, trang_thai: CO_MAT|VANG|CO_PHEP|DI_MUON}]}` (BCN) — **dùng HTTP PUT (không phải POST!)** | `{updated: n}`. **Audit F01**: atomic — validate TOÀN BỘ trước, có 1 item sai → 400 và KHÔNG ghi gì cả (all-or-nothing) | — **N02 (ac51233)**: policy gốc được PHỤC HỒI — override hợp lệ trên cả phiên OPEN và CLOSED (BCN chốt số liệu sau đóng; check-in sau đóng vẫn chặn 409) |
+| GET `/attendance/sessions/{id}/records/` | `?trang_thai=CO_MAT|CO_PHEP|DI_MUON|VANG&search=&page=` (BCN) — **audit F10**: bảng bản ghi theo phiên | items: `{id, member, member_ten, member_mssv, member_lop, trang_thai, khoang_cach_m, checked_in_at, device_id, is_suspicious, xp_awarded, overridden_by, overridden_by_email, created_at, updated_at}` (không có GPS thô) + pagination |
 | POST `/attendance/check-in/` | `{session_id, latitude, longitude, client_time (ISO), device_id, nonce, is_mock?, accuracy?}` | record: `{id, session, session_ten, member, member_ten, trang_thai CO_MAT|DI_MUON, khoang_cach_m, ...}` + `xp_gained` + `streak_count` |
 | GET `/attendance/me/` | — | items AttendanceRecordSerializer: `{id, session, session_ten, member, member_ten, trang_thai, khoang_cach_m, vi_do, kinh_do, checked_in_at, device_id, is_suspicious, xp_awarded, overridden_by, created_at}` — **`member` = profile pk, dùng lấy profile id** |
 
-⚠️ Lỗi check-in hay gặp: `409 SessionClosedException`, `400` anti-cheat (mock/nonce sai/xa quá bán kính/teleport), `409` đã check-in.
+⚠️ Lỗi check-in hay gặp: `409 SessionClosedException`, `400` anti-cheat (mock/nonce sai/xa quá bán kính/teleport), `409` đã check-in — **audit F07**: trùng chặn CẢ CO_MAT lẫn DI_MUON (check-in muộn gửi lại cũng 409, không sửa metadata/XP).
 
 ### 3.6 Gamification — `/gamification` (mọi user)
 | Method + Path | Response |
@@ -127,7 +130,8 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | POST `/documents/` | FormData: `{file, tieu_de, nhom, tags?, mo_ta?}` (BCN; file ≤15MB: pdf/docx/pptx/xlsx/png/jpg) | doc |
 | GET `/documents/search/?q=` | `q` | `{items:[...], count}` — Trie autocomplete (chú ý: có bọc items) |
 | GET `/documents/{id}/` | — | doc |
-| GET `/documents/{id}/download/` | — | file (dùng `ApiClient.download`) — tăng luot_tai |
+| GET `/documents/{id}/download/` | — | file (dùng `ApiClient.download`/`getBlob` — audit F04: blob tự refresh single-flight đúng 1 lần khi 401) — tăng luot_tai |
+| GET `/documents/{id}/preview/` | — | file **inline** xem trước (audit F05) — cùng phạm vi quyền download, KHÔNG tăng luot_tai, không cộng XP |
 | DELETE `/documents/{id}/` | — (BCN đơn vị upload) | xóa |
 
 ### 3.8 Posts / Feedback / Polls — mounted trực tiếp `/api/v1/`
@@ -140,7 +144,7 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | POST `/posts/{id}/pin/` | — (BCN) | ghim/bỏ ghim |
 | POST `/feedback/` | `{noi_dung}` (auth, 5/ngày) | góp ý ẩn danh |
 | GET `/feedback/` | — (BCN) | items `{id, noi_dung, created_at}` — KHÔNG có sender |
-| GET `/polls/` | — | items `{id, question, options:["a","b"], votes:{"0":n,...}, is_closed, total_votes, created_at}` |
+| GET `/polls/` | — | items `{id, question, options:["a","b"], votes:{"0":n,...}, is_closed, total_votes, has_voted (theo user hiện tại — audit F12: khóa UI vote từ server, không dùng localStorage không user-prefix), created_at}` |
 | POST `/polls/` | `{question, options:[≥2]}` (BCN) | poll |
 | POST `/polls/{id}/vote/` | `{option_index: 0..n-1}` | poll sau vote (mỗi user 1 lần) |
 

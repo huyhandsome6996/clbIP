@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Kho Học liệu & Tài liệu — CLB IP ĐHSP Huế 2.0</title>
-  
+
   <!-- Fonts & Google Material Symbols -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -93,7 +93,7 @@
     .radar-pulse {
       animation: pulse-subtle 2s infinite ease-in-out;
     }
-  
+
     /* Smooth View Enter Transition */
     @keyframes viewFadeSlide {
       from { opacity: 0; transform: translateY(6px); }
@@ -170,8 +170,8 @@
           <p class="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90 px-3 py-1 font-mono">PHÂN HỆ CHUYÊN SÂU</p>
 
           <!-- Sự kiện & Hoạt động -->
-          <a id="nav-events" onclick="switchView('events'); return false;" href="#events" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
-            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">event</span>
+          <a id="nav-events" onclick="switchView('events'); return false;" href="#events" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25">
+            <span class="material-symbols-outlined text-[20px] text-white">event</span>
             <span class="truncate">Sự kiện &amp; Hoạt động</span>
             <span class="ml-auto text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-white/20 text-white font-bold">V4</span>
           </a>
@@ -187,8 +187,8 @@
           </a>
 
           <!-- Tài liệu & Học liệu -->
-          <a id="nav-documents" onclick="switchView('documents'); return false;" href="#documents" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25">
-            <span class="material-symbols-outlined text-[20px] text-white">menu_book</span>
+          <a id="nav-documents" onclick="switchView('documents'); return false;" href="#documents" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group">
+            <span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200">menu_book</span>
             <span class="truncate">Tài liệu &amp; Học liệu</span>
             <span id="nav-badge-docs" class="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/10 text-slate-300">48</span>
           </a>
@@ -199,11 +199,11 @@
       <div class="p-3 bg-navy-850/80 rounded-2xl border border-white/10">
         <p class="text-[10px] font-mono uppercase text-slate-400 font-bold tracking-wider mb-2">CHẾ ĐỘ XEM TRỰC TIẾP</p>
         <div id="sb-quick-grid" class="grid grid-cols-3 gap-1">
-          
-          <button id="sb-qview-events" class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-slate-400 hover:bg-white/5 text-center transition-all" onclick="switchView('events')">V4: Sự kiện</button>
+
+          <button id="sb-qview-events" class="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-center transition-all" onclick="switchView('events')">V4: Sự kiện</button>
           <button id="sb-qview-attendance" class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-slate-400 hover:bg-white/5 text-center transition-all" onclick="switchView('attendance')">V5: GPS</button>
-          <button id="sb-qview-documents" class="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-center transition-all" onclick="switchView('documents')">V6: Học liệu</button>
-        
+          <button id="sb-qview-documents" class="px-2 py-1.5 rounded-lg text-[10px] font-medium text-slate-400 hover:bg-white/5 text-center transition-all" onclick="switchView('documents')">V6: Học liệu</button>
+
         </div>
       </div>
     </div>
@@ -459,15 +459,17 @@
 
 <select class="bg-slate-50 border border-slate-200 text-navy-900 text-xs font-semibold rounded-xl px-3.5 py-2.5 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" id="filter-status">
 
-<option value="ALL">Tất cả trạng thái (12)</option>
+<option value="ALL">Tất cả trạng thái</option>
 
-<option value="OPEN_REGISTRATION">Đang mở đăng ký (2)</option>
+<option value="OPEN_REGISTRATION">Mở đăng ký</option>
 
-<option value="PLANNING">Lên kế hoạch (3)</option>
+<option value="PLANNING">Lên kế hoạch</option>
 
-<option value="IN_PROGRESS">Đang diễn ra (1)</option>
+<option value="IN_PROGRESS">Đang diễn ra</option>
 
-<option value="COMPLETED">Đã kết thúc (6)</option>
+<option value="COMPLETED">Đã kết thúc</option>
+
+<option value="CANCELLED">Đã hủy</option>
 
 </select>
 
@@ -481,7 +483,7 @@
 
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
 
-<input class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-slate-400 text-navy-900" placeholder="Tìm tên sự kiện, địa điểm..." type="text"/>
+<input id="ev-search" oninput="handleEventSearch(this.value)" class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-slate-400 text-navy-900" placeholder="Tìm tên sự kiện, địa điểm..." type="text"/>
 
 </div>
 
@@ -1977,6 +1979,12 @@
 
 </div>
 
+<button class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1 transition-all" onclick="openEventEditModal()" title="Sửa thông tin / lịch / địa điểm sự kiện (BCN)">
+
+<span class="material-symbols-outlined text-sm">edit</span> Sửa sự kiện
+
+</button>
+
 <button class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all" onclick="closeModal('modal-event-detail')">
 
 <span class="material-symbols-outlined text-2xl">close</span>
@@ -2355,13 +2363,13 @@
 
 <select id="ev-loai" name="loai" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
 
-<option>Workshop Chuyên đề</option>
+<option value="WORKSHOP">Workshop</option>
 
-<option>Cuộc thi Sáng tạo</option>
+<option value="HACKATHON">Hackathon</option>
 
-<option>Sinh hoạt định kỳ</option>
+<option value="SINH_HOAT_DINH_KY">Sinh hoạt định kỳ</option>
 
-<option>Gắn kết nội bộ</option>
+<option value="TEAMBUILDING">Teambuilding</option>
 
 </select>
 
@@ -2384,6 +2392,17 @@
 <label class="block font-bold text-navy-900 mb-1">Thời gian bắt đầu</label>
 
 <input id="ev-start" name="thoi_gian_bat_dau" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="datetime-local"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Thời gian kết thúc <span class="text-red-500">*</span></label>
+
+<!-- P03 fix: backend bắt buộc thoi_gian_ket_thuc (model không blank) — form
+     cũ thiếu field này nên POST /events/ luôn 400. -->
+
+<input id="ev-end" name="thoi_gian_ket_thuc" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="datetime-local"/>
 
 </div>
 
@@ -2414,6 +2433,190 @@
 <span class="material-symbols-outlined text-sm text-cyan-400">check</span>
 
             Lưu &amp; Xuất Bản Sự Kiện
+
+          </button>
+
+</div>
+
+</form>
+
+</div>
+
+</div>
+
+<!-- MODAL 2B: EDIT EVENT (P03 — phục hồi luồng sửa sự kiện mất từ lần đại tu UI; PATCH /events/{id}/ BCN/ADMIN) -->
+
+<div class="fixed inset-0 bg-navy-950/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="modal-event-edit">
+
+<div class="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+
+<div class="bg-navy-900 text-white p-5 flex items-center justify-between border-b border-white/10 shrink-0">
+
+<div class="flex items-center gap-3">
+
+<div class="w-9 h-9 rounded-full bg-white p-1 ring-2 ring-cyan-500/40 flex items-center justify-center">
+
+<img src="/frontend/assets/logo.png" alt="Logo CLB IP" class="w-full h-full object-contain rounded-full" />
+
+</div>
+
+<h3 class="font-heading font-bold text-base text-white">Sửa Sự Kiện</h3>
+
+</div>
+
+<button class="text-slate-400 hover:text-white p-1.5 rounded-lg" onclick="closeModal('modal-event-edit')">
+
+<span class="material-symbols-outlined text-2xl">close</span>
+
+</button>
+
+</div>
+
+<form id="form-edit-event" class="p-6 overflow-y-auto space-y-4 text-xs" onsubmit="handleUpdateEvent(event)">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Tên hoạt động <span class="text-red-500">*</span></label>
+
+<input id="ev2-title" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="text"/>
+
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Loại hoạt động</label>
+
+<select id="ev2-loai" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+
+<option value="WORKSHOP">Workshop</option>
+
+<option value="HACKATHON">Hackathon</option>
+
+<option value="SINH_HOAT_DINH_KY">Sinh hoạt định kỳ</option>
+
+<option value="TEAMBUILDING">Teambuilding</option>
+
+</select>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Trạng thái</label>
+
+<select id="ev2-status" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+
+<option value="PLANNING">Đang lên kế hoạch</option>
+
+<option value="OPEN_REGISTRATION">Mở đăng ký</option>
+
+<option value="IN_PROGRESS">Đang diễn ra</option>
+
+<option value="COMPLETED">Đã kết thúc</option>
+
+<option value="CANCELLED">Đã hủy</option>
+
+</select>
+
+</div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Bắt đầu <span class="text-red-500">*</span></label>
+
+<input id="ev2-start" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="datetime-local"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Kết thúc <span class="text-red-500">*</span></label>
+
+<input id="ev2-end" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="datetime-local"/>
+
+</div>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Địa điểm <span class="text-red-500">*</span></label>
+
+<input id="ev2-location" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="text"/>
+
+</div>
+
+<div class="grid grid-cols-3 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Vĩ độ (GPS)</label>
+
+<input id="ev2-lat" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" step="any" min="-90" max="90" placeholder="16.46371"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Kinh độ (GPS)</label>
+
+<input id="ev2-lng" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" step="any" min="-180" max="180" placeholder="107.59048"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Bán kính (m)</label>
+
+<input id="ev2-radius" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" min="10" max="5000" placeholder="50"/>
+
+</div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Số lượng tối đa</label>
+
+<input id="ev2-tickets" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" min="1"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Kinh phí dự trù (₫)</label>
+
+<input id="ev2-budget" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" min="0" step="1000"/>
+
+</div>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Mô tả</label>
+
+<textarea id="ev2-desc" rows="3" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"></textarea>
+
+</div>
+
+<div class="flex justify-end gap-2 pt-2">
+
+<button class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold" onclick="closeModal('modal-event-edit')" type="button">Hủy bỏ</button>
+
+<button class="px-5 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-850 text-white font-bold flex items-center gap-1" type="submit" id="ev2-submit">
+
+<span class="material-symbols-outlined text-sm text-cyan-400">check</span>
+
+            Lưu Thay Đổi
 
           </button>
 
@@ -2482,6 +2685,17 @@
 </div>
 
 </div>
+        <div>
+          <label class="block font-bold text-navy-900 mb-1">Gắn với sự kiện (tùy chọn)</label>
+          <input id="ses-event-search" type="search" placeholder="Tìm sự kiện theo tên / mã..." autocomplete="off" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"/>
+          <select id="ses-event" class="w-full mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+            <option value="">— Không gắn sự kiện —</option>
+          </select>
+          <div class="flex items-center justify-end mt-2">
+            <button type="button" id="ses-event-more" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all">Tải thêm sự kiện</button>
+          </div>
+        </div>
+
 
 <div>
 
@@ -2557,100 +2771,30 @@
 
 </div>
 
-<div class="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-
-<div class="flex justify-between items-center">
-
-<span class="font-bold text-navy-900">Danh sách thành viên ghi nhận tọa độ GPS:</span>
-
-<span class="text-slate-500 font-mono">Tổng số: 48 sinh viên</span>
-
+<div class="p-4 bg-slate-50/60 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+  <div>
+    <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1" for="rec-search">Tìm thành viên</label>
+    <input id="rec-search" type="search" placeholder="Tên / MSSV / email..." autocomplete="off" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl outline-none"/>
+  </div>
+  <div>
+    <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1" for="rec-status">Trạng thái</label>
+    <select id="rec-status" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl outline-none">
+      <option value="">Tất cả</option>
+      <option value="CO_MAT">Có mặt</option>
+      <option value="CO_PHEP">Có phép</option>
+      <option value="DI_MUON">Đi muộn</option>
+      <option value="VANG">Vắng</option>
+    </select>
+  </div>
 </div>
 
-<table class="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
-
-<thead class="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase">
-
-<tr>
-
-<th class="p-3">MSSV &amp; Họ tên</th>
-
-<th class="p-3">Khoảng cách tới Lab</th>
-
-<th class="p-3">Thời điểm quét</th>
-
-<th class="p-3">Tình trạng GPS</th>
-
-<th class="p-3 text-right">Điều chỉnh</th>
-
-</tr>
-
-</thead>
-
-<tbody class="divide-y divide-slate-100">
-
-<tr>
-
-<td class="p-3 font-bold text-navy-900">
-
-                Lê Quốc Bảo (22S1020012)
-
-              </td>
-
-<td class="p-3 font-mono text-emerald-600 font-bold">12.4 mét</td>
-
-<td class="p-3 font-mono text-slate-500">14:02:18</td>
-
-<td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Hợp lệ (Trong vùng)</span></td>
-
-<td class="p-3 text-right"><button class="text-slate-400 hover:text-red-500">Hủy</button></td>
-
-</tr>
-
-<tr>
-
-<td class="p-3 font-bold text-navy-900">
-
-                Phan Thị Kim Ngân (23S1020042)
-
-              </td>
-
-<td class="p-3 font-mono text-emerald-600 font-bold">28.1 mét</td>
-
-<td class="p-3 font-mono text-slate-500">14:04:55</td>
-
-<td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Hợp lệ (Trong vùng)</span></td>
-
-<td class="p-3 text-right"><button class="text-slate-400 hover:text-red-500">Hủy</button></td>
-
-</tr>
-
-<tr class="bg-amber-50/50">
-
-<td class="p-3 font-bold text-navy-900">
-
-                Trương Tuấn Anh (21S1020005)
-
-              </td>
-
-<td class="p-3 font-mono text-amber-600 font-bold">68.5 mét (Ngoài vùng)</td>
-
-<td class="p-3 font-mono text-slate-500">14:12:04</td>
-
-<td class="p-3"><span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Ghi nhận ngoại lệ</span></td>
-
-<td class="p-3 text-right"><button class="text-cyan-600 font-bold hover:underline">Chấp thuận</button></td>
-
-</tr>
-
-</tbody>
-
-</table>
-
+<div class="p-4 overflow-y-auto flex-1 text-xs" id="records-wrap">
+  <div class="py-8 text-center text-slate-400 text-xs">Đang tải bản ghi...</div>
 </div>
 
 <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
 
+<button id="btn-record-override" class="px-4 py-2 rounded-xl bg-navy-900 hover:bg-cyan-600 text-white font-heading font-bold text-xs transition-colors" onclick="openOverrideModal(recordsSessionId(), overrideSessionName())">Điều chỉnh điểm danh</button>
 <button class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs" onclick="closeModal('modal-session-detail')">Đóng</button>
 
 </div>
@@ -2734,13 +2878,15 @@
 </div>
 
 <div>
-
-<label class="block font-bold text-navy-900 mb-1">Thẻ từ khóa Tags (cách nhau bởi dấu phẩy)</label>
-
-<input id="doc-tags-input" name="tags" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="#Python, #Web, #GiaoAn..." type="text"/>
-
+  <label class="block font-bold text-navy-900 mb-1">Phạm vi truy cập</label>
+  <select id="doc-phamvi-input" name="pham_vi" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium">
+    <option value="PUBLIC_MEMBER">Toàn bộ thành viên</option>
+    <option value="BCN_ONLY">Chỉ Ban chủ nhiệm</option>
+  </select>
 </div>
-
+<div>
+  <label class="block font-bold text-navy-900 mb-1">Thẻ từ khóa Tags (cách nhau bởi dấu phẩy)</label>
+  <input id="doc-tags-input" name="tags" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="#Python, #Web, #GiaoAn..." type="text"/>
 </div>
 
 <div>
@@ -2777,879 +2923,1842 @@
 
 
   <!-- Scripts: Core Modules & Runtime -->
+
+<!-- MODAL: OVERRIDE ĐIỂM DANH (audit F01/F09 + N02: OPEN & CLOSED) -->
+<div class="fixed inset-0 bg-navy-950/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="modal-override">
+  <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="bg-navy-900 text-white p-5 flex items-center justify-between border-b border-white/10 shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-white p-1 ring-2 ring-cyan-500/40 flex items-center justify-center">
+          <img src="/frontend/assets/logo.png" alt="Logo" class="w-full h-full object-contain rounded-full"/>
+        </div>
+        <div>
+          <h3 class="font-heading font-bold text-base text-white">Điều chỉnh điểm danh thủ công</h3>
+          <p class="text-xs text-cyan-400 font-mono">Phiên: <span id="ov-session-name">—</span> • áp dụng một trạng thái chung cho nhóm được tick</p>
+        </div>
+      </div>
+      <button class="text-slate-400 hover:text-white p-1.5 rounded-lg" onclick="closeModal('modal-override')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+      <div>
+        <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1" for="ov-search">Tìm thành viên</label>
+        <input id="ov-search" type="search" placeholder="Gõ tên / MSSV..." autocomplete="off" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"/>
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1" for="ov-status">Trạng thái áp dụng</label>
+        <select id="ov-status" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+          <option value="CO_MAT">Có mặt</option>
+          <option value="VANG">Vắng</option>
+          <option value="CO_PHEP">Có phép</option>
+          <option value="DI_MUON">Đi muộn</option>
+        </select>
+      </div>
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[11px] text-slate-500 font-medium" id="ov-count">0/0 thành viên đang hiện được chọn</span>
+        <div class="flex gap-2">
+          <button type="button" id="ov-all" title="Chỉ tick những người đang hiện trong danh sách" class="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all">Chọn tất cả (đang hiện)</button>
+          <button type="button" id="ov-none" class="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all">Bỏ chọn</button>
+        </div>
+      </div>
+      <div class="space-y-1.5 max-h-64 overflow-y-auto" id="ov-member-list"></div>
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[11px] text-slate-400" id="ov-browse-count"></span>
+        <button type="button" id="ov-more" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all">Tải thêm 20 người</button>
+      </div>
+    </div>
+    <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
+      <button class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs" onclick="closeModal('modal-override')">Hủy</button>
+      <button id="ov-submit" disabled class="px-5 py-2 rounded-xl bg-navy-900 hover:bg-cyan-600 text-white font-heading font-bold text-xs transition-colors disabled:opacity-50">Áp dụng (0)</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: XEM TRƯỚC TÀI LIỆU (audit F05 — preview qua API cùng origin) -->
+<div class="fixed inset-0 bg-navy-950/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="modal-doc-preview">
+  <div class="bg-white rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="bg-navy-900 text-white p-4 flex items-center justify-between border-b border-white/10 shrink-0">
+      <h3 class="font-heading font-bold text-sm text-white flex items-center gap-2">
+        <span class="material-symbols-outlined text-cyan-400">visibility</span> Xem trước tài liệu
+      </h3>
+      <button class="text-slate-400 hover:text-white p-1.5 rounded-lg" onclick="closeDocPreview()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="flex-1 relative bg-slate-100">
+      <div id="doc-preview-loading" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-xs">
+        <span class="material-symbols-outlined text-3xl animate-spin text-cyan-500 mb-2">progress_activity</span>
+        Đang nạp bản xem trước...
+      </div>
+      <iframe id="doc-preview-frame" title="Bản xem trước tài liệu" class="w-full h-full hidden"></iframe>
+    </div>
+    <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
+      <button class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs" onclick="closeDocPreview()">Đóng</button>
+    </div>
+  </div>
+</div>
+
   <script src="/frontend/js/api.js"></script>
   <script src="/frontend/js/auth.js"></script>
   <script src="/frontend/js/utils.js"></script>
   <script src="/frontend/js/toast.js"></script>
 
   <script>
-    (function() {
-      'use strict';
+(function() {
+  'use strict';
 
-      // --- APPLICATION GLOBAL STATE ---
-      const state = {
-        defaultView: window.PAGE_DEFAULT_VIEW || 'events',
-        currentView: 'events',
-        events: [],
-        eventsPage: 1,
-        eventsTotal: 0,
-        eventStatus: '',
-        currentEvent: null,
-        currentModalTab: 'tasks',
-        sessions: [],
-        sessionsPage: 1,
-        openSession: null,
-        nonceInterval: null,
-        nonceCountdown: 15,
-        docs: [],
-        docsPage: 1,
-        docsNhom: '',
-        selectedDocFile: null,
-        searchTimer: null
-      };
+  // =====================================================================
+  // CLB IP — Tri-View Admin Engine (events / attendance / documents)
+  // Phiên bản MERGE N01 (review ac51233): giữ nguyên thiết kế mới của main,
+  // tích hợp toàn bộ logic fix F01-F14 / R01-R05 / N02-N04:
+  //   - API conformance: envelope {items,pagination} qua ApiClient.getList,
+  //     tên trường THẬT của serializer (ten_hoat_dong/ma_hd/ten_task/
+  //     ten_phien/ban_kinh_m/luot_tai/member_ten/ma_ve...).
+  //   - F08/R01: reopen/complete chặn 400 blocking_tasks hiển thị đúng.
+  //   - F09: search sự kiện (?search=), picker phân trang 20/trang + "Tải
+  //     thêm", vé sự kiện phân trang THẬT (regsPage).
+  //   - P1-c: budget empty-branch tách statement (không render "undefined").
+  //   - F10: multi-OPEN sessions chips + bản ghi theo phiên + override.
+  //   - R03: nonce hết hạn vô hiệu hóa UI ngay, retry có giới hạn, dọn timer.
+  //   - F05: preview qua /documents/{id}/preview/ + revoke blob URL.
+  //   - N02: override cho phép trên phiên CLOSED (policy gốc đã phục hồi).
+  // =====================================================================
 
-      // --- 1. VIEW SWITCHING ENGINE (Seamless Tri-View Controller) ---
-      window.switchView = function(viewName, updateHash = true) {
-        const views = ['events', 'attendance', 'documents'];
-        if (!views.includes(viewName)) viewName = 'events';
-        state.currentView = viewName;
+  // --- APPLICATION GLOBAL STATE ---
+  const state = {
+    defaultView: window.PAGE_DEFAULT_VIEW || 'events',
+    currentView: 'events',
+    events: [],
+    eventsPage: 1,
+    eventsTotal: 0,
+    eventStatus: '',
+    eventSearch: '',
+    eventSearchSeq: 0,
+    currentEvent: null,
+    currentModalTab: 'tasks',
+    regsPage: 1,
+    sessions: [],
+    sessionsPage: 1,
+    sessionsTotal: 0,
+    openSessions: [],
+    openSession: null,
+    nonceInterval: null,
+    nonceRetryTimer: null,
+    nonceAutoRetries: 0,
+    nonceFetchingFor: null,
+    nonceSessionId: null,
+    nonceCountdown: 15,
+    recordsSessionId: null,
+    recordsState: { page: 1, trangThai: '', search: '' },
+    docs: [],
+    docsPage: 1,
+    docsTotal: 0,
+    docsNhom: '',
+    docsSearch: '',
+    docSearchSeq: 0,
+    selectedDocFile: null,
+    searchTimer: null
+  };
 
-        views.forEach(v => {
-          const el = document.getElementById('view-' + v);
-          const navBtn = document.getElementById('nav-' + v);
-          const qBtn = document.getElementById('sb-qview-' + v);
-          const tbBtn = document.getElementById('tb-' + v);
+  const REC_STATUS_LABELS = { CO_MAT: 'Có mặt', CO_PHEP: 'Có phép', DI_MUON: 'Đi muộn', VANG: 'Vắng' };
 
-          if (v === viewName) {
-            if (el) {
-              el.classList.remove('hidden');
-              el.classList.remove('view-enter');
-              void el.offsetWidth;
-              el.classList.add('view-enter');
-            }
-            if (navBtn) {
-              navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25";
-              const icon = navBtn.querySelector('.material-symbols-outlined');
-              if (icon) icon.className = "material-symbols-outlined text-[20px] text-white";
-            }
-            if (qBtn) {
-              qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-bold text-center transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/30";
-            }
-            if (tbBtn) {
-              tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-navy-900 shadow-sm";
-            }
-          } else {
-            if (el) el.classList.add('hidden');
-            if (navBtn) {
-              navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group";
-              const icon = navBtn.querySelector('.material-symbols-outlined');
-              if (icon) icon.className = "material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200";
-            }
-            if (qBtn) {
-              qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-medium text-center transition-all text-slate-400 hover:bg-white/5";
-            }
-            if (tbBtn) {
-              tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-navy-900 transition-all";
-            }
-          }
-        });
+  // --- 1. VIEW SWITCHING ENGINE (Seamless Tri-View Controller) ---
+  window.switchView = function(viewName, updateHash = true) {
+    const views = ['events', 'attendance', 'documents'];
+    if (!views.includes(viewName)) viewName = 'events';
+    state.currentView = viewName;
 
-        const titleEl = document.getElementById('topbar-title');
-        const crumbEl = document.getElementById('topbar-section-name');
+    views.forEach(v => {
+      const el = document.getElementById('view-' + v);
+      const navBtn = document.getElementById('nav-' + v);
+      const qBtn = document.getElementById('sb-qview-' + v);
+      const tbBtn = document.getElementById('tb-' + v);
 
-        if (viewName === 'events') {
-          if (titleEl) titleEl.innerText = "Sự kiện & Hoạt động CLB IP";
-          if (crumbEl) crumbEl.innerText = "Vòng đời Sự kiện & DAG";
-          if (state.events.length === 0) loadEvents();
-        } else if (viewName === 'attendance') {
-          if (titleEl) titleEl.innerText = "Điểm danh GPS & Phòng Lab";
-          if (crumbEl) crumbEl.innerText = "Geofencing & Projector Nonce";
-          if (state.sessions.length === 0) loadSessions();
-        } else if (viewName === 'documents') {
-          if (titleEl) titleEl.innerText = "Kho Tài liệu & Học liệu Số";
-          if (crumbEl) crumbEl.innerText = "Academic Cloud & Tìm kiếm nhanh";
-          if (state.docs.length === 0) loadDocs();
+      if (v === viewName) {
+        if (el) {
+          el.classList.remove('hidden');
+          // fccdb09: animation chuyển view mượt (fade-slide)
+          el.classList.remove('view-enter');
+          void el.offsetWidth;
+          el.classList.add('view-enter');
         }
-
-        if (updateHash && window.location.hash !== '#' + viewName) {
-          try {
-            history.replaceState(null, '', '#' + viewName);
-          } catch(e) {}
+        if (navBtn) {
+          navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 bg-cyan-500 text-white shadow-md shadow-cyan-500/25";
+          const icon = navBtn.querySelector('.material-symbols-outlined');
+          if (icon) icon.className = "material-symbols-outlined text-[20px] text-white";
         }
-
-        toggleSidebar(false);
-      };
-      // --- 2. MOBILE DRAWER CONTROLS ---
-      window.toggleSidebar = function(open) {
-        const sb = document.getElementById('shell-sidebar');
-        const scrim = document.getElementById('scrim');
-        if (open) {
-          if (sb) sb.classList.remove('-translate-x-full');
-          if (scrim) scrim.classList.remove('hidden');
-        } else {
-          if (sb) sb.classList.add('-translate-x-full');
-          if (scrim) scrim.classList.add('hidden');
+        if (qBtn) {
+          qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-bold text-center transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/30";
         }
-      };
-
-      // --- 3. MODAL HELPERS ---
-      window.openModal = function(id) {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove('hidden');
-      };
-      window.closeModal = function(id) {
-        const el = document.getElementById(id);
+        if (tbBtn) {
+          tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-navy-900 shadow-sm";
+        }
+      } else {
         if (el) el.classList.add('hidden');
-      };
-
-      // --- 4. EVENTS ENGINE ---
-      const EVENT_STATUS_LABELS = {
-        'PLANNING': { label: 'Lên kế hoạch', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-        'OPEN_REGISTRATION': { label: 'Mở đăng ký', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-        'IN_PROGRESS': { label: 'Đang diễn ra', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-        'COMPLETED': { label: 'Đã hoàn thành', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-        'CANCELLED': { label: 'Đã hủy', color: 'bg-red-50 text-red-700 border-red-200' }
-      };
-
-      async function loadEvents(page = 1) {
-        state.eventsPage = page;
-        const grid = document.getElementById('events-grid');
-        if (!grid) return;
-
-        grid.innerHTML = `
-          <div class="col-span-full py-12 flex flex-col items-center justify-center text-slate-400">
-            <span class="material-symbols-outlined text-4xl animate-spin text-cyan-500 mb-2">progress_activity</span>
-            <p class="text-xs font-medium">Đang tải danh sách sự kiện từ máy chủ...</p>
-          </div>`;
-
-        try {
-          const params = { page };
-          if (state.eventStatus) params.trang_thai = state.eventStatus;
-          const res = await ApiClient.get('/events/', params);
-          state.events = res.results || res || [];
-          state.eventsTotal = res.count || state.events.length;
-          renderEventsGrid(state.events);
-          renderEventsPagination(res);
-        } catch (err) {
-          grid.innerHTML = `
-            <div class="col-span-full py-8 text-center text-red-500">
-              <span class="material-symbols-outlined text-3xl">error</span>
-              <p class="text-xs font-bold mt-1">Không thể tải dữ liệu sự kiện: ${Utils.escapeHtml(err.message || 'Lỗi kết nối')}</p>
-            </div>`;
+        if (navBtn) {
+          navBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/10 hover:translate-x-1 group";
+          const icon = navBtn.querySelector('.material-symbols-outlined');
+          if (icon) icon.className = "material-symbols-outlined text-[20px] text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-200";
+        }
+        if (qBtn) {
+          qBtn.className = "px-2 py-1.5 rounded-lg text-[10px] font-medium text-center transition-all text-slate-400 hover:bg-white/5";
+        }
+        if (tbBtn) {
+          tbBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-navy-900 transition-all";
         }
       }
+    });
 
-      function renderEventsGrid(items) {
-        const grid = document.getElementById('events-grid');
-        if (!grid) return;
-        if (!items || items.length === 0) {
-          grid.innerHTML = `
-            <div class="col-span-full py-16 bg-white rounded-3xl border border-slate-200/80 p-8 text-center">
-              <div class="w-16 h-16 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center mx-auto mb-3">
-                <span class="material-symbols-outlined text-3xl">event_busy</span>
+    const titleEl = document.getElementById('topbar-title');
+    const crumbEl = document.getElementById('topbar-section-name');
+
+    if (viewName === 'events') {
+      if (titleEl) titleEl.innerText = "Sự kiện & Hoạt động CLB IP";
+      if (crumbEl) crumbEl.innerText = "Vòng đời Sự kiện & DAG";
+      if (state.events.length === 0) loadEvents();
+    } else if (viewName === 'attendance') {
+      if (titleEl) titleEl.innerText = "Điểm danh GPS & Phòng Lab";
+      if (crumbEl) crumbEl.innerText = "Geofencing & Projector Nonce";
+      if (state.sessions.length === 0) loadSessions();
+    } else if (viewName === 'documents') {
+      if (titleEl) titleEl.innerText = "Kho Tài liệu & Học liệu Số";
+      if (crumbEl) crumbEl.innerText = "Academic Cloud & Tìm kiếm nhanh";
+      if (state.docs.length === 0) loadDocs();
+    }
+
+    if (updateHash && window.location.hash !== '#' + viewName) {
+      try {
+        history.replaceState(null, '', '#' + viewName);
+      } catch(e) {}
+    }
+
+    toggleSidebar(false);
+  };
+
+  // --- 2. MOBILE DRAWER CONTROLS ---
+  window.toggleSidebar = function(open) {
+    const sb = document.getElementById('shell-sidebar');
+    const scrim = document.getElementById('scrim');
+    if (open) {
+      if (sb) sb.classList.remove('-translate-x-full');
+      if (scrim) scrim.classList.remove('hidden');
+    } else {
+      if (sb) sb.classList.add('-translate-x-full');
+      if (scrim) scrim.classList.add('hidden');
+    }
+  };
+
+  // --- 3. MODAL HELPERS (static shells — giữ pattern của main) ---
+  window.openModal = function(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('hidden');
+  };
+  window.closeModal = function(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  };
+
+  // --- 4. EVENTS ENGINE ---
+  const EVENT_STATUS_LABELS = {
+    'PLANNING': { label: 'Lên kế hoạch', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+    'OPEN_REGISTRATION': { label: 'Mở đăng ký', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+    'IN_PROGRESS': { label: 'Đang diễn ra', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    'COMPLETED': { label: 'Đã hoàn thành', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+    'CANCELLED': { label: 'Đã hủy', color: 'bg-red-50 text-red-700 border-red-200' }
+  };
+
+  async function loadEvents(page = 1) {
+    state.eventsPage = page;
+    const grid = document.getElementById('events-grid');
+    if (!grid) return;
+
+    grid.innerHTML = `
+      <div class="col-span-full py-12 flex flex-col items-center justify-center text-slate-400">
+        <span class="material-symbols-outlined text-4xl animate-spin text-cyan-500 mb-2">progress_activity</span>
+        <p class="text-xs font-medium">Đang tải danh sách sự kiện từ máy chủ...</p>
+      </div>`;
+
+    try {
+      // Audit F09: hỗ trợ ?search= (backend whitelist) — trước đây input tìm
+      // kiếm không có id/handler nên chết hoàn toàn.
+      const params = { page };
+      if (state.eventStatus) params.trang_thai = state.eventStatus;
+      if (state.eventSearch) params.search = state.eventSearch;
+      // Envelope THẬT: {items, pagination} — main dùng res.results (không tồn tại)
+      const { items, pagination } = await ApiClient.getList('/events/', params);
+      state.events = items;
+      state.eventsTotal = pagination ? pagination.total_items : items.length;
+      renderEventsGrid(items);
+      renderEventsPagination(pagination);
+    } catch (err) {
+      grid.innerHTML = `
+        <div class="col-span-full py-8 text-center text-red-500">
+          <span class="material-symbols-outlined text-3xl">error</span>
+          <p class="text-xs font-bold mt-1">Không thể tải dữ liệu sự kiện: ${Utils.escapeHtml(err.message || 'Lỗi kết nối')}</p>
+        </div>`;
+    }
+  }
+  window.loadEvents = loadEvents;
+
+  window.handleEventSearch = function(query) {
+    if (state.eventSearchTimer) clearTimeout(state.eventSearchTimer);
+    const q = (query || '').trim();
+    state.eventSearchTimer = setTimeout(() => {
+      if (q === state.eventSearch) return; // không đổi — bỏ qua
+      state.eventSearch = q;
+      loadEvents(1);
+    }, 300);
+  };
+
+  function renderEventsGrid(items) {
+    const grid = document.getElementById('events-grid');
+    if (!grid) return;
+    if (!items || items.length === 0) {
+      grid.innerHTML = `
+        <div class="col-span-full py-16 bg-white rounded-3xl border border-slate-200/80 p-8 text-center">
+          <div class="w-16 h-16 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-3xl">event_busy</span>
+          </div>
+          <h4 class="font-heading font-bold text-sm text-navy-900">${state.eventSearch ? 'Không có sự kiện khớp từ khóa' : 'Chưa có sự kiện nào trong danh mục'}</h4>
+          <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Bạn có thể khởi tạo kế hoạch sự kiện mới bằng nút bên trên để bắt đầu phân công nhiệm vụ DAG.</p>
+          <button onclick="openModal('modal-event-create')" class="mt-4 px-4 py-2 bg-navy-900 text-white rounded-xl text-xs font-bold hover:bg-navy-850 transition-all inline-flex items-center gap-1.5 shadow-md">
+            <span class="material-symbols-outlined text-sm">add</span> Khởi tạo sự kiện mới
+          </button>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = items.map(ev => {
+      const st = EVENT_STATUS_LABELS[ev.trang_thai] || { label: ev.trang_thai || 'Chưa rõ', color: 'bg-slate-100 text-slate-600 border-slate-200' };
+      const startTime = ev.thoi_gian_bat_dau ? Utils.fmtDateTime(ev.thoi_gian_bat_dau) : 'Chưa định ngày';
+      // Tên trường THẬT: ten_hoat_dong / ma_hd / registered_count / so_luong_toi_da
+      const ticketsCount = (ev.registered_count || 0) + ' / ' + (ev.so_luong_toi_da || 0);
+
+      return `
+        <div class="bg-white rounded-2xl border border-slate-200/90 hover:border-cyan-500/50 hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden group">
+          <div class="p-5 space-y-3.5">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-[11px] text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-100">
+                  ${Utils.escapeHtml(ev.ma_hd || 'SK-' + ev.id)}
+                </span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.color}">
+                  ${st.label}
+                </span>
               </div>
-              <h4 class="font-heading font-bold text-sm text-navy-900">Chưa có sự kiện nào trong danh mục</h4>
-              <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Bạn có thể khởi tạo kế hoạch sự kiện mới bằng nút bên trên để bắt đầu phân công nhiệm vụ DAG.</p>
-              <button onclick="openModal('modal-event-create')" class="mt-4 px-4 py-2 bg-navy-900 text-white rounded-xl text-xs font-bold hover:bg-navy-850 transition-all inline-flex items-center gap-1.5 shadow-md">
-                <span class="material-symbols-outlined text-sm">add</span> Khởi tạo sự kiện mới
-              </button>
-            </div>`;
-          return;
-        }
-
-        grid.innerHTML = items.map(ev => {
-          const st = EVENT_STATUS_LABELS[ev.trang_thai] || { label: ev.trang_thai || 'Chưa rõ', color: 'bg-slate-100 text-slate-600 border-slate-200' };
-          const startTime = ev.thoi_gian_bat_dau ? Utils.formatDateTime(ev.thoi_gian_bat_dau) : 'Chưa định ngày';
-          const ticketsCount = (ev.da_dang_ky || 0) + ' / ' + (ev.so_luong_ve || 0);
-
-          return `
-            <div class="bg-white rounded-2xl border border-slate-200/90 hover:border-cyan-500/50 hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden group">
-              <div class="p-5 space-y-3.5">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono font-bold text-[11px] text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-100">
-                      ${Utils.escapeHtml(ev.ma_su_kien || 'SK-' + ev.id)}
-                    </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.color}">
-                      ${st.label}
-                    </span>
-                  </div>
-                  <div class="w-7 h-7 rounded-full bg-slate-50 border border-slate-200 p-0.5 flex items-center justify-center shrink-0">
-                    <img src="/frontend/assets/logo.png" alt="Logo" class="w-full h-full object-contain rounded-full opacity-80" />
-                  </div>
-                </div>
-
-                <div>
-                  <h3 class="font-heading font-bold text-sm text-navy-900 leading-snug group-hover:text-cyan-600 transition-colors">
-                    ${Utils.escapeHtml(ev.tieu_de)}
-                  </h3>
-                  <p class="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                    ${Utils.escapeHtml(ev.mo_ta || 'Hoạt động học thuật và nghiệp vụ tin học sư phạm dành cho sinh viên và thành viên CLB IP.')}
-                  </p>
-                </div>
-
-                <div class="space-y-1.5 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                  <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[15px] text-slate-400">schedule</span>
-                    <span>${startTime}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[15px] text-slate-400">location_on</span>
-                    <span class="truncate">${Utils.escapeHtml(ev.dia_diem || 'Phòng Lab Khoa Tin học')}</span>
-                  </div>
-                </div>
+              <div class="w-7 h-7 rounded-full bg-slate-50 border border-slate-200 p-0.5 flex items-center justify-center shrink-0">
+                <img src="/frontend/assets/logo.png" alt="Logo" class="w-full h-full object-contain rounded-full opacity-80" />
               </div>
-
-              <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-                <div class="font-mono text-[11px] text-slate-500 flex items-center gap-1">
-                  <span class="material-symbols-outlined text-sm text-cyan-600">confirmation_number</span>
-                  <span>Vé: <b>${ticketsCount}</b></span>
-                </div>
-                <button onclick="openEventWorkspace(${ev.id})" class="px-3 py-1.5 bg-navy-900 hover:bg-navy-850 text-white rounded-xl font-bold text-xs flex items-center gap-1 transition-all shadow-xs">
-                  <span>Chi tiết DAG</span>
-                  <span class="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
-              </div>
-            </div>`;
-        }).join('');
-      }
-
-      function renderEventsPagination(meta) {
-        const pag = document.getElementById('events-pagination');
-        if (!pag) return;
-        if (!meta || (!meta.next && !meta.previous)) {
-          pag.innerHTML = '';
-          return;
-        }
-        pag.innerHTML = `
-          <div class="flex items-center justify-between w-full pt-4 border-t border-slate-200 text-xs">
-            <span class="text-slate-500">Trang ${state.eventsPage}</span>
-            <div class="flex gap-2">
-              <button ${!meta.previous ? 'disabled' : ''} onclick="loadEvents(${state.eventsPage - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
-              <button ${!meta.next ? 'disabled' : ''} onclick="loadEvents(${state.eventsPage + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
             </div>
-          </div>`;
+
+            <div>
+              <h3 class="font-heading font-bold text-sm text-navy-900 leading-snug group-hover:text-cyan-600 transition-colors">
+                ${Utils.escapeHtml(ev.ten_hoat_dong)}
+              </h3>
+              <p class="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                ${Utils.escapeHtml(ev.mo_ta || 'Hoạt động học thuật và nghiệp vụ tin học sư phạm dành cho sinh viên và thành viên CLB IP.')}
+              </p>
+            </div>
+
+            <div class="space-y-1.5 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[15px] text-slate-400">schedule</span>
+                <span>${startTime}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[15px] text-slate-400">location_on</span>
+                <span class="truncate">${Utils.escapeHtml(ev.dia_diem || 'Phòng Lab Khoa Tin học')}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+            <div class="font-mono text-[11px] text-slate-500 flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm text-cyan-600">confirmation_number</span>
+              <span>Vé: <b>${ticketsCount}</b></span>
+            </div>
+            <button onclick="openEventWorkspace(${ev.id})" class="px-3 py-1.5 bg-navy-900 hover:bg-navy-850 text-white rounded-xl font-bold text-xs flex items-center gap-1 transition-all shadow-xs">
+              <span>Chi tiết DAG</span>
+              <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderEventsPagination(pagination) {
+    const pag = document.getElementById('events-pagination');
+    if (!pag) return;
+    if (!pagination || pagination.total_pages <= 1) {
+      pag.innerHTML = pagination && pagination.total_items
+        ? `<span class="font-mono">${Utils.fmtNum(pagination.total_items)} sự kiện</span><span></span>`
+        : '';
+      return;
+    }
+    pag.innerHTML = `
+      <span class="font-mono">${Utils.fmtNum(pagination.total_items)} sự kiện · trang ${pagination.page}/${pagination.total_pages}</span>
+      <div class="flex gap-2">
+        <button ${pagination.page <= 1 ? 'disabled' : ''} onclick="loadEvents(${pagination.page - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
+        <button ${pagination.page >= pagination.total_pages ? 'disabled' : ''} onclick="loadEvents(${pagination.page + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
+      </div>`;
+  }
+
+  window.openEventWorkspace = async function(id) {
+    try {
+      const ev = await ApiClient.get('/events/' + id + '/');
+      state.currentEvent = ev;
+      state.regsPage = 1; // Audit F09: reset trang vé khi đổi sự kiện
+      const title = document.getElementById('m-event-title');
+      const code = document.getElementById('m-event-code');
+      if (title) title.innerText = ev.ten_hoat_dong || 'Sự kiện';
+      if (code) code.innerText = 'Mã sự kiện: ' + (ev.ma_hd || 'SK-' + ev.id) + ' • ' + (ev.dia_diem || 'Lab Tin học');
+      openModal('modal-event-detail');
+      switchEventModalTab('tasks');
+    } catch (err) {
+      Toast.error(err.message || 'Không thể mở chi tiết sự kiện.');
+    }
+  };
+
+  window.switchEventModalTab = async function(tab) {
+    state.currentModalTab = tab;
+    const tabs = ['tasks', 'budget', 'tickets', 'comms'];
+    tabs.forEach(t => {
+      const btn = document.getElementById('mtab-btn-' + t);
+      const pane = document.getElementById('m-pane-' + t);
+      if (t === tab) {
+        if (btn) btn.className = "px-3.5 py-2 rounded-xl bg-white text-navy-900 shadow-sm font-bold transition-all";
+        if (pane) pane.classList.remove('hidden');
+      } else {
+        if (btn) btn.className = "px-3.5 py-2 rounded-xl text-slate-600 hover:text-navy-900 transition-all font-medium";
+        if (pane) pane.classList.add('hidden');
       }
+    });
 
-      window.openEventWorkspace = async function(id) {
+    if (!state.currentEvent) return;
+    const evId = state.currentEvent.id;
+
+    if (tab === 'tasks') {
+      await renderTasksPane(evId);
+    } else if (tab === 'budget') {
+      await renderBudgetPane(evId);
+    } else if (tab === 'tickets') {
+      await renderTicketsPane(evId);
+    } else if (tab === 'comms') {
+      await renderCommsPane(evId);
+    }
+  };
+
+  /* ---------- Pane: TASKS (DAG) — F08/R01 + F09 assignee picker ---------- */
+  async function renderTasksPane(evId, errorBlockers) {
+    const pane = document.getElementById('m-pane-tasks');
+    if (!pane) return;
+    pane.innerHTML = '<div class="py-6 text-center text-slate-400 text-xs">Đang tải biểu đồ công việc DAG...</div>';
+    let tasks = [];
+    try {
+      const res = await ApiClient.get('/events/' + evId + '/tasks/');
+      // Endpoint DAG trả data={tasks, is_valid_dag, topological_order, ...}
+      tasks = res.tasks || res.items || res.results || (Array.isArray(res) ? res : []);
+    } catch (e) {
+      pane.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Lỗi tải danh sách nhiệm vụ DAG.</p>';
+      return;
+    }
+
+    const taskRows = tasks.length ? tasks.map(tk => {
+      const deps = (tk.depends_on_detail || []).map(d => Utils.escapeHtml(d.ten_task)).join(', ');
+      return `
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-start justify-between gap-3 text-xs mb-2">
+          <div class="flex items-start gap-3 min-w-0">
+            <input type="checkbox" ${tk.is_completed ? 'checked' : ''} onchange="toggleTaskStatus(${tk.id}, this.checked, ${evId})" class="w-4 h-4 mt-0.5 text-cyan-600 rounded border-slate-300 focus:ring-cyan-500 cursor-pointer shrink-0" />
+            <div class="min-w-0">
+              <p class="font-bold text-navy-900 ${tk.is_completed ? 'line-through text-slate-400' : ''}">${Utils.escapeHtml(tk.ten_task || '')}</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">
+                Hạn chót: ${tk.deadline ? Utils.fmtDateTime(tk.deadline) : 'Không có'}
+                ${tk.nguoi_phu_trach_ten ? ' • Phụ trách: <b class="text-slate-600">' + Utils.escapeHtml(tk.nguoi_phu_trach_ten) + '</b>' : ''}
+              </p>
+              ${deps ? `<p class="text-[11px] text-slate-400 mt-0.5">Phụ thuộc: ${deps}</p>` : ''}
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold shrink-0 ${tk.is_completed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+            ${tk.is_completed ? 'Hoàn thành' : 'Đang xử lý'}
+          </span>
+        </div>`;
+    }).join('') : '<div class="py-8 text-center text-slate-400 text-xs"><p>Chưa có nhiệm vụ DAG nào được phân công cho sự kiện này.</p></div>';
+
+    pane.innerHTML = `
+      ${errorBlockers ? `
+        <div class="p-3 mb-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+          <b>Không thực hiện được do tiền nhiệm:</b> ${Utils.escapeHtml(errorBlockers)}
+        </div>` : ''}
+      ${taskRows}
+      <div class="mt-3 p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+        <p class="font-bold text-navy-900 text-xs">Thêm nhiệm vụ DAG mới</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Tên nhiệm vụ *</label>
+            <input id="task-ten" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="VD: In ấn backdrop sự kiện" type="text"/>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Deadline</label>
+            <input id="task-deadline" type="datetime-local" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"/>
+          </div>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Người phụ trách</label>
+          <input id="task-assignee-search" type="search" placeholder="Gõ tên / MSSV để tìm nhanh..." autocomplete="off" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"/>
+          <select id="task-phu-trach" size="4" class="w-full mt-2 p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+            <option value="">— Chưa phân công —</option>
+          </select>
+          <div class="flex items-center justify-between gap-2 mt-2">
+            <span class="text-[11px] text-slate-400" id="assignee-count"></span>
+            <button type="button" id="btn-load-more-members" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all">Tải thêm</button>
+          </div>
+        </div>
+        ${tasks.length ? `
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Tiền nhiệm (depends_on)</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
+            ${tasks.map(tk => `
+              <label class="flex items-center gap-2 text-[11px] text-slate-600 cursor-pointer">
+                <input type="checkbox" class="task-dep w-3.5 h-3.5 text-cyan-600 rounded border-slate-300" value="${tk.id}"/>
+                <span class="truncate">${Utils.escapeHtml(tk.ten_task || ('Task #' + tk.id))}</span>
+              </label>`).join('')}
+          </div>
+        </div>` : ''}
+        <button id="btn-save-task" class="px-4 py-2 rounded-xl bg-navy-900 hover:bg-cyan-600 text-white font-heading font-bold text-xs transition-colors">+ Thêm công việc</button>
+      </div>`;
+
+    bindMemberPicker(pane);
+    const saveBtn = pane.querySelector('#btn-save-task');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const ten = pane.querySelector('#task-ten').value.trim();
+        if (!ten) { Toast.warning('Vui lòng nhập tên nhiệm vụ.'); return; }
+        const deps = Utils.qsa('.task-dep:checked', pane).map(c => Number(c.value));
+        const payload = { ten_task: ten, depends_on: deps };
+        const pt = pane.querySelector('#task-phu-trach').value;
+        if (pt) payload.nguoi_phu_trach = Number(pt);
+        const dl = pane.querySelector('#task-deadline').value;
+        if (dl) payload.deadline = new Date(dl).toISOString();
+        const undo = Utils.btnLoading(saveBtn, 'Đang thêm...');
         try {
-          const ev = await ApiClient.get('/events/' + id + '/');
-          state.currentEvent = ev;
-          const title = document.getElementById('m-event-title');
-          const code = document.getElementById('m-event-code');
-          if (title) title.innerText = ev.tieu_de;
-          if (code) code.innerText = 'Mã sự kiện: ' + (ev.ma_su_kien || 'SK-' + ev.id) + ' • ' + (ev.dia_diem || 'Lab Tin học');
-          openModal('modal-event-detail');
-          switchEventModalTab('tasks');
+          await ApiClient.post(`/events/${evId}/tasks/`, payload);
+          Toast.success(`Đã thêm công việc "${ten}".`, 'Thành công');
+          await renderTasksPane(evId);
         } catch (err) {
-          Toast.error(err.message || 'Không thể mở chi tiết sự kiện.');
-        }
-      };
-
-      window.switchEventModalTab = async function(tab) {
-        state.currentModalTab = tab;
-        const tabs = ['tasks', 'budget', 'tickets', 'comms'];
-        tabs.forEach(t => {
-          const btn = document.getElementById('mtab-btn-' + t);
-          const pane = document.getElementById('m-pane-' + t);
-          if (t === tab) {
-            if (btn) btn.className = "px-3.5 py-2 rounded-xl bg-white text-navy-900 shadow-sm font-bold transition-all";
-            if (pane) pane.classList.remove('hidden');
+          // Audit F08: DAG chặn → hiển thị danh sách task chặn (blocking_tasks:
+          // [{id, ten_task}] hoặc string[]) — map object thành tên dễ đọc.
+          const raw = (err.errors && (err.errors.blocking_tasks || err.errors.non_field_errors)) || [];
+          const names = (Array.isArray(raw) ? raw : [raw])
+            .map((b) => (b && typeof b === 'object' ? b.ten_task : String(b)))
+            .filter(Boolean)
+            .join('; ');
+          if (names) {
+            await renderTasksPane(evId, names);
           } else {
-            if (btn) btn.className = "px-3.5 py-2 rounded-xl text-slate-600 hover:text-navy-900 transition-all font-medium";
-            if (pane) pane.classList.add('hidden');
+            Toast.error(err.message || 'Không thêm được công việc.');
           }
-        });
+        } finally { undo(); }
+      });
+    }
+  }
 
-        if (!state.currentEvent) return;
-        const evId = state.currentEvent.id;
+  /**
+   * Audit F09: bộ chọn người phụ trách — search qua Trie (/members/search/)
+   * + browse phân trang (page_size=20, nút "Tải thêm"). Hết cảnh chọn chỉ
+   * được người trong 100 dòng đầu. Sequence guard chống stale response.
+   */
+  function bindMemberPicker(root) {
+    const select = root.querySelector('#task-phu-trach');
+    const search = root.querySelector('#task-assignee-search');
+    const moreBtn = root.querySelector('#btn-load-more-members');
+    const countEl = root.querySelector('#assignee-count');
+    if (!select) return;
+    let browsePage = 0, browseDone = false, searchSeq = 0;
 
-        if (tab === 'tasks') {
-          const pane = document.getElementById('m-pane-tasks');
-          if (pane) {
-            pane.innerHTML = '<div class="py-6 text-center text-slate-400 text-xs">Đang tải biểu đồ công việc DAG...</div>';
-            try {
-              const res = await ApiClient.get('/events/' + evId + '/tasks/');
-              const tasks = res.results || res || [];
-              if (tasks.length === 0) {
-                pane.innerHTML = '<div class="py-8 text-center text-slate-400 text-xs"><p>Chưa có nhiệm vụ DAG nào được phân công cho sự kiện này.</p></div>';
-              } else {
-                pane.innerHTML = tasks.map(tk => `
-                  <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3 text-xs mb-2">
-                    <div class="flex items-center gap-3">
-                      <input type="checkbox" ${tk.is_completed ? 'checked' : ''} onchange="toggleTaskStatus(${tk.id}, this.checked)" class="w-4 h-4 text-cyan-600 rounded border-slate-300 focus:ring-cyan-500 cursor-pointer" />
-                      <div>
-                        <p class="font-bold text-navy-900 ${tk.is_completed ? 'line-through text-slate-400' : ''}">${Utils.escapeHtml(tk.title || tk.tieu_de)}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Hạn chót: ${tk.deadline ? Utils.formatDateTime(tk.deadline) : 'Không có'}</p>
-                      </div>
-                    </div>
-                    <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold ${tk.is_completed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                      ${tk.is_completed ? 'Hoàn thành' : 'Đang xử lý'}
-                    </span>
-                  </div>`).join('');
-              }
-            } catch(e) {
-              pane.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Lỗi tải danh sách nhiệm vụ DAG.</p>';
-            }
-          }
-        } else if (tab === 'budget') {
-          const pane = document.getElementById('m-pane-budget');
-          if (pane) {
-            pane.innerHTML = `
-              <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                <div class="flex justify-between items-center text-xs">
-                  <span class="font-bold text-navy-900">Dự toán ngân sách:</span>
-                  <span class="font-mono font-bold text-cyan-600">${Utils.formatCurrency(state.currentEvent.du_toan_kinh_phi || 0)}</span>
-                </div>
-                <div class="flex justify-between items-center text-xs">
-                  <span class="font-bold text-navy-900">Chi phí thực tế:</span>
-                  <span class="font-mono font-bold text-emerald-600">${Utils.formatCurrency(state.currentEvent.chi_phi_thuc_te || 0)}</span>
-                </div>
-              </div>`;
-          }
-        } else if (tab === 'tickets') {
-          const pane = document.getElementById('m-pane-tickets');
-          if (pane) {
-            pane.innerHTML = '<div class="py-6 text-center text-slate-400 text-xs">Đang tải danh sách vé...</div>';
-            try {
-              const res = await ApiClient.get('/events/' + evId + '/registrations/');
-              const regs = res.results || res || [];
-              if (regs.length === 0) {
-                pane.innerHTML = '<div class="py-8 text-center text-slate-400 text-xs">Chưa có lượt đăng ký vé nào.</div>';
-              } else {
-                pane.innerHTML = `
-                  <div class="space-y-2">
-                    <p class="font-bold text-xs text-navy-900 mb-2">Danh sách thành viên đăng ký (${regs.length}):</p>
-                    ${regs.map(r => `
-                      <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center text-xs">
-                        <span class="font-bold text-navy-900">${Utils.escapeHtml(r.user_name || r.ho_ten || 'Thành viên')}</span>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-cyan-700">${r.trang_thai || 'Đã duyệt'}</span>
-                      </div>`).join('')}
-                  </div>`;
-              }
-            } catch(e) {
-              pane.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Lỗi tải danh sách đăng ký vé.</p>';
-            }
-          }
-        }
-      };
+    const optionHTML = (m) =>
+      `<option value="${m.id}">${Utils.escapeHtml(m.ho_ten)}${m.lop ? ' · ' + Utils.escapeHtml(m.lop) : ''}${m.mssv ? ' — ' + Utils.escapeHtml(m.mssv) : ''}</option>`;
+    const setCount = (n) => { if (countEl) countEl.textContent = `Đang hiện ${n} người`; };
+    const hideMore = () => { if (moreBtn) moreBtn.classList.add('hidden'); };
 
-      window.toggleTaskStatus = async function(taskId, checked) {
-        if (!state.currentEvent) return;
-        try {
-          await ApiClient.patch('/events/' + state.currentEvent.id + '/tasks/' + taskId + '/', { is_completed: checked });
-          Toast.success('Đã cập nhật trạng thái nhiệm vụ.');
-        } catch(err) {
-          Toast.error(err.message || 'Không thể cập nhật nhiệm vụ.');
-        }
-      };
+    const loadBrowsePage = async () => {
+      if (browseDone) return;
+      const { items, pagination } = await ApiClient.getList('/members/', { page: browsePage + 1, page_size: 20 });
+      const fresh = items.filter(m => !select.querySelector(`option[value="${m.id}"]`));
+      select.insertAdjacentHTML('beforeend', fresh.map(optionHTML).join(''));
+      browsePage += 1;
+      browseDone = !pagination || browsePage >= pagination.total_pages;
+      if (browseDone) hideMore();
+      setCount(select.querySelectorAll('option:not([value=""])').length);
+    };
 
-      window.handleCreateEvent = async function(e) {
-        e.preventDefault();
-        const title = document.getElementById('ev-title')?.value?.trim();
-        if (!title) {
-          Toast.warning('Vui lòng nhập tên sự kiện.');
-          return;
-        }
-
-        const payload = {
-          tieu_de: title,
-          loai: document.getElementById('ev-loai')?.value || 'WORKSHOP',
-          so_luong_ve: parseInt(document.getElementById('ev-tickets')?.value || '60', 10),
-          thoi_gian_bat_dau: document.getElementById('ev-start')?.value ? new Date(document.getElementById('ev-start').value).toISOString() : null,
-          dia_diem: document.getElementById('ev-location')?.value?.trim() || 'Phòng Lab Khoa Tin học',
-          mo_ta: document.getElementById('ev-desc')?.value?.trim() || ''
-        };
-
-        try {
-          await ApiClient.post('/events/', payload);
-          Toast.success('Khởi tạo sự kiện mới thành công!');
-          closeModal('modal-event-create');
-          document.getElementById('form-create-event')?.reset();
-          loadEvents();
-        } catch (err) {
-          Toast.error(err.message || 'Không thể tạo sự kiện.');
-        }
-      };
-
-      // --- 5. ATTENDANCE GPS ENGINE ---
-      async function loadSessions(page = 1) {
-        state.sessionsPage = page;
-        const wrap = document.getElementById('sessions-table-wrap');
-        if (!wrap) return;
-
-        wrap.innerHTML = `
-          <div class="py-12 flex flex-col items-center justify-center text-slate-400">
-            <span class="material-symbols-outlined text-4xl animate-spin text-cyan-500 mb-2">progress_activity</span>
-            <p class="text-xs font-medium">Đang tải lịch sử điểm danh GPS...</p>
-          </div>`;
-
-        try {
-          const res = await ApiClient.get('/attendance/sessions/', { page });
-          state.sessions = res.results || res || [];
-          renderSessionsTable(state.sessions);
-          renderSessionsPagination(res);
-
-          const open = state.sessions.find(s => s.is_active);
-          state.openSession = open || null;
-          updateActiveSessionCard(open);
-        } catch (err) {
-          wrap.innerHTML = `
-            <div class="py-8 text-center text-red-500">
-              <span class="material-symbols-outlined text-3xl">error</span>
-              <p class="text-xs font-bold mt-1">Không thể tải dữ liệu điểm danh: ${Utils.escapeHtml(err.message || 'Lỗi')}</p>
-            </div>`;
-        }
+    const runSearch = Utils.debounce(async () => {
+      const q = (search && search.value || '').trim();
+      const seq = ++searchSeq;
+      if (!q) {
+        select.innerHTML = '<option value="">— Chưa phân công —</option>';
+        browsePage = 0; browseDone = false;
+        if (moreBtn) moreBtn.classList.remove('hidden');
+        try { await loadBrowsePage(); } catch (e) { Toast.error('Không tải được danh sách thành viên: ' + (e.message || '')); }
+        return;
       }
-
-      function updateActiveSessionCard(open) {
-        const card = document.getElementById('open-session-wrap');
-        if (!card) return;
-
-        if (!open) {
-          if (state.nonceInterval) clearInterval(state.nonceInterval);
-          card.innerHTML = `
-            <div class="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10 text-white">
-              <div class="space-y-2">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-500/20 text-slate-300 text-xs font-mono font-bold">
-                  <span class="w-2 h-2 rounded-full bg-slate-400"></span> RADAR HIỆN ĐANG NGHỈ
-                </div>
-                <h2 class="font-heading font-extrabold text-2xl text-white">Chưa Có Phiên Điểm Danh Nào Mở</h2>
-                <p class="text-slate-300 text-xs max-w-lg">Phòng Lab sẵn sàng. Kích hoạt phiên điểm danh mới để phát sóng Nonce xoay vòng bảo mật và quét tọa độ GPS phòng máy.</p>
-              </div>
-              <button onclick="openModal('modal-session-create')" class="px-5 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/25 transition-all">
-                <span class="material-symbols-outlined text-lg">sensors</span> Kích Hoạt Phiên Mới
-              </button>
-            </div>`;
-          return;
-        }
-
-        card.innerHTML = `
-          <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10 text-white">
-            <div class="space-y-3 max-w-xl">
-              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-mono font-bold tracking-wide">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 radar-pulse"></span>
-                LIVE RADAR SCANNING • ĐANG MỞ PHIÊN ĐIỂM DANH
-              </div>
-              <h2 class="font-heading font-extrabold text-2xl text-white tracking-tight">
-                ${Utils.escapeHtml(open.tieu_de)}
-              </h2>
-              <div class="flex flex-wrap items-center gap-3 text-xs text-slate-300 font-mono">
-                <span class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-lg">
-                  <span class="material-symbols-outlined text-cyan-400 text-sm">my_location</span>
-                  ${open.vi_do || 16.4598}° N, ${open.kinh_do || 107.5789}° E (Lab)
-                </span>
-                <span class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-lg text-emerald-300">
-                  <span class="material-symbols-outlined text-sm">radar</span>
-                  Bán kính: ${open.ban_kinh_met || 60}m
-                </span>
-              </div>
-            </div>
-
-            <!-- Nonce & QR Widget -->
-            <div class="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-              <div id="live-qrcode-box" class="w-20 h-20 bg-white p-1 rounded-xl flex items-center justify-center">
-                <!-- QR injected here -->
-              </div>
-              <div class="space-y-1 font-mono text-center">
-                <p class="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">Projector Nonce</p>
-                <p id="live-nonce-display" class="font-extrabold text-2xl text-white tracking-widest">${open.nonce_hien_tai || '......'}</p>
-                <div class="flex items-center justify-center gap-1.5 text-[11px] text-slate-300">
-                  <span class="material-symbols-outlined text-xs animate-spin">refresh</span>
-                  <span id="live-nonce-countdown">15s</span>
-                </div>
-              </div>
-              <button onclick="closeCurrentSession(${open.id})" class="ml-2 px-3 py-2 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-red-500/30">
-                Đóng ca
-              </button>
-            </div>
-          </div>`;
-
-        startNonceLoop(open.id);
+      try {
+        const data = await ApiClient.get('/members/search/', { q });
+        if (seq !== searchSeq) return; // response cũ về sau — bỏ
+        const found = (data && data.items) || data || [];
+        select.innerHTML = '<option value="">— Chưa phân công —</option>' + found.map(optionHTML).join('');
+        hideMore();
+        setCount(found.length);
+        if (!found.length) select.insertAdjacentHTML('beforeend', '<option value="" disabled>Không tìm thấy ai khớp</option>');
+      } catch (err) {
+        if (seq === searchSeq) Toast.error('Tìm kiếm thất bại: ' + (err.message || ''));
       }
+    }, 300);
 
-      function startNonceLoop(sessionId) {
-        if (state.nonceInterval) clearInterval(state.nonceInterval);
-        state.nonceCountdown = 15;
+    if (search) search.addEventListener('input', runSearch);
+    if (moreBtn) moreBtn.addEventListener('click', () => loadBrowsePage().catch(e => Toast.error('Không tải thêm được: ' + (e.message || ''))));
+    loadBrowsePage().catch(e => Toast.error('Không tải được danh sách thành viên: ' + (e.message || '')));
+  }
 
-        // Fetch nonce immediately
-        fetchNonce(sessionId);
-
-        state.nonceInterval = setInterval(() => {
-          state.nonceCountdown--;
-          const cd = document.getElementById('live-nonce-countdown');
-          if (cd) cd.innerText = state.nonceCountdown + 's';
-
-          if (state.nonceCountdown <= 0) {
-            state.nonceCountdown = 15;
-            fetchNonce(sessionId);
-          }
-        }, 1000);
+  /* ---------- Pane: BUDGET — P1-c empty branch + form write BCN ---------- */
+  async function renderBudgetPane(evId) {
+    const pane = document.getElementById('m-pane-budget');
+    if (!pane) return;
+    pane.innerHTML = '<div class="py-6 text-center text-slate-400 text-xs">Đang tải dự trù kinh phí...</div>';
+    try {
+      const data = await ApiClient.get('/events/' + evId + '/budget/');
+      const items = Array.isArray(data) ? data : (data && data.items) || [];
+      const total = !Array.isArray(data) && data && data.tong_kinh_phi_du_tru != null
+        ? data.tong_kinh_phi_du_tru
+        : items.reduce((s, it) => s + (Number(it.so_tien) || 0), 0);
+      // review 13-c P1-1: Utils.empty() ghi thẳng container — KHÔNG gọi trong
+      // template literal (render chữ "undefined"). Tách nhánh rỗng thành
+      // statement riêng và GIỮ form thêm hạng mục cho BCN.
+      if (!items.length) {
+        pane.innerHTML = `
+          <div class="py-8 text-center text-slate-400 text-xs">Chưa có hạng mục kinh phí nào — thêm hạng mục đầu tiên bên dưới.</div>
+          ${budgetFormHTML()}`;
+      } else {
+        pane.innerHTML = `
+          <div class="p-4 rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
+                <tr><th class="p-3">Hạng mục</th><th class="p-3 text-right">Số tiền</th><th class="p-3">Ghi chú</th></tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${items.map(it => `
+                  <tr>
+                    <td class="p-3 font-bold text-navy-900">${Utils.escapeHtml(it.ten_hang_muc || '')}</td>
+                    <td class="p-3 text-right font-mono text-cyan-700">${Utils.fmtVND(it.so_tien)}</td>
+                    <td class="p-3 text-slate-400">${Utils.escapeHtml(it.ghi_chu || '—')}</td>
+                  </tr>`).join('')}
+                <tr class="bg-slate-50"><td class="p-3 font-bold text-navy-900">Tổng cộng</td>
+                    <td class="p-3 text-right font-mono font-bold text-navy-900">${Utils.fmtVND(total)}</td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+          ${Auth.isBoard() ? budgetFormHTML() : ''}`;
       }
-
-      async function fetchNonce(sessionId) {
-        try {
-          const res = await ApiClient.get('/attendance/sessions/' + sessionId + '/nonce/');
-          const nonce = res.nonce || res.nonce_hien_tai;
-          const nonceEl = document.getElementById('live-nonce-display');
-          if (nonceEl && nonce) nonceEl.innerText = nonce;
-
-          // Render live QRCode
-          const qrBox = document.getElementById('live-qrcode-box');
-          if (qrBox && window.QRCode) {
-            qrBox.innerHTML = '';
-            new QRCode(qrBox, {
-              text: 'https://clbip-backend.onrender.com/frontend/member/checkin.html?session=' + sessionId + '&nonce=' + nonce,
-              width: 72,
-              height: 72,
-              correctLevel: QRCode.CorrectLevel.M
-            });
-          }
-        } catch(e) {}
-      }
-
-      function renderSessionsTable(sessions) {
-        const wrap = document.getElementById('sessions-table-wrap');
-        if (!wrap) return;
-        if (!sessions || sessions.length === 0) {
-          wrap.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">Chưa có lịch sử phiên điểm danh nào.</div>';
-          return;
-        }
-
-        wrap.innerHTML = `
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
-              <tr>
-                <th class="p-3.5">Phiên Điểm Danh</th>
-                <th class="p-3.5">Thời Gian</th>
-                <th class="p-3.5">Trạng Thái</th>
-                <th class="p-3.5 text-center">Đúng Giờ</th>
-                <th class="p-3.5 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              ${sessions.map(s => `
-                <tr class="hover:bg-slate-50/80 transition-colors">
-                  <td class="p-3.5 font-bold text-navy-900">${Utils.escapeHtml(s.tieu_de)}</td>
-                  <td class="p-3.5 font-mono text-slate-500 text-[11px]">${s.thoi_gian_mo ? Utils.formatDateTime(s.thoi_gian_mo) : '--'}</td>
-                  <td class="p-3.5">
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
-                      ${s.is_active ? 'Đang mở' : 'Đã đóng'}
-                    </span>
-                  </td>
-                  <td class="p-3.5 font-mono text-center font-bold text-cyan-600">${s.ti_le_dung_gio || s.tong_dung_gio || '--'}</td>
-                  <td class="p-3.5 text-right">
-                    <button onclick="openSessionDetail(${s.id})" class="px-3 py-1 bg-white border border-slate-200 rounded-lg font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all">Chi tiết GPS</button>
-                  </td>
-                </tr>`).join('')}
-            </tbody>
-          </table>`;
-      }
-
-      function renderSessionsPagination(meta) {
-        const pag = document.getElementById('sessions-pagination');
-        if (!pag) return;
-        if (!meta || (!meta.next && !meta.previous)) {
-          pag.innerHTML = '';
-          return;
-        }
-        pag.innerHTML = `
-          <div class="flex items-center justify-between w-full pt-4 border-t border-slate-200 text-xs">
-            <span class="text-slate-500">Trang ${state.sessionsPage}</span>
-            <div class="flex gap-2">
-              <button ${!meta.previous ? 'disabled' : ''} onclick="loadSessions(${state.sessionsPage - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
-              <button ${!meta.next ? 'disabled' : ''} onclick="loadSessions(${state.sessionsPage + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
-            </div>
-          </div>`;
-      }
-
-      window.handleStartSession = async function(e) {
-        e.preventDefault();
-        const title = document.getElementById('ses-title')?.value?.trim();
-        if (!title) {
-          Toast.warning('Vui lòng nhập tên phiên điểm danh.');
-          return;
-        }
-
-        const coords = (document.getElementById('ses-coords')?.value || '16.4598, 107.5789').split(',');
-        const lat = parseFloat(coords[0]?.trim()) || 16.4598;
-        const lng = parseFloat(coords[1]?.trim()) || 107.5789;
-        const radius = parseInt(document.getElementById('ses-radius')?.value || '60', 10);
-
-        try {
-          await ApiClient.post('/attendance/sessions/', {
-            tieu_de: title,
-            vi_do: lat,
-            kinh_do: lng,
-            ban_kinh_met: radius
-          });
-          Toast.success('Đã kích hoạt phiên điểm danh GPS radar!');
-          closeModal('modal-session-create');
-          document.getElementById('form-create-session')?.reset();
-          loadSessions();
-        } catch(err) {
-          Toast.error(err.message || 'Không thể tạo phiên điểm danh.');
-        }
-      };
-
-      window.closeCurrentSession = async function(sessionId) {
-        if (!confirm('Bạn có chắc chắn muốn đóng phiên điểm danh này?')) return;
-        try {
-          await ApiClient.post('/attendance/sessions/' + sessionId + '/close/');
-          Toast.success('Đã đóng ca điểm danh thành công.');
-          if (state.nonceInterval) clearInterval(state.nonceInterval);
-          loadSessions();
-        } catch(err) {
-          Toast.error(err.message || 'Lỗi khi đóng phiên điểm danh.');
-        }
-      };
-
-      window.openSessionDetail = async function(id) {
-        openModal('modal-session-detail');
-      };
-
-      // --- 6. DOCUMENTS ENGINE ---
-      async function loadDocs(page = 1) {
-        state.docsPage = page;
-        const wrap = document.getElementById('docs-table-wrap');
-        if (!wrap) return;
-
-        wrap.innerHTML = `
-          <div class="py-12 flex flex-col items-center justify-center text-slate-400">
-            <span class="material-symbols-outlined text-4xl animate-spin text-cyan-500 mb-2">progress_activity</span>
-            <p class="text-xs font-medium">Đang tải kho học liệu số...</p>
-          </div>`;
-
-        try {
-          const params = { page };
-          if (state.docsNhom) params.nhom = state.docsNhom;
-          const res = await ApiClient.get('/documents/', params);
-          state.docs = res.results || res || [];
-          renderDocsTable(state.docs);
-          renderDocsPagination(res);
-        } catch (err) {
-          wrap.innerHTML = `
-            <div class="py-8 text-center text-red-500">
-              <span class="material-symbols-outlined text-3xl">error</span>
-              <p class="text-xs font-bold mt-1">Không thể tải kho tài liệu: ${Utils.escapeHtml(err.message || 'Lỗi')}</p>
-            </div>`;
-        }
-      }
-
-      function renderDocsTable(items) {
-        const wrap = document.getElementById('docs-table-wrap');
-        if (!wrap) return;
-        if (!items || items.length === 0) {
-          wrap.innerHTML = '<div class="p-12 text-center text-slate-400 text-xs">Chưa có tài liệu nào trong danh mục này.</div>';
-          return;
-        }
-
-        wrap.innerHTML = `
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
-              <tr>
-                <th class="p-3.5">Tài Liệu Học Thuật</th>
-                <th class="p-3.5">Phân Nhóm</th>
-                <th class="p-3.5">Phạm Vi</th>
-                <th class="p-3.5">Lượt Tải</th>
-                <th class="p-3.5 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              ${items.map(doc => `
-                <tr class="hover:bg-slate-50/80 transition-colors">
-                  <td class="p-3.5">
-                    <p class="font-bold text-navy-900">${Utils.escapeHtml(doc.tieu_de)}</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">${doc.file_type || 'PDF'} • ${Utils.fmtNum(doc.file_size || 0)} bytes</p>
-                  </td>
-                  <td class="p-3.5 font-medium text-cyan-600">${doc.nhom || 'Chuyên môn'}</td>
-                  <td class="p-3.5"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-cyan-700">${doc.pham_vi || 'Công khai'}</span></td>
-                  <td class="p-3.5 font-mono text-slate-500">${doc.downloads_count || 0}</td>
-                  <td class="p-3.5 text-right space-x-1">
-                    <button onclick="downloadDoc(${doc.id}, '${Utils.escapeHtml(doc.tieu_de)}')" class="px-2.5 py-1 bg-cyan-50 text-cyan-600 rounded-lg font-bold hover:bg-cyan-100 transition-all inline-flex items-center gap-1">
-                      <span class="material-symbols-outlined text-sm">download</span> Tải
-                    </button>
-                    <button onclick="deleteDoc(${doc.id}, '${Utils.escapeHtml(doc.tieu_de)}')" class="px-2 py-1 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all">
-                      <span class="material-symbols-outlined text-sm">delete</span>
-                    </button>
-                  </td>
-                </tr>`).join('')}
-            </tbody>
-          </table>`;
-      }
-
-      function renderDocsPagination(meta) {
-        const pag = document.getElementById('docs-pagination');
-        if (!pag) return;
-        if (!meta || (!meta.next && !meta.previous)) {
-          pag.innerHTML = '';
-          return;
-        }
-        pag.innerHTML = `
-          <div class="flex items-center justify-between w-full pt-4 border-t border-slate-200 text-xs">
-            <span class="text-slate-500">Trang ${state.docsPage}</span>
-            <div class="flex gap-2">
-              <button ${!meta.previous ? 'disabled' : ''} onclick="loadDocs(${state.docsPage - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
-              <button ${!meta.next ? 'disabled' : ''} onclick="loadDocs(${state.docsPage + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
-            </div>
-          </div>`;
-      }
-
-      window.handleDocSearch = function(query) {
-        if (state.searchTimer) clearTimeout(state.searchTimer);
-        const dropdown = document.getElementById('ac-list');
-
-        if (!query || query.trim().length < 2) {
-          if (dropdown) dropdown.classList.add('hidden');
-          return;
-        }
-
-        state.searchTimer = setTimeout(async () => {
+      const addBtn = pane.querySelector('#btn-add-budget');
+      if (addBtn) {
+        addBtn.addEventListener('click', async () => {
+          const ten = pane.querySelector('#bud-ten').value.trim();
+          const tien = Number(pane.querySelector('#bud-tien').value);
+          if (!ten || !tien || tien < 1) { Toast.warning('Nhập đủ hạng mục và số tiền dương.'); return; }
+          const undo = Utils.btnLoading(addBtn, 'Đang thêm...');
           try {
-            const res = await ApiClient.get('/documents/search/', { q: query.trim() });
-            const items = res.results || res || [];
-            if (dropdown) {
-              if (items.length === 0) {
-                dropdown.innerHTML = '<div class="p-3 text-slate-400 text-xs text-center">Không tìm thấy tài liệu phù hợp.</div>';
-              } else {
-                dropdown.innerHTML = items.map(it => `
-                  <div onclick="selectDoc('${Utils.escapeHtml(it.tieu_de)}')" class="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs border-b border-slate-100 last:border-0">
-                    <div>
-                      <p class="font-bold text-navy-900">${Utils.escapeHtml(it.tieu_de)}</p>
-                      <p class="text-[11px] text-slate-400 mt-0.5">${it.file_type || 'PDF'}</p>
-                    </div>
-                    <span class="px-2 py-0.5 rounded-full bg-blue-50 text-cyan-700 font-semibold text-[10px]">${it.nhom || 'Tài liệu'}</span>
-                  </div>`).join('');
-              }
-              dropdown.classList.remove('hidden');
-            }
-          } catch(e) {}
-        }, 300);
-      };
-
-      window.selectDoc = function(title) {
-        const input = document.getElementById('doc-search');
-        if (input) input.value = title;
-        const dropdown = document.getElementById('ac-list');
-        if (dropdown) dropdown.classList.add('hidden');
-      };
-
-      window.handleFileSelect = function(e) {
-        const file = e.target.files && e.target.files[0];
-        const display = document.getElementById('doc-file-selected-name');
-        if (file) {
-          state.selectedDocFile = file;
-          if (display) {
-            display.innerText = 'Đã chọn: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
-            display.classList.remove('hidden');
-          }
-        }
-      };
-
-      window.handleUploadDoc = async function(e) {
-        e.preventDefault();
-        const file = state.selectedDocFile || document.getElementById('doc-file-input')?.files?.[0];
-        const title = document.getElementById('doc-title-input')?.value?.trim();
-
-        if (!file) {
-          Toast.warning('Vui lòng chọn tệp tài liệu để tải lên.');
-          return;
-        }
-        if (!title) {
-          Toast.warning('Vui lòng nhập tên tài liệu hiển thị.');
-          return;
-        }
-
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('tieu_de', title);
-        fd.append('nhom', document.getElementById('doc-nhom-input')?.value || 'CHUYEN_MON');
-        fd.append('tags', document.getElementById('doc-tags-input')?.value?.trim() || '');
-        fd.append('mo_ta', document.getElementById('doc-desc-input')?.value?.trim() || '');
-
-        try {
-          await ApiClient.post('/documents/', fd);
-          Toast.success('Tải lên học liệu thành công (+100 XP)!');
-          closeModal('modal-doc-upload');
-          document.getElementById('form-upload-doc')?.reset();
-          state.selectedDocFile = null;
-          const display = document.getElementById('doc-file-selected-name');
-          if (display) display.classList.add('hidden');
-          loadDocs();
-        } catch(err) {
-          Toast.error(err.message || 'Lỗi tải lên tài liệu.');
-        }
-      };
-
-      window.downloadDoc = async function(id, filename) {
-        try {
-          await ApiClient.download('/documents/' + id + '/download/', filename || 'tai_lieu');
-          Toast.success('Bắt đầu tải xuống tệp an toàn.');
-        } catch(err) {
-          Toast.error(err.message || 'Không thể tải xuống tệp.');
-        }
-      };
-
-      window.deleteDoc = async function(id, title) {
-        if (!confirm('Bạn có chắc chắn muốn xóa tài liệu "' + title + '"?')) return;
-        try {
-          await ApiClient.delete('/documents/' + id + '/');
-          Toast.success('Đã xóa tài liệu khỏi kho.');
-          loadDocs();
-        } catch(err) {
-          Toast.error(err.message || 'Không thể xóa tài liệu.');
-        }
-      };
-
-      // --- 7. AUTH INITIALIZATION & STARTUP ---
-      async function init() {
-        const user = Auth.cachedUser();
-        if (user) {
-          const nameEl = document.getElementById('user-display-name');
-          const roleEl = document.getElementById('user-role-badge');
-          const avatarEl = document.getElementById('user-avatar-badge');
-          if (nameEl) nameEl.innerText = user.ho_ten || user.email || 'Ban Chủ Nhiệm';
-          if (roleEl) roleEl.innerText = user.role || 'Ban Chủ Nhiệm';
-          if (avatarEl) avatarEl.innerText = Utils.initials(user.ho_ten || user.email) || 'BCN';
-        }
-
-        const logoutBtn = document.getElementById('btn-logout');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', () => Auth.logout());
-        }
-
-        // Filter status listener in events
-        const filterStatus = document.getElementById('filter-status');
-        if (filterStatus) {
-          filterStatus.addEventListener('change', (e) => {
-            state.eventStatus = e.target.value;
-            loadEvents(1);
-          });
-        }
-
-        // Filter nhom listener in docs
-        const filterNhom = document.getElementById('filter-nhom');
-        if (filterNhom) {
-          filterNhom.addEventListener('change', (e) => {
-            state.docsNhom = e.target.value;
-            loadDocs(1);
-          });
-        }
-
-        // Determine initial view from Hash or Page Default
-        let initialView = state.defaultView;
-        const hash = (window.location.hash || '').replace('#', '');
-        if (['events', 'attendance', 'documents'].includes(hash)) {
-          initialView = hash;
-        }
-
-        switchView(initialView, false);
+            await ApiClient.post(`/events/${evId}/budget/`, {
+              ten_hang_muc: ten,
+              so_tien: tien,
+              ghi_chu: pane.querySelector('#bud-ghichu').value.trim(),
+            });
+            Toast.success('Đã thêm hạng mục — tổng kinh phí được tính lại tự động.');
+            await renderBudgetPane(evId);
+          } catch (err) {
+            Toast.error(err.message || 'Không thêm được hạng mục.');
+          } finally { undo(); }
+        });
       }
+    } catch (err) {
+      pane.innerHTML = `<div class="py-6 text-center text-red-500 text-xs">Không tải được dự trù kinh phí: ${Utils.escapeHtml(err.message || '')}</div>`;
+    }
+  }
 
-      Auth.requireRole(['ADMIN', 'BCN'])
-        .then(() => init())
-        .catch(() => {});
-    })();
+  function budgetFormHTML() {
+    return `
+      <div class="mt-3 p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+        <p class="font-bold text-navy-900 text-xs">Thêm hạng mục dự trù</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Hạng mục *</label>
+            <input id="bud-ten" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="VD: In ấn tài liệu" type="text"/>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Số tiền (VNĐ) *</label>
+            <input id="bud-tien" type="number" min="1" step="1000" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"/>
+          </div>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">Ghi chú</label>
+          <input id="bud-ghichu" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Tùy chọn" type="text"/>
+        </div>
+        <button id="btn-add-budget" class="px-4 py-2 rounded-xl bg-navy-900 hover:bg-cyan-600 text-white font-heading font-bold text-xs transition-colors">+ Thêm hạng mục</button>
+      </div>`;
+  }
+
+  /* ---------- Pane: TICKETS — F09 phân trang THẬT ---------- */
+  async function renderTicketsPane(evId) {
+    const pane = document.getElementById('m-pane-tickets');
+    if (!pane) return;
+    pane.innerHTML = '<div class="py-6 text-center text-slate-400 text-xs">Đang tải danh sách vé...</div>';
+    try {
+      // Audit F09: phân trang THẬT — trước đây chỉ gọi trang đầu rồi lấy
+      // items.length làm "tổng số vé" → vé từ trang 2 trở đi biến mất.
+      const page = state.regsPage || 1;
+      const { items, pagination } = await ApiClient.getList(
+        `/events/${evId}/registrations/`, { page, page_size: 20 }
+      );
+      const totalCount = pagination ? pagination.total_items : items.length;
+      if (!items.length && page === 1) {
+        pane.innerHTML = '<div class="py-8 text-center text-slate-400 text-xs">Chưa có lượt đăng ký vé nào.</div>';
+        return;
+      }
+      pane.innerHTML = `
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <p class="font-bold text-xs text-navy-900">Danh sách vé điện tử (${Utils.fmtNum(totalCount)} vé)</p>
+            <a class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all inline-flex items-center gap-1" href="/frontend/admin/ticket_scanner.html?event=${evId}">
+              <span class="material-symbols-outlined text-sm">qr_code_scanner</span> Quét QR tại cổng
+            </a>
+          </div>
+          ${items.map(r => `
+            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center text-xs">
+              <div class="min-w-0">
+                <span class="font-bold text-navy-900">${Utils.escapeHtml(r.member_ten || 'Thành viên')}</span>
+                <span class="font-mono text-[10px] text-slate-400 ml-2">${Utils.escapeHtml(r.ma_ve || '')}</span>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-cyan-700 shrink-0">${Utils.escapeHtml(r.trang_thai || 'ĐÃ DUYỆT')}</span>
+            </div>`).join('')}
+          ${pagination && pagination.total_pages > 1 ? `
+            <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+              <span class="text-slate-400 font-mono text-[11px]">Trang ${pagination.page}/${pagination.total_pages}</span>
+              <div class="flex gap-2">
+                <button ${pagination.page <= 1 ? 'disabled' : ''} onclick="regsGotoPage(${evId}, ${pagination.page - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
+                <button ${pagination.page >= pagination.total_pages ? 'disabled' : ''} onclick="regsGotoPage(${evId}, ${pagination.page + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
+              </div>
+            </div>` : ''}
+        </div>`;
+    } catch (e) {
+      pane.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Lỗi tải danh sách đăng ký vé.</p>';
+    }
+  }
+  window.regsGotoPage = function(evId, p) {
+    state.regsPage = p;
+    if (state.currentEvent && state.currentEvent.id === evId) renderTicketsPane(evId);
+  };
+
+  /* ---------- Pane: COMMS — nạp dữ liệu thật ---------- */
+  async function renderCommsPane(evId) {
+    const pane = document.getElementById('m-pane-comms');
+    if (!pane) return;
+    pane.innerHTML = '<div class="py-6 text-center text-slate-400 text-xs">Đang tải kế hoạch truyền thông...</div>';
+    try {
+      const data = await ApiClient.get(`/events/${evId}/communications/`);
+      const items = (data && data.items) || data || [];
+      if (!items.length) {
+        pane.innerHTML = '<div class="py-8 text-center text-slate-400 text-xs">Chưa có kênh truyền thông nào được lập cho sự kiện này.</div>';
+        return;
+      }
+      const KENH = { FACEBOOK: 'Facebook', TIKTOK: 'TikTok', EMAIL: 'Email', WEBSITE: 'Website' };
+      pane.innerHTML = `
+        <div class="space-y-2">
+          ${items.map(c => `
+            <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-navy-900">${Utils.escapeHtml((KENH[c.kenh] || c.kenh || 'Kênh') + ': ' + (c.tieu_de || ''))}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-cyan-700 shrink-0">${Utils.escapeHtml(c.trang_thai || '')}</span>
+              </div>
+              ${c.link_bai_viet ? `<a href="${Utils.escapeHtml(c.link_bai_viet)}" target="_blank" rel="noopener" class="text-cyan-600 hover:underline text-[11px] mt-1 inline-block">Xem bài đăng →</a>` : ''}
+            </div>`).join('')}
+        </div>`;
+    } catch (e) {
+      pane.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Lỗi tải kế hoạch truyền thông.</p>';
+    }
+  }
+
+  window.toggleTaskStatus = async function(taskId, checked, evId) {
+    if (!state.currentEvent) return;
+    try {
+      await ApiClient.patch('/events/' + (evId || state.currentEvent.id) + '/tasks/' + taskId + '/', { is_completed: checked });
+      Toast.success(checked ? 'Đã đánh dấu hoàn thành nhiệm vụ.' : 'Đã mở lại nhiệm vụ.');
+      await renderTasksPane(evId || state.currentEvent.id);
+    } catch (err) {
+      // Audit F08/R01: chặn DAG — map blocking_tasks [{id, ten_task}] thành tên
+      const raw = (err.errors && (err.errors.blocking_tasks || err.errors.non_field_errors)) || [];
+      const names = (Array.isArray(raw) ? raw : [raw])
+        .map((b) => (b && typeof b === 'object' ? b.ten_task : String(b)))
+        .filter(Boolean)
+        .join('; ');
+      Toast.error(names ? 'Bị chặn bởi: ' + names : (err.message || 'Không thể cập nhật nhiệm vụ.'));
+      await renderTasksPane(evId || state.currentEvent.id); // revert checkbox theo trạng thái server
+    }
+  };
+
+  window.handleCreateEvent = async function(e) {
+    e.preventDefault();
+    // Tên trường THẬT: ten_hoat_dong / loai_hd / so_luong_toi_da (main gửi
+    // tieu_de/loai/so_luong_ve → 400 toàn bộ).
+    const ten = document.getElementById('ev-title') && document.getElementById('ev-title').value.trim();
+    if (!ten) { Toast.warning('Vui lòng nhập tên sự kiện.'); return; }
+
+    const startVal = document.getElementById('ev-start') && document.getElementById('ev-start').value;
+    const endVal = document.getElementById('ev-end') && document.getElementById('ev-end').value;
+    // P03 fix: cả hai mốc thời gian đều bắt buộc (backend model không blank);
+    // kết thúc phải sau bắt đầu.
+    if (!startVal || !endVal) { Toast.warning('Vui lòng chọn thời gian bắt đầu và kết thúc.'); return; }
+    if (new Date(startVal) >= new Date(endVal)) { Toast.warning('Thời gian kết thúc phải sau thời gian bắt đầu.'); return; }
+    const payload = {
+      ten_hoat_dong: ten,
+      loai_hd: document.getElementById('ev-loai') && document.getElementById('ev-loai').value || 'WORKSHOP',
+      so_luong_toi_da: parseInt(document.getElementById('ev-tickets') && document.getElementById('ev-tickets').value || '60', 10) || 60,
+      thoi_gian_bat_dau: new Date(startVal).toISOString(),
+      thoi_gian_ket_thuc: new Date(endVal).toISOString(),
+      dia_diem: (document.getElementById('ev-location') && document.getElementById('ev-location').value.trim()) || 'Phòng Lab Khoa Tin học',
+      mo_ta: (document.getElementById('ev-desc') && document.getElementById('ev-desc').value.trim()) || ''
+    };
+
+    try {
+      await ApiClient.post('/events/', payload);
+      Toast.success('Khởi tạo sự kiện mới thành công!');
+      closeModal('modal-event-create');
+      const form = document.getElementById('form-create-event');
+      if (form) form.reset();
+      loadEvents(1);
+    } catch (err) {
+      Toast.error(err.message || 'Không thể tạo sự kiện.');
+    }
+  };
+
+  /* ================= P03: SỬA SỰ KIỆN (phục hồi luồng mất từ đại tu UI) =================
+   * Contract PATCH /events/{id}/ (ActivityEventCreateUpdateSerializer, BCN/ADMIN):
+   * ten_hoat_dong, loai_hd, trang_thai, thoi_gian_bat_dau, thoi_gian_ket_thuc,
+   * dia_diem, vi_do, kinh_do, ban_kinh_m, so_luong_toi_da,
+   * tong_kinh_phi_du_tru, mo_ta. Service._validate_time_range bắt end > start;
+   * DAG task (create/complete/reopen) KHÔNG đụng tới. */
+
+  /** ISO → value cho <input type="datetime-local"> (giờ local). */
+  function isoToLocalInput(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  /** datetime-local → ISO gửi backend (null nếu rỗng). */
+  function localToISO(v) {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d) ? null : d.toISOString();
+  }
+  function numOrNull(v) {
+    if (v === '' || v === null || v === undefined) return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+  function eventBtnLoading(btn, text) {
+    if (!btn) return () => {};
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm text-cyan-400 animate-spin inline-block align-middle">progress_activity</span> ' + Utils.escapeHtml(text);
+    return () => { btn.disabled = false; btn.innerHTML = original; };
+  }
+
+  window.openEventEditModal = function() {
+    const ev = state.currentEvent;
+    if (!ev || !ev.id) { Toast.warning('Chưa mở chi tiết sự kiện nào.'); return; }
+    const g = (id) => document.getElementById(id);
+    g('ev2-title').value = ev.ten_hoat_dong || '';
+    g('ev2-loai').value = ev.loai_hd || 'WORKSHOP';
+    g('ev2-status').value = ev.trang_thai || 'PLANNING';
+    g('ev2-start').value = isoToLocalInput(ev.thoi_gian_bat_dau);
+    g('ev2-end').value = isoToLocalInput(ev.thoi_gian_ket_thuc);
+    g('ev2-location').value = ev.dia_diem || '';
+    g('ev2-lat').value = (ev.vi_do === null || ev.vi_do === undefined) ? '' : String(ev.vi_do);
+    g('ev2-lng').value = (ev.kinh_do === null || ev.kinh_do === undefined) ? '' : String(ev.kinh_do);
+    g('ev2-radius').value = (ev.ban_kinh_m === null || ev.ban_kinh_m === undefined) ? '' : String(ev.ban_kinh_m);
+    g('ev2-tickets').value = (ev.so_luong_toi_da === null || ev.so_luong_toi_da === undefined) ? '' : String(ev.so_luong_toi_da);
+    g('ev2-budget').value = (ev.tong_kinh_phi_du_tru === null || ev.tong_kinh_phi_du_tru === undefined) ? '' : String(ev.tong_kinh_phi_du_tru);
+    g('ev2-desc').value = ev.mo_ta || '';
+    openModal('modal-event-edit');
+  };
+
+  window.handleUpdateEvent = async function(e) {
+    e.preventDefault();
+    const ev = state.currentEvent;
+    if (!ev || !ev.id) { Toast.error('Chưa chọn sự kiện để cập nhật.'); return; }
+    const g = (id) => document.getElementById(id);
+    const ten = g('ev2-title').value.trim();
+    const batDau = g('ev2-start').value;
+    const ketThuc = g('ev2-end').value;
+    const diaDiem = g('ev2-location').value.trim();
+    if (!ten || !batDau || !ketThuc || !diaDiem) { Toast.warning('Vui lòng điền đủ các trường bắt buộc (*).'); return; }
+    if (new Date(batDau) >= new Date(ketThuc)) { Toast.warning('Thời gian kết thúc phải sau thời gian bắt đầu.'); return; }
+    const viDo = numOrNull(g('ev2-lat').value);
+    const kinhDo = numOrNull(g('ev2-lng').value);
+    if ((viDo === null) !== (kinhDo === null)) {
+      Toast.warning('Tọa độ GPS cần đủ cả vĩ độ và kinh độ (hoặc bỏ trống cả hai).');
+      return;
+    }
+    if (viDo !== null && (viDo < -90 || viDo > 90)) { Toast.warning('Vĩ độ phải trong khoảng [-90, 90].'); return; }
+    if (kinhDo !== null && (kinhDo < -180 || kinhDo > 180)) { Toast.warning('Kinh độ phải trong khoảng [-180, 180].'); return; }
+    const banKinh = numOrNull(g('ev2-radius').value);
+    if (banKinh !== null && banKinh <= 0) { Toast.warning('Bán kính check-in phải là số dương (mét).'); return; }
+    const slots = numOrNull(g('ev2-tickets').value);
+    if (slots !== null && slots < 1) { Toast.warning('Số lượng tối đa tối thiểu là 1.'); return; }
+    const phi = numOrNull(g('ev2-budget').value);
+    if (phi !== null && phi < 0) { Toast.warning('Kinh phí dự trù không được âm.'); return; }
+
+    const payload = {
+      ten_hoat_dong: ten,
+      loai_hd: g('ev2-loai').value,
+      trang_thai: g('ev2-status').value,
+      thoi_gian_bat_dau: localToISO(batDau),
+      thoi_gian_ket_thuc: localToISO(ketThuc),
+      dia_diem: diaDiem,
+      mo_ta: g('ev2-desc').value.trim(),
+    };
+    if (viDo !== null) payload.vi_do = viDo;
+    if (kinhDo !== null) payload.kinh_do = kinhDo;
+    if (banKinh !== null) payload.ban_kinh_m = banKinh;
+    if (slots !== null) payload.so_luong_toi_da = slots;
+    if (phi !== null) payload.tong_kinh_phi_du_tru = phi;
+
+    const undo = eventBtnLoading(g('ev2-submit'), 'Đang lưu...');
+    try {
+      const updated = await ApiClient.patch('/events/' + ev.id + '/', payload);
+      state.currentEvent = { ...ev, ...(updated || {}) };
+      closeModal('modal-event-edit');
+      Toast.success('Đã lưu thay đổi sự kiện.');
+      loadEvents(state.eventsPage || 1);
+      // Làm mới workspace bằng dữ liệu sau lưu (nếu modal detail còn mở)
+      if (!document.getElementById('modal-event-detail').classList.contains('hidden')) {
+        openEventWorkspace(ev.id);
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Không lưu được sự kiện.');
+    } finally {
+      undo();
+    }
+  };
+
+  // --- 5. ATTENDANCE GPS ENGINE (F10 + R03) ---
+  async function loadSessions(page = 1) {
+    state.sessionsPage = page;
+    const wrap = document.getElementById('sessions-table-wrap');
+    if (!wrap) return;
+
+    wrap.innerHTML = `
+      <div class="py-12 flex flex-col items-center justify-center text-slate-400">
+        <span class="material-symbols-outlined text-4xl animate-spin text-cyan-500 mb-2">progress_activity</span>
+        <p class="text-xs font-medium">Đang tải lịch sử điểm danh GPS...</p>
+      </div>`;
+
+    try {
+      const { items, pagination } = await ApiClient.getList('/attendance/sessions/', { page });
+      state.sessions = items;
+      state.sessionsTotal = pagination ? pagination.total_items : items.length;
+      renderSessionsTable(items);
+      renderSessionsPagination(pagination);
+      await loadOpenSessions(); // F10: tải TOÀN BỘ phiên OPEN (đủ trang)
+    } catch (err) {
+      wrap.innerHTML = `
+        <div class="py-8 text-center text-red-500">
+          <span class="material-symbols-outlined text-3xl">error</span>
+          <p class="text-xs font-bold mt-1">Không thể tải dữ liệu điểm danh: ${Utils.escapeHtml(err.message || 'Lỗi')}</p>
+        </div>`;
+    }
+  }
+  window.loadSessions = loadSessions;
+
+  /** Audit F10: tải TOÀN BỘ phiên OPEN (đủ trang, cap 10 trang) — BCN điều
+   *  khiển được mọi phiên OPEN, không chỉ items[0] của trang đầu. */
+  async function loadOpenSessions() {
+    let items = [];
+    let page = 1;
+    for (;;) {
+      const { items: pageItems, pagination } = await ApiClient.getList(
+        '/attendance/sessions/', { trang_thai: 'OPEN', page, page_size: 50 }
+      );
+      items = items.concat(pageItems);
+      if (!pagination || page >= pagination.total_pages || page >= 10) break;
+      page += 1;
+    }
+    state.openSessions = items;
+    // Giữ lựa chọn cũ nếu còn OPEN; ngược lại chọn phiên đầu tiên
+    state.openSession = (state.openSession && items.find(s => s.id === state.openSession.id)) || items[0] || null;
+    updateActiveSessionCard(state.openSession);
+  }
+
+  window.selectOpenSession = function(id) {
+    if (state.openSession && state.openSession.id === id) return;
+    const target = state.openSessions.find(s => s.id === id);
+    if (!target) return;
+    stopNonceLoops(); // R03: dọn cả backoff retry khi đổi phiên
+    state.openSession = target;
+    updateActiveSessionCard(target);
+  };
+
+  function updateActiveSessionCard(open) {
+    const card = document.getElementById('open-session-wrap');
+    if (!card) return;
+
+    if (!open) {
+      stopNonceLoops();
+      card.innerHTML = `
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10 text-white">
+          <div class="space-y-2">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-500/20 text-slate-300 text-xs font-mono font-bold">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span> RADAR HIỆN ĐANG NGHỈ
+            </div>
+            <h2 class="font-heading font-extrabold text-2xl text-white">Chưa Có Phiên Điểm Danh Nào Mở</h2>
+            <p class="text-slate-300 text-xs max-w-lg">Phòng Lab sẵn sàng. Kích hoạt phiên điểm danh mới để phát sóng Nonce xoay vòng bảo mật và quét tọa độ GPS phòng máy.</p>
+          </div>
+          <button onclick="openModal('modal-session-create')" class="px-5 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/25 transition-all">
+            <span class="material-symbols-outlined text-lg">sensors</span> Kích Hoạt Phiên Mới
+          </button>
+        </div>`;
+      return;
+    }
+
+    // Audit F10: chips chọn phiên khi có >1 phiên OPEN — nonce/override/close
+    // gắn phiên ĐANG CHỌN, không ép đóng phiên còn lại.
+    const chips = state.openSessions.length > 1 ? `
+      <div class="flex items-center gap-2 flex-wrap mb-3">
+        <span class="text-[10px] text-slate-300 font-mono uppercase tracking-wider">${state.openSessions.length} phiên đang mở — chọn để điều khiển:</span>
+        ${state.openSessions.map(s => `
+          <button type="button" onclick="selectOpenSession(${s.id})" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${s.id === open.id ? 'bg-cyan-500 text-white border-cyan-400' : 'bg-white/10 text-slate-200 border-white/20 hover:bg-white/20'}">
+            ${Utils.escapeHtml(s.ten_phien || ('Phiên #' + s.id))}
+          </button>`).join('')}
+      </div>` : '';
+
+    card.innerHTML = `
+      ${chips}
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10 text-white">
+        <div class="space-y-3 max-w-xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-mono font-bold tracking-wide">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 radar-pulse"></span>
+            LIVE RADAR SCANNING • ĐANG MỞ PHIÊN ĐIỂM DANH
+          </div>
+          <h2 class="font-heading font-extrabold text-2xl text-white tracking-tight">
+            ${Utils.escapeHtml(open.ten_phien || ('Phiên #' + open.id))}
+          </h2>
+          <div class="flex flex-wrap items-center gap-3 text-xs text-slate-300 font-mono">
+            <span class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-lg">
+              <span class="material-symbols-outlined text-cyan-400 text-sm">my_location</span>
+              ${open.vi_do || 16.4598}° N, ${open.kinh_do || 107.5789}° E (Lab)
+            </span>
+            <span class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-lg text-emerald-300">
+              <span class="material-symbols-outlined text-sm">radar</span>
+              Bán kính: ${open.ban_kinh_m || 60}m
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <button onclick="openOverrideModal(${open.id}, '${Utils.escapeHtml(open.ten_phien || '')}')" class="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20">
+              <span class="material-symbols-outlined text-sm align-middle">tune</span> Điều chỉnh thủ công
+            </button>
+            <button onclick="openSessionDetail(${open.id})" class="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20">
+              <span class="material-symbols-outlined text-sm align-middle">list_alt</span> Xem bản ghi
+            </button>
+          </div>
+        </div>
+
+        <!-- Nonce & QR Widget -->
+        <div class="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
+          <div id="live-qrcode-box" class="w-20 h-20 bg-white p-1 rounded-xl flex items-center justify-center">
+            <!-- QR injected here -->
+          </div>
+          <div class="space-y-1 font-mono text-center">
+            <p class="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">Projector Nonce</p>
+            <p id="live-nonce-display" class="font-extrabold text-2xl text-white tracking-widest">······</p>
+            <div class="flex items-center justify-center gap-1.5 text-[11px] text-slate-300">
+              <span class="material-symbols-outlined text-xs">refresh</span>
+              <span id="live-nonce-countdown">15s</span>
+              <button type="button" onclick="refreshNonce()" title="Lấy mã mới" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-200 text-[10px] font-bold border border-white/20">Lấy mã mới</button>
+            </div>
+          </div>
+          <button onclick="closeCurrentSession(${open.id})" class="ml-2 px-3 py-2 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-red-500/30">
+            Đóng ca
+          </button>
+        </div>
+      </div>`;
+
+    startNonceLoop(open.id);
+  }
+
+  /* ---------- NONCE LOOP (R03 — QA review 69db15d/ac51233) ----------
+   * Hết hạn → dừng đếm + vô hiệu hóa mã TRƯỚC khi xin mã mới (không hiển thị
+   * mã chết như mã sống); fetch lỗi → toast MỘT lần + tự thử lại TỐI ĐA 1
+   * lần sau 5s, sau đó chỉ retry thủ công ("Lấy mã mới"); đổi/đóng/tải lại
+   * phiên dọn SẠCH timer (không timer tự hồi sinh); response của phiên cũ
+   * bị loại (per-session guard). */
+  function stopNonceTimer() {
+    if (state.nonceInterval) { clearInterval(state.nonceInterval); state.nonceInterval = null; }
+  }
+  function stopNonceRetryTimer() {
+    if (state.nonceRetryTimer) { clearTimeout(state.nonceRetryTimer); state.nonceRetryTimer = null; }
+  }
+  function stopNonceLoops() {
+    stopNonceTimer();
+    stopNonceRetryTimer();
+    state.nonceFetchingFor = null;
+  }
+  window.stopNonceLoops = stopNonceLoops;
+
+  function invalidateNonceUI() {
+    const el = document.getElementById('live-nonce-display');
+    if (el) el.innerText = '······';
+    const cd = document.getElementById('live-nonce-countdown');
+    if (cd) cd.innerText = '0s';
+  }
+  function updateCountdownUI() {
+    const cd = document.getElementById('live-nonce-countdown');
+    if (cd) cd.innerText = Math.max(0, state.nonceCountdown) + 's';
+  }
+
+  function startNonceLoop(sessionId) {
+    stopNonceLoops();
+    state.nonceSessionId = sessionId;
+    state.nonceCountdown = 15;
+    updateCountdownUI();
+    fetchNonce(sessionId, { startInterval: true });
+  }
+  window.refreshNonce = function() {
+    if (state.openSession) startNonceLoop(state.openSession.id);
+  };
+
+  async function fetchNonce(sessionId, opts) {
+    opts = opts || {};
+    if (!sessionId) return;
+    if (state.nonceFetchingFor === sessionId) return; // fetch cùng phiên đang bay
+    state.nonceFetchingFor = sessionId;
+    try {
+      const res = await ApiClient.get('/attendance/sessions/' + sessionId + '/nonce/');
+      if (state.openSession && state.openSession.id !== sessionId) return; // đã đổi phiên — bỏ response cũ
+      if (res && res.trang_thai && res.trang_thai !== 'OPEN') { await loadSessions(); return; }
+      const nonce = String((res && (res.nonce || res.nonce_hien_tai)) || '').trim();
+      // R03: thành công → reset backoff + hủy retry đang treo
+      state.nonceAutoRetries = 0;
+      stopNonceRetryTimer();
+      const nonceEl = document.getElementById('live-nonce-display');
+      if (nonceEl && nonce) nonceEl.innerText = nonce.padStart(6, '0').slice(-6);
+      state.nonceCountdown = 15;
+      updateCountdownUI();
+      // Render live QRCode — URL cùng origin (không hardcode domain production)
+      const qrBox = document.getElementById('live-qrcode-box');
+      if (qrBox && window.QRCode) {
+        qrBox.innerHTML = '';
+        new QRCode(qrBox, {
+          text: location.origin + '/frontend/member/checkin.html?session=' + sessionId + '&nonce=' + nonce,
+          width: 72,
+          height: 72,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+      if (opts.startInterval) armNonceInterval(sessionId);
+    } catch (e) {
+      if (state.openSession && state.openSession.id === sessionId) {
+        // R03: trạng thái "chưa lấy được mã" rõ ràng — invalidate + toast 1 lần
+        invalidateNonceUI();
+        Toast.error(e.message || 'Không lấy được mã nonce.');
+        if (state.nonceAutoRetries < 1) {
+          state.nonceAutoRetries += 1;
+          stopNonceRetryTimer();
+          state.nonceRetryTimer = setTimeout(() => {
+            state.nonceRetryTimer = null;
+            if (state.openSession && state.openSession.id === sessionId) fetchNonce(sessionId, opts);
+          }, 5000);
+        }
+      }
+    } finally {
+      if (state.nonceFetchingFor === sessionId) state.nonceFetchingFor = null;
+      // BCN đổi phiên trong lúc fetch cũ bay → fetch nonce cho phiên mới
+      if (state.openSession && state.openSession.id !== sessionId) fetchNonce(state.openSession.id, { startInterval: true });
+    }
+  }
+
+  function armNonceInterval(sessionId) {
+    stopNonceTimer();
+    state.nonceInterval = setInterval(() => {
+      if (state.openSession && state.openSession.id !== sessionId) { stopNonceLoops(); return; }
+      state.nonceCountdown -= 1;
+      updateCountdownUI();
+      if (state.nonceCountdown <= 0) {
+        // R03: hết hạn → dừng đếm, vô hiệu hóa mã NGAY (placeholder, không âm)
+        stopNonceTimer();
+        invalidateNonceUI();
+        state.nonceCountdown = 15;
+        fetchNonce(sessionId, { startInterval: true });
+      }
+    }, 1000);
+  }
+
+  function renderSessionsTable(sessions) {
+    const wrap = document.getElementById('sessions-table-wrap');
+    if (!wrap) return;
+    if (!sessions || sessions.length === 0) {
+      wrap.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">Chưa có lịch sử phiên điểm danh nào.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
+          <tr>
+            <th class="p-3.5">Phiên Điểm Danh</th>
+            <th class="p-3.5">Mở Lúc</th>
+            <th class="p-3.5">Đóng Lúc</th>
+            <th class="p-3.5">Trạng Thái</th>
+            <th class="p-3.5 text-right">Thao Tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          ${sessions.map(s => `
+            <tr class="hover:bg-slate-50/80 transition-colors">
+              <td class="p-3.5 font-bold text-navy-900">
+                ${Utils.escapeHtml(s.ten_phien || ('Phiên #' + s.id))}
+                ${s.event_ten ? `<span class="block text-[10px] font-medium text-slate-400 mt-0.5">${Utils.escapeHtml(s.event_ten)}</span>` : ''}
+              </td>
+              <td class="p-3.5 font-mono text-slate-500 text-[11px]">${s.mo_phien_at ? Utils.fmtDateTime(s.mo_phien_at) : '--'}</td>
+              <td class="p-3.5 font-mono text-slate-500 text-[11px]">${s.dong_phien_at ? Utils.fmtDateTime(s.dong_phien_at) : '--'}</td>
+              <td class="p-3.5">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.trang_thai === 'OPEN' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
+                  ${s.trang_thai === 'OPEN' ? 'Đang mở' : 'Đã đóng'}
+                </span>
+              </td>
+              <td class="p-3.5 text-right space-x-1 whitespace-nowrap">
+                ${s.trang_thai === 'OPEN' ? `<button onclick="selectOpenSession(${s.id})" class="px-2.5 py-1 bg-cyan-50 text-cyan-700 rounded-lg font-bold text-[11px] hover:bg-cyan-100 transition-all">Điều khiển</button>` : ''}
+                <button onclick="openSessionDetail(${s.id}, '${Utils.escapeHtml(String(s.ten_phien || '').replace(/'/g, "\\'"))}')" class="px-3 py-1 bg-white border border-slate-200 rounded-lg font-bold text-[11px] hover:border-cyan-500 hover:text-cyan-600 transition-all">Xem bản ghi</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function renderSessionsPagination(pagination) {
+    const pag = document.getElementById('sessions-pagination');
+    if (!pag) return;
+    if (!pagination || pagination.total_pages <= 1) {
+      pag.innerHTML = pagination && pagination.total_items
+        ? `<span class="font-mono">${Utils.fmtNum(pagination.total_items)} phiên</span><span></span>`
+        : '';
+      return;
+    }
+    pag.innerHTML = `
+      <span class="font-mono">${Utils.fmtNum(pagination.total_items)} phiên · trang ${pagination.page}/${pagination.total_pages}</span>
+      <div class="flex gap-2">
+        <button ${pagination.page <= 1 ? 'disabled' : ''} onclick="loadSessions(${pagination.page - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
+        <button ${pagination.page >= pagination.total_pages ? 'disabled' : ''} onclick="loadSessions(${pagination.page + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
+      </div>`;
+  }
+
+  window.handleStartSession = async function(e) {
+    e.preventDefault();
+    const title = document.getElementById('ses-title') && document.getElementById('ses-title').value.trim();
+    if (!title) { Toast.warning('Vui lòng nhập tên phiên điểm danh.'); return; }
+
+    const coords = ((document.getElementById('ses-coords') && document.getElementById('ses-coords').value) || '16.4598, 107.5789').split(',');
+    const lat = parseFloat(coords[0] && coords[0].trim()) || 16.4598;
+    const lng = parseFloat(coords[1] && coords[1].trim()) || 107.5789;
+    const radius = parseInt(document.getElementById('ses-radius') && document.getElementById('ses-radius').value || '60', 10) || 60;
+    const durationMin = parseInt(document.getElementById('ses-duration') && document.getElementById('ses-duration').value || '45', 10) || 45;
+    const evSel = document.getElementById('ses-event');
+    // Tên trường THẬT: ten_phien / ban_kinh_m / hieu_luc_den / event
+    const payload = {
+      ten_phien: title,
+      vi_do: lat,
+      kinh_do: lng,
+      ban_kinh_m: radius,
+      hieu_luc_den: new Date(Date.now() + durationMin * 60000).toISOString()
+    };
+    if (evSel && evSel.value) payload.event = Number(evSel.value);
+
+    try {
+      await ApiClient.post('/attendance/sessions/', payload);
+      Toast.success('Đã kích hoạt phiên điểm danh GPS radar!');
+      closeModal('modal-session-create');
+      const form = document.getElementById('form-create-session');
+      if (form) form.reset();
+      state.openSession = null; // phiên mới nhất sẽ được chọn khi tải lại
+      loadSessions();
+    } catch (err) {
+      Toast.error(err.message || 'Không thể tạo phiên điểm danh.');
+    }
+  };
+
+  window.closeCurrentSession = async function(sessionId) {
+    if (!sessionId) return;
+    if (!confirm('Bạn có chắc chắn muốn đóng phiên điểm danh này?')) return;
+    try {
+      await ApiClient.post('/attendance/sessions/' + sessionId + '/close/');
+      Toast.success('Đã đóng ca điểm danh thành công.');
+      stopNonceLoops(); // R03: phiên đã đóng — không timer nào sống sót
+      if (state.openSession && state.openSession.id === sessionId) state.openSession = null;
+      loadSessions();
+    } catch (err) {
+      Toast.error(err.message || 'Lỗi khi đóng phiên điểm danh.');
+    }
+  };
+
+  /* ---------- F10: BẢN GHI ĐIỂM DANH THEO PHIÊN + N02 override CLOSED ---------- */
+  window.openSessionDetail = function(id, name) {
+    state.recordsSessionId = id;
+    state.recordsSessionName = name || ('Phiên #' + id);
+    state.recordsState = { page: 1, trangThai: '', search: '' };
+    const nameEl = document.getElementById('m-session-name');
+    if (nameEl) {
+      nameEl.textContent = 'Bản ghi điểm danh — ' + (name || ('Phiên #' + id));
+    }
+    const searchEl = document.getElementById('rec-search');
+    const statusEl = document.getElementById('rec-status');
+    if (searchEl) searchEl.value = '';
+    if (statusEl) statusEl.value = '';
+    openModal('modal-session-detail');
+    loadRecords();
+  };
+
+  async function loadRecords() {
+    const wrap = document.getElementById('records-wrap');
+    const pager = document.getElementById('records-pagination');
+    if (!wrap) return;
+    wrap.innerHTML = `
+      <div class="py-8 flex flex-col items-center justify-center text-slate-400">
+        <span class="material-symbols-outlined text-2xl animate-spin text-cyan-500 mb-1">progress_activity</span>
+        <p class="text-xs">Đang tải bản ghi...</p>
+      </div>`;
+    try {
+      const params = { page: state.recordsState.page, page_size: 10 };
+      if (state.recordsState.trangThai) params.trang_thai = state.recordsState.trangThai;
+      if (state.recordsState.search) params.search = state.recordsState.search;
+      const { items, pagination } = await ApiClient.getList(
+        `/attendance/sessions/${state.recordsSessionId}/records/`, params
+      );
+      if (!items.length) {
+        wrap.innerHTML = '<div class="py-8 text-center text-slate-400 text-xs">Không có bản ghi nào — thử đổi bộ lọc hoặc từ khóa.</div>';
+        if (pager) pager.innerHTML = '';
+        return;
+      }
+      wrap.innerHTML = `
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
+            <tr><th class="p-3">Thành viên</th><th class="p-3">Trạng thái</th><th class="p-3">Check-in lúc</th><th class="p-3 text-center">Khoảng cách</th><th class="p-3 text-center">XP</th><th class="p-3">Cờ</th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            ${items.map(r => `
+              <tr>
+                <td class="p-3">
+                  <div class="font-bold text-navy-900">${Utils.escapeHtml(r.member_ten || '—')}</div>
+                  <div class="text-[10px] text-slate-400">${Utils.escapeHtml(r.member_mssv || '')}${r.member_lop ? ' · ' + Utils.escapeHtml(r.member_lop) : ''}</div>
+                </td>
+                <td class="p-3">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${r.trang_thai === 'CO_MAT' ? 'bg-emerald-100 text-emerald-800' : r.trang_thai === 'DI_MUON' ? 'bg-amber-100 text-amber-800' : r.trang_thai === 'CO_PHEP' ? 'bg-blue-50 text-cyan-700' : 'bg-slate-100 text-slate-600'}">
+                    ${REC_STATUS_LABELS[r.trang_thai] || r.trang_thai}
+                  </span>
+                </td>
+                <td class="p-3 font-mono text-slate-500 text-[11px]">${r.checked_in_at ? Utils.fmtDateTime(r.checked_in_at) : '—'}</td>
+                <td class="p-3 text-center font-mono text-slate-500 text-[11px]">${r.khoang_cach_m != null ? Utils.fmtNum(Math.round(r.khoang_cach_m)) + ' m' : '—'}</td>
+                <td class="p-3 text-center font-mono font-bold text-cyan-600">${r.xp_awarded != null ? r.xp_awarded : 0}</td>
+                <td class="p-3">
+                  ${r.is_suspicious ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600">Nghi vấn</span>' : ''}
+                  ${r.overridden_by_email ? `<div class="text-[10px] text-slate-400 mt-1">GV ghi đè: ${Utils.escapeHtml(r.overridden_by_email)}</div>` : ''}
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+      if (pager) {
+        pager.innerHTML = pagination && pagination.total_pages > 1 ? `
+          <span class="font-mono">${Utils.fmtNum(pagination.total_items)} bản ghi · trang ${pagination.page}/${pagination.total_pages}</span>
+          <div class="flex gap-2">
+            <button ${pagination.page <= 1 ? 'disabled' : ''} onclick="recordsGotoPage(${pagination.page - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
+            <button ${pagination.page >= pagination.total_pages ? 'disabled' : ''} onclick="recordsGotoPage(${pagination.page + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
+          </div>` : (pagination ? `<span class="font-mono">Tổng ${Utils.fmtNum(pagination.total_items)} bản ghi</span><span></span>` : '');
+      }
+    } catch (err) {
+      wrap.innerHTML = `<div class="py-6 text-center text-red-500 text-xs">Không tải được bản ghi: ${Utils.escapeHtml(err.message || '')}</div>`;
+    }
+  }
+  window.recordsGotoPage = function(p) {
+    state.recordsState.page = p;
+    loadRecords();
+  };
+  // Helper cho onclick footer records (không leak state ra global)
+  window.recordsSessionId = function() { return state.recordsSessionId; };
+  window.overrideSessionName = function() { return state.recordsSessionName || null; };
+
+  window.bindRecordFilters = function() {
+    const searchEl = document.getElementById('rec-search');
+    const statusEl = document.getElementById('rec-status');
+    if (searchEl) {
+      searchEl.addEventListener('input', Utils.debounce(() => {
+        state.recordsState.search = searchEl.value.trim();
+        state.recordsState.page = 1;
+        loadRecords();
+      }, 300));
+    }
+    if (statusEl) {
+      statusEl.addEventListener('change', () => {
+        state.recordsState.trangThai = statusEl.value;
+        state.recordsState.page = 1;
+        loadRecords();
+      });
+    }
+  };
+
+  /* ---------- OVERRIDE (F01/F09 + N02: OPEN & CLOSED đều cho phép) ---------- */
+  window.openOverrideModal = function(sessionId, sessionName) {
+    if (!sessionId && state.openSession) sessionId = state.openSession.id;
+    if (!sessionId) return;
+    state.overrideSessionId = sessionId;
+    const nameEl = document.getElementById('ov-session-name');
+    if (nameEl) nameEl.textContent = sessionName || ('Phiên #' + sessionId);
+    const list = document.getElementById('ov-member-list');
+    const search = document.getElementById('ov-search');
+    const statusEl = document.getElementById('ov-status');
+    const submit = document.getElementById('ov-submit');
+    if (list) list.innerHTML = '';
+    if (search) search.value = '';
+    if (statusEl) statusEl.value = 'CO_MAT';
+    if (submit) { submit.disabled = true; submit.innerHTML = '<span class="material-symbols-outlined text-sm align-middle">check</span> Áp dụng (0)'; }
+    openModal('modal-override');
+    bindOverrideMemberList();
+  };
+
+  /**
+   * Audit F09: danh sách thành viên trong modal override — search qua Trie
+   * (/members/search/) + phân trang 20 người/trang — người thứ 121 cũng chọn
+   * được. "Chọn tất cả" rõ ràng chỉ áp dụng CHO CÁC NGƯỜI ĐANG HIỆN.
+   * Event DELEGATION trên container — bắt cả checkbox nạp bất đồng bộ.
+   */
+  function bindOverrideMemberList() {
+    const modal = document.getElementById('modal-override');
+    const list = document.getElementById('ov-member-list');
+    const search = document.getElementById('ov-search');
+    const moreBtn = document.getElementById('ov-more');
+    const countEl = document.getElementById('ov-browse-count');
+    if (!modal || !list) return;
+    let browsePage = 0, browseDone = false, searchSeq = 0;
+
+    const rowHTML = (m) => `
+      <label class="flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 hover:border-cyan-400 hover:bg-cyan-50/40 cursor-pointer transition-all">
+        <input type="checkbox" class="ov-check w-4 h-4 text-cyan-600 rounded border-slate-300 shrink-0" value="${m.id}"/>
+        <span class="min-w-0 flex-1">
+          <span class="block font-bold text-navy-900 text-xs truncate">${Utils.escapeHtml(m.ho_ten)}</span>
+          <span class="block text-[10px] text-slate-400 truncate">${Utils.escapeHtml(m.mssv || '')}${m.lop ? ' · ' + Utils.escapeHtml(m.lop) : ''}</span>
+        </span>
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 shrink-0">${Utils.escapeHtml(m.trang_thai_hd || '')}</span>
+      </label>`;
+
+    const syncSubmit = () => {
+      const submit = document.getElementById('ov-submit');
+      const countEl2 = document.getElementById('ov-count');
+      const n = Utils.qsa('.ov-check:checked', modal).length;
+      const total = Utils.qsa('.ov-check', modal).length;
+      if (countEl2) countEl2.textContent = `${n}/${total} thành viên đang hiện được chọn`;
+      if (submit) {
+        submit.disabled = n === 0;
+        submit.innerHTML = `<span class="material-symbols-outlined text-sm align-middle">check</span> Áp dụng (${n})`;
+      }
+    };
+
+    const updateBrowseCount = () => {
+      if (countEl) countEl.textContent = `Đang hiện ${Utils.qsa('.ov-check', modal).length} người`;
+    };
+
+    const loadBrowsePage = async () => {
+      if (browseDone) return;
+      const { items, pagination } = await ApiClient.getList('/members/', { page: browsePage + 1, page_size: 20 });
+      const have = new Set(Utils.qsa('.ov-check', list).map(c => c.value));
+      const fresh = items.filter(m => !have.has(String(m.id)));
+      list.insertAdjacentHTML('beforeend', fresh.map(rowHTML).join(''));
+      browsePage += 1;
+      browseDone = !pagination || browsePage >= pagination.total_pages;
+      if (browseDone && moreBtn) moreBtn.classList.add('hidden');
+      updateBrowseCount();
+    };
+
+    const runSearch = Utils.debounce(async () => {
+      const q = (search && search.value || '').trim();
+      const seq = ++searchSeq;
+      if (!q) {
+        list.innerHTML = '';
+        browsePage = 0; browseDone = false;
+        if (moreBtn) moreBtn.classList.remove('hidden');
+        try { await loadBrowsePage(); } catch (e) { Toast.error('Không tải được danh sách thành viên: ' + (e.message || '')); }
+        return;
+      }
+      try {
+        const data = await ApiClient.get('/members/search/', { q });
+        if (seq !== searchSeq) return; // stale response — bỏ
+        const found = (data && data.items) || data || [];
+        list.innerHTML = found.length
+          ? found.map(rowHTML).join('')
+          : '<div class="p-4 text-center text-slate-400 text-xs">Không tìm thấy ai khớp từ khóa.</div>';
+        if (moreBtn) moreBtn.classList.add('hidden');
+        updateBrowseCount();
+        syncSubmit();
+      } catch (err) {
+        if (seq === searchSeq) Toast.error('Tìm kiếm thất bại: ' + (err.message || ''));
+      }
+    }, 300);
+
+    if (search) search.oninput = runSearch;
+    if (moreBtn) {
+      moreBtn.classList.remove('hidden');
+      moreBtn.onclick = () => loadBrowsePage().catch(e => Toast.error('Không tải thêm được: ' + (e.message || '')));
+    }
+    // Delegation: checkbox nạp async sau khi modal mở vẫn bắt được change
+    list.onchange = (e) => { if (e.target && e.target.classList && e.target.classList.contains('ov-check')) syncSubmit(); };
+    const allBtn = document.getElementById('ov-all');
+    const noneBtn = document.getElementById('ov-none');
+    if (allBtn) allBtn.onclick = () => {
+      // Audit F09: "Chọn tất cả" = tất cả người ĐANG HIỆN — BCN bấm "Tải thêm"
+      // để nạp rồi tick tiếp các trang sau.
+      Utils.qsa('.ov-check', modal).forEach(c => { c.checked = true; });
+      syncSubmit();
+    };
+    if (noneBtn) noneBtn.onclick = () => {
+      Utils.qsa('.ov-check', modal).forEach(c => { c.checked = false; });
+      syncSubmit();
+    };
+    const submit = document.getElementById('ov-submit');
+    if (submit) submit.onclick = async () => {
+      const trangThai = document.getElementById('ov-status').value;
+      const items = Utils.qsa('.ov-check:checked', modal).map(c => ({
+        member_id: Number(c.value),
+        trang_thai: trangThai,
+      }));
+      if (!items.length) return;
+      const undo = Utils.btnLoading(submit, 'Đang ghi đè...');
+      try {
+        // Backend nhận PUT (không phải POST như CONTRACT từng ghi) — đã test thật
+        const res = await ApiClient.put(`/attendance/sessions/${state.overrideSessionId}/bulk-override/`, { items });
+        closeModal('modal-override');
+        Toast.success(`Đã ghi đè điểm danh cho ${res && res.updated != null ? res.updated : items.length} thành viên (${REC_STATUS_LABELS[trangThai] || trangThai}).`, 'Thành công');
+        loadSessions();
+        if (!document.getElementById('modal-session-detail').classList.contains('hidden')) {
+          state.recordsState.page = 1;
+          loadRecords(); // refresh bảng bản ghi nếu đang mở (F10)
+        }
+      } catch (err) {
+        // Audit F01: lỗi → giữ nguyên lựa chọn + trạng thái form để BCN sửa rồi gửi lại
+        Toast.error(err.message || 'Không ghi đè được điểm danh.');
+      } finally { undo(); }
+    };
+
+    loadBrowsePage().catch(e => Toast.error('Không tải được danh sách thành viên: ' + (e.message || '')));
+  }
+
+  // --- 6. DOCUMENTS ENGINE (F05 preview qua API + envelope đúng) ---
+  async function loadDocs(page = 1) {
+    state.docsPage = page;
+    const wrap = document.getElementById('docs-table-wrap');
+    if (!wrap) return;
+
+    wrap.innerHTML = `
+      <div class="py-12 flex flex-col items-center justify-center text-slate-400">
+        <span class="material-symbols-outlined text-4xl animate-spin text-cyan-500 mb-2">progress_activity</span>
+        <p class="text-xs font-medium">Đang tải kho học liệu số...</p>
+      </div>`;
+
+    try {
+      const params = { page };
+      if (state.docsNhom) params.nhom = state.docsNhom;
+      if (state.docsSearch) params.search = state.docsSearch;
+      const { items, pagination } = await ApiClient.getList('/documents/', params);
+      state.docs = items;
+      state.docsTotal = pagination ? pagination.total_items : items.length;
+      renderDocsTable(items);
+      renderDocsPagination(pagination);
+    } catch (err) {
+      wrap.innerHTML = `
+        <div class="py-8 text-center text-red-500">
+          <span class="material-symbols-outlined text-3xl">error</span>
+          <p class="text-xs font-bold mt-1">Không thể tải kho tài liệu: ${Utils.escapeHtml(err.message || 'Lỗi')}</p>
+        </div>`;
+    }
+  }
+  window.loadDocs = loadDocs;
+
+  function renderDocsTable(items) {
+    const wrap = document.getElementById('docs-table-wrap');
+    if (!wrap) return;
+    if (!items || items.length === 0) {
+      wrap.innerHTML = '<div class="p-12 text-center text-slate-400 text-xs">Chưa có tài liệu nào trong danh mục này.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
+          <tr>
+            <th class="p-3.5">Tài Liệu Học Thuật</th>
+            <th class="p-3.5">Phân Nhóm</th>
+            <th class="p-3.5">Phạm Vi</th>
+            <th class="p-3.5 text-center">Lượt Tải</th>
+            <th class="p-3.5 text-right">Thao Tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          ${items.map(doc => `
+            <tr class="hover:bg-slate-50/80 transition-colors">
+              <td class="p-3.5">
+                <p class="font-bold text-navy-900">${Utils.escapeHtml(doc.tieu_de || '')}</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">${Utils.escapeHtml(doc.file_type || 'PDF')} • ${Utils.fmtNum(doc.file_size || 0)} bytes</p>
+              </td>
+              <td class="p-3.5 font-medium text-cyan-600">${Utils.escapeHtml(doc.nhom || 'CHUYEN_MON')}</td>
+              <td class="p-3.5"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${doc.pham_vi === 'BCN_ONLY' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-cyan-700'}">${doc.pham_vi === 'BCN_ONLY' ? 'Chỉ BCN' : 'Toàn bộ thành viên'}</span></td>
+              <td class="p-3.5 font-mono text-slate-500 text-center">${doc.luot_tai || 0}</td>
+              <td class="p-3.5 text-right space-x-1 whitespace-nowrap">
+                <button onclick="openDocPreview(${doc.id})" class="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg font-bold hover:bg-slate-100 transition-all inline-flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">visibility</span> Xem
+                </button>
+                <button onclick="downloadDoc(${doc.id}, '${Utils.escapeHtml(doc.tieu_de || 'tai_lieu')}')" class="px-2.5 py-1 bg-cyan-50 text-cyan-600 rounded-lg font-bold hover:bg-cyan-100 transition-all inline-flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">download</span> Tải
+                </button>
+                <button onclick="deleteDoc(${doc.id}, '${Utils.escapeHtml(doc.tieu_de || '')}')" class="px-2 py-1 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all">
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function renderDocsPagination(pagination) {
+    const pag = document.getElementById('docs-pagination');
+    if (!pag) return;
+    if (!pagination || pagination.total_pages <= 1) {
+      pag.innerHTML = pagination && pagination.total_items
+        ? `<span class="font-mono">${Utils.fmtNum(pagination.total_items)} tài liệu</span><span></span>`
+        : '';
+      return;
+    }
+    pag.innerHTML = `
+      <span class="font-mono">${Utils.fmtNum(pagination.total_items)} tài liệu · trang ${pagination.page}/${pagination.total_pages}</span>
+      <div class="flex gap-2">
+        <button ${pagination.page <= 1 ? 'disabled' : ''} onclick="loadDocs(${pagination.page - 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Trước</button>
+        <button ${pagination.page >= pagination.total_pages ? 'disabled' : ''} onclick="loadDocs(${pagination.page + 1})" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold disabled:opacity-40">Sau</button>
+      </div>`;
+  }
+
+  window.handleDocTrieSearch = function(query) {
+    if (state.searchTimer) clearTimeout(state.searchTimer);
+    const dropdown = document.getElementById('ac-list');
+    const q = (query || '').trim();
+
+    if (!q || q.length < 2) {
+      if (dropdown) dropdown.classList.add('hidden');
+      if (state.docsSearch) { // đã xóa từ khóa → bỏ lọc danh sách
+        state.docsSearch = '';
+        loadDocs(1);
+      }
+      return;
+    }
+
+    state.searchTimer = setTimeout(async () => {
+      const seq = ++state.docSearchSeq;
+      try {
+        const res = await ApiClient.get('/documents/search/', { q });
+        if (seq !== state.docSearchSeq) return; // stale response — bỏ
+        const items = (res && res.items) || res || [];
+        if (dropdown) {
+          if (items.length === 0) {
+            dropdown.innerHTML = '<div class="p-3 text-slate-400 text-xs text-center">Không tìm thấy tài liệu phù hợp.</div>';
+          } else {
+            dropdown.innerHTML = items.map(it => `
+              <div onclick="selectDoc('${Utils.escapeHtml(String(it.tieu_de || '').replace(/'/g, "\\'"))}')" class="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs border-b border-slate-100 last:border-0">
+                <div>
+                  <p class="font-bold text-navy-900">${Utils.escapeHtml(it.tieu_de || '')}</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5">${Utils.escapeHtml(it.file_type || 'PDF')}</p>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-blue-50 text-cyan-700 font-semibold text-[10px]">${Utils.escapeHtml(it.nhom || 'Tài liệu')}</span>
+              </div>`).join('');
+          }
+          dropdown.classList.remove('hidden');
+        }
+      } catch (e) { /* autocomplete lỗi im lặng — không spam toast */ }
+    }, 300);
+  };
+  // Alias main HTML gọi handleDocTrieSearch — giữ tương thích ngược
+  window.handleDocSearch = window.handleDocTrieSearch;
+
+  window.selectDoc = function(title) {
+    const input = document.getElementById('doc-search');
+    if (input) input.value = title;
+    const dropdown = document.getElementById('ac-list');
+    if (dropdown) dropdown.classList.add('hidden');
+    // Chọn gợi ý → lọc danh sách theo tiêu đề (tìm chính xác hơn browse)
+    state.docsSearch = title || '';
+    loadDocs(1);
+  };
+
+  window.handleFileSelect = function(e) {
+    const file = e.target.files && e.target.files[0];
+    const display = document.getElementById('doc-file-selected-name');
+    if (file) {
+      state.selectedDocFile = file;
+      if (display) {
+        display.innerText = 'Đã chọn: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+        display.classList.remove('hidden');
+      }
+    }
+  };
+
+  window.handleUploadDoc = async function(e) {
+    e.preventDefault();
+    const file = state.selectedDocFile || (document.getElementById('doc-file-input') && document.getElementById('doc-file-input').files && document.getElementById('doc-file-input').files[0]);
+    const title = document.getElementById('doc-title-input') && document.getElementById('doc-title-input').value.trim();
+
+    if (!file) { Toast.warning('Vui lòng chọn tệp tài liệu để tải lên.'); return; }
+    if (!title) { Toast.warning('Vui lòng nhập tên tài liệu hiển thị.'); return; }
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('tieu_de', title);
+    fd.append('nhom', (document.getElementById('doc-nhom-input') && document.getElementById('doc-nhom-input').value) || 'CHUYEN_MON');
+    const pv = document.getElementById('doc-phamvi-input');
+    if (pv && pv.value) fd.append('pham_vi', pv.value);
+    fd.append('tags', (document.getElementById('doc-tags-input') && document.getElementById('doc-tags-input').value.trim()) || '');
+    fd.append('mo_ta', (document.getElementById('doc-desc-input') && document.getElementById('doc-desc-input').value.trim()) || '');
+
+    try {
+      await ApiClient.post('/documents/', fd);
+      Toast.success('Tải lên học liệu thành công (+100 XP)!');
+      closeModal('modal-doc-upload');
+      const form = document.getElementById('form-upload-doc');
+      if (form) form.reset();
+      state.selectedDocFile = null;
+      const display = document.getElementById('doc-file-selected-name');
+      if (display) display.classList.add('hidden');
+      loadDocs(1);
+    } catch (err) {
+      // Lỗi (magic bytes/size/quyền) → GIỮ form + dữ liệu đã nhập (không reset)
+      Toast.error(err.message || 'Lỗi tải lên tài liệu.');
+    }
+  };
+
+  window.downloadDoc = async function(id, filename) {
+    try {
+      await ApiClient.download('/documents/' + id + '/download/', filename || 'tai_lieu');
+      Toast.success('Bắt đầu tải xuống tệp an toàn.');
+    } catch (err) {
+      Toast.error(err.message || 'Không thể tải xuống tệp.');
+    }
+  };
+
+  /** Audit F05: preview đi qua API CÙNG ORIGIN (/documents/{id}/preview/) —
+   *  cùng phạm vi quyền với download, có refresh tự động, KHÔNG tăng luot_tai.
+   *  Blob URL revoke NGAY khi đóng modal (hàm mount đặt tên riêng). */
+  window.openDocPreview = async function(id) {
+    const modal = document.getElementById('modal-doc-preview');
+    const frame = document.getElementById('doc-preview-frame');
+    const loading = document.getElementById('doc-preview-loading');
+    if (!modal || !frame) return;
+    modal.classList.remove('hidden');
+    frame.classList.add('hidden');
+    frame.src = 'about:blank';
+    if (loading) loading.classList.remove('hidden');
+    try {
+      const blob = await ApiClient.getBlob(`/documents/${id}/preview/`);
+      if (blob.size === 0) throw new Error('Tệp rỗng hoặc không truy cập được.');
+      if (window.__docPreviewBlobUrl) { try { URL.revokeObjectURL(window.__docPreviewBlobUrl); } catch (e) {} }
+      const blobUrl = URL.createObjectURL(blob);
+      window.__docPreviewBlobUrl = blobUrl;
+      frame.src = blobUrl;
+      frame.addEventListener('load', () => {
+        frame.classList.remove('hidden');
+        if (loading) loading.classList.add('hidden');
+      }, { once: true });
+    } catch (err) {
+      if (loading) loading.classList.add('hidden');
+      Toast.error(err.message || 'Không xem trước được tài liệu.');
+      modal.classList.add('hidden');
+    }
+  };
+  window.closeDocPreview = function() {
+    const modal = document.getElementById('modal-doc-preview');
+    const frame = document.getElementById('doc-preview-frame');
+    if (frame) frame.src = 'about:blank';
+    if (modal) modal.classList.add('hidden');
+    if (window.__docPreviewBlobUrl) {
+      try { URL.revokeObjectURL(window.__docPreviewBlobUrl); } catch (e) {}
+      window.__docPreviewBlobUrl = null;
+    }
+  };
+
+  window.deleteDoc = async function(id, title) {
+    if (!confirm('Bạn có chắc chắn muốn xóa tài liệu "' + title + '"?')) return;
+    try {
+      await ApiClient.delete('/documents/' + id + '/');
+      Toast.success('Đã xóa tài liệu khỏi kho.');
+      loadDocs(1);
+    } catch (err) {
+      Toast.error(err.message || 'Không thể xóa tài liệu.');
+    }
+  };
+
+  // --- 7. AUTH INITIALIZATION & STARTUP ---
+  async function init() {
+    const user = Auth.cachedUser();
+    if (user) {
+      const nameEl = document.getElementById('user-display-name');
+      const roleEl = document.getElementById('user-role-badge');
+      const avatarEl = document.getElementById('user-avatar-badge');
+      if (nameEl) nameEl.innerText = user.ho_ten || user.email || 'Ban Chủ Nhiệm';
+      if (roleEl) roleEl.innerText = user.role || 'Ban Chủ Nhiệm';
+      if (avatarEl) avatarEl.innerText = Utils.initials(user.ho_ten || user.email) || 'BCN';
+    }
+
+    const logoutBtn = document.getElementById('btn-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => Auth.logout());
+    }
+
+    const filterStatus = document.getElementById('filter-status');
+    if (filterStatus) {
+      filterStatus.addEventListener('change', (e) => {
+        state.eventStatus = e.target.value === 'ALL' ? '' : e.target.value;
+        loadEvents(1);
+      });
+    }
+
+    const filterNhom = document.getElementById('filter-nhom');
+    if (filterNhom) {
+      filterNhom.addEventListener('change', (e) => {
+        state.docsNhom = e.target.value === 'ALL' ? '' : e.target.value;
+        loadDocs(1);
+      });
+    }
+
+    bindRecordFilters();
+
+    // Dọn timer khi rời trang (R03: không timer tự hồi sinh sau navigation)
+    window.addEventListener('beforeunload', stopNonceLoops);
+
+    let initialView = state.defaultView;
+    const hash = (window.location.hash || '').replace('#', '');
+    if (['events', 'attendance', 'documents'].includes(hash)) {
+      initialView = hash;
+    }
+
+    switchView(initialView, false);
+  }
+
+  Auth.requireRole(['ADMIN', 'BCN'])
+    .then(() => init())
+    .catch(() => {});
+})();
+
   </script>
 </body>
 </html>
