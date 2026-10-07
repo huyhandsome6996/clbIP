@@ -1979,6 +1979,12 @@
 
 </div>
 
+<button class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1 transition-all" onclick="openEventEditModal()" title="Sửa thông tin / lịch / địa điểm sự kiện (BCN)">
+
+<span class="material-symbols-outlined text-sm">edit</span> Sửa sự kiện
+
+</button>
+
 <button class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all" onclick="closeModal('modal-event-detail')">
 
 <span class="material-symbols-outlined text-2xl">close</span>
@@ -2391,6 +2397,17 @@
 
 <div>
 
+<label class="block font-bold text-navy-900 mb-1">Thời gian kết thúc <span class="text-red-500">*</span></label>
+
+<!-- P03 fix: backend bắt buộc thoi_gian_ket_thuc (model không blank) — form
+     cũ thiếu field này nên POST /events/ luôn 400. -->
+
+<input id="ev-end" name="thoi_gian_ket_thuc" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="datetime-local"/>
+
+</div>
+
+<div>
+
 <label class="block font-bold text-navy-900 mb-1">Địa điểm tổ chức</label>
 
 <input id="ev-location" name="dia_diem" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Lab Tin học 2 / Giảng đường D..." type="text"/>
@@ -2416,6 +2433,190 @@
 <span class="material-symbols-outlined text-sm text-cyan-400">check</span>
 
             Lưu &amp; Xuất Bản Sự Kiện
+
+          </button>
+
+</div>
+
+</form>
+
+</div>
+
+</div>
+
+<!-- MODAL 2B: EDIT EVENT (P03 — phục hồi luồng sửa sự kiện mất từ lần đại tu UI; PATCH /events/{id}/ BCN/ADMIN) -->
+
+<div class="fixed inset-0 bg-navy-950/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="modal-event-edit">
+
+<div class="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+
+<div class="bg-navy-900 text-white p-5 flex items-center justify-between border-b border-white/10 shrink-0">
+
+<div class="flex items-center gap-3">
+
+<div class="w-9 h-9 rounded-full bg-white p-1 ring-2 ring-cyan-500/40 flex items-center justify-center">
+
+<img src="/frontend/assets/logo.png" alt="Logo CLB IP" class="w-full h-full object-contain rounded-full" />
+
+</div>
+
+<h3 class="font-heading font-bold text-base text-white">Sửa Sự Kiện</h3>
+
+</div>
+
+<button class="text-slate-400 hover:text-white p-1.5 rounded-lg" onclick="closeModal('modal-event-edit')">
+
+<span class="material-symbols-outlined text-2xl">close</span>
+
+</button>
+
+</div>
+
+<form id="form-edit-event" class="p-6 overflow-y-auto space-y-4 text-xs" onsubmit="handleUpdateEvent(event)">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Tên hoạt động <span class="text-red-500">*</span></label>
+
+<input id="ev2-title" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="text"/>
+
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Loại hoạt động</label>
+
+<select id="ev2-loai" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+
+<option value="WORKSHOP">Workshop</option>
+
+<option value="HACKATHON">Hackathon</option>
+
+<option value="SINH_HOAT_DINH_KY">Sinh hoạt định kỳ</option>
+
+<option value="TEAMBUILDING">Teambuilding</option>
+
+</select>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Trạng thái</label>
+
+<select id="ev2-status" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+
+<option value="PLANNING">Đang lên kế hoạch</option>
+
+<option value="OPEN_REGISTRATION">Mở đăng ký</option>
+
+<option value="IN_PROGRESS">Đang diễn ra</option>
+
+<option value="COMPLETED">Đã kết thúc</option>
+
+<option value="CANCELLED">Đã hủy</option>
+
+</select>
+
+</div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Bắt đầu <span class="text-red-500">*</span></label>
+
+<input id="ev2-start" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="datetime-local"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Kết thúc <span class="text-red-500">*</span></label>
+
+<input id="ev2-end" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="datetime-local"/>
+
+</div>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Địa điểm <span class="text-red-500">*</span></label>
+
+<input id="ev2-location" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="text"/>
+
+</div>
+
+<div class="grid grid-cols-3 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Vĩ độ (GPS)</label>
+
+<input id="ev2-lat" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" step="any" min="-90" max="90" placeholder="16.46371"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Kinh độ (GPS)</label>
+
+<input id="ev2-lng" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" step="any" min="-180" max="180" placeholder="107.59048"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Bán kính (m)</label>
+
+<input id="ev2-radius" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" min="10" max="5000" placeholder="50"/>
+
+</div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Số lượng tối đa</label>
+
+<input id="ev2-tickets" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" min="1"/>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Kinh phí dự trù (₫)</label>
+
+<input id="ev2-budget" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" type="number" min="0" step="1000"/>
+
+</div>
+
+</div>
+
+<div>
+
+<label class="block font-bold text-navy-900 mb-1">Mô tả</label>
+
+<textarea id="ev2-desc" rows="3" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"></textarea>
+
+</div>
+
+<div class="flex justify-end gap-2 pt-2">
+
+<button class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold" onclick="closeModal('modal-event-edit')" type="button">Hủy bỏ</button>
+
+<button class="px-5 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-850 text-white font-bold flex items-center gap-1" type="submit" id="ev2-submit">
+
+<span class="material-symbols-outlined text-sm text-cyan-400">check</span>
+
+            Lưu Thay Đổi
 
           </button>
 
@@ -3511,11 +3712,17 @@
     if (!ten) { Toast.warning('Vui lòng nhập tên sự kiện.'); return; }
 
     const startVal = document.getElementById('ev-start') && document.getElementById('ev-start').value;
+    const endVal = document.getElementById('ev-end') && document.getElementById('ev-end').value;
+    // P03 fix: cả hai mốc thời gian đều bắt buộc (backend model không blank);
+    // kết thúc phải sau bắt đầu.
+    if (!startVal || !endVal) { Toast.warning('Vui lòng chọn thời gian bắt đầu và kết thúc.'); return; }
+    if (new Date(startVal) >= new Date(endVal)) { Toast.warning('Thời gian kết thúc phải sau thời gian bắt đầu.'); return; }
     const payload = {
       ten_hoat_dong: ten,
       loai_hd: document.getElementById('ev-loai') && document.getElementById('ev-loai').value || 'WORKSHOP',
       so_luong_toi_da: parseInt(document.getElementById('ev-tickets') && document.getElementById('ev-tickets').value || '60', 10) || 60,
-      thoi_gian_bat_dau: startVal ? new Date(startVal).toISOString() : null,
+      thoi_gian_bat_dau: new Date(startVal).toISOString(),
+      thoi_gian_ket_thuc: new Date(endVal).toISOString(),
       dia_diem: (document.getElementById('ev-location') && document.getElementById('ev-location').value.trim()) || 'Phòng Lab Khoa Tin học',
       mo_ta: (document.getElementById('ev-desc') && document.getElementById('ev-desc').value.trim()) || ''
     };
@@ -3529,6 +3736,119 @@
       loadEvents(1);
     } catch (err) {
       Toast.error(err.message || 'Không thể tạo sự kiện.');
+    }
+  };
+
+  /* ================= P03: SỬA SỰ KIỆN (phục hồi luồng mất từ đại tu UI) =================
+   * Contract PATCH /events/{id}/ (ActivityEventCreateUpdateSerializer, BCN/ADMIN):
+   * ten_hoat_dong, loai_hd, trang_thai, thoi_gian_bat_dau, thoi_gian_ket_thuc,
+   * dia_diem, vi_do, kinh_do, ban_kinh_m, so_luong_toi_da,
+   * tong_kinh_phi_du_tru, mo_ta. Service._validate_time_range bắt end > start;
+   * DAG task (create/complete/reopen) KHÔNG đụng tới. */
+
+  /** ISO → value cho <input type="datetime-local"> (giờ local). */
+  function isoToLocalInput(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  /** datetime-local → ISO gửi backend (null nếu rỗng). */
+  function localToISO(v) {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d) ? null : d.toISOString();
+  }
+  function numOrNull(v) {
+    if (v === '' || v === null || v === undefined) return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+  function eventBtnLoading(btn, text) {
+    if (!btn) return () => {};
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm text-cyan-400 animate-spin inline-block align-middle">progress_activity</span> ' + Utils.escapeHtml(text);
+    return () => { btn.disabled = false; btn.innerHTML = original; };
+  }
+
+  window.openEventEditModal = function() {
+    const ev = state.currentEvent;
+    if (!ev || !ev.id) { Toast.warning('Chưa mở chi tiết sự kiện nào.'); return; }
+    const g = (id) => document.getElementById(id);
+    g('ev2-title').value = ev.ten_hoat_dong || '';
+    g('ev2-loai').value = ev.loai_hd || 'WORKSHOP';
+    g('ev2-status').value = ev.trang_thai || 'PLANNING';
+    g('ev2-start').value = isoToLocalInput(ev.thoi_gian_bat_dau);
+    g('ev2-end').value = isoToLocalInput(ev.thoi_gian_ket_thuc);
+    g('ev2-location').value = ev.dia_diem || '';
+    g('ev2-lat').value = (ev.vi_do === null || ev.vi_do === undefined) ? '' : String(ev.vi_do);
+    g('ev2-lng').value = (ev.kinh_do === null || ev.kinh_do === undefined) ? '' : String(ev.kinh_do);
+    g('ev2-radius').value = (ev.ban_kinh_m === null || ev.ban_kinh_m === undefined) ? '' : String(ev.ban_kinh_m);
+    g('ev2-tickets').value = (ev.so_luong_toi_da === null || ev.so_luong_toi_da === undefined) ? '' : String(ev.so_luong_toi_da);
+    g('ev2-budget').value = (ev.tong_kinh_phi_du_tru === null || ev.tong_kinh_phi_du_tru === undefined) ? '' : String(ev.tong_kinh_phi_du_tru);
+    g('ev2-desc').value = ev.mo_ta || '';
+    openModal('modal-event-edit');
+  };
+
+  window.handleUpdateEvent = async function(e) {
+    e.preventDefault();
+    const ev = state.currentEvent;
+    if (!ev || !ev.id) { Toast.error('Chưa chọn sự kiện để cập nhật.'); return; }
+    const g = (id) => document.getElementById(id);
+    const ten = g('ev2-title').value.trim();
+    const batDau = g('ev2-start').value;
+    const ketThuc = g('ev2-end').value;
+    const diaDiem = g('ev2-location').value.trim();
+    if (!ten || !batDau || !ketThuc || !diaDiem) { Toast.warning('Vui lòng điền đủ các trường bắt buộc (*).'); return; }
+    if (new Date(batDau) >= new Date(ketThuc)) { Toast.warning('Thời gian kết thúc phải sau thời gian bắt đầu.'); return; }
+    const viDo = numOrNull(g('ev2-lat').value);
+    const kinhDo = numOrNull(g('ev2-lng').value);
+    if ((viDo === null) !== (kinhDo === null)) {
+      Toast.warning('Tọa độ GPS cần đủ cả vĩ độ và kinh độ (hoặc bỏ trống cả hai).');
+      return;
+    }
+    if (viDo !== null && (viDo < -90 || viDo > 90)) { Toast.warning('Vĩ độ phải trong khoảng [-90, 90].'); return; }
+    if (kinhDo !== null && (kinhDo < -180 || kinhDo > 180)) { Toast.warning('Kinh độ phải trong khoảng [-180, 180].'); return; }
+    const banKinh = numOrNull(g('ev2-radius').value);
+    if (banKinh !== null && banKinh <= 0) { Toast.warning('Bán kính check-in phải là số dương (mét).'); return; }
+    const slots = numOrNull(g('ev2-tickets').value);
+    if (slots !== null && slots < 1) { Toast.warning('Số lượng tối đa tối thiểu là 1.'); return; }
+    const phi = numOrNull(g('ev2-budget').value);
+    if (phi !== null && phi < 0) { Toast.warning('Kinh phí dự trù không được âm.'); return; }
+
+    const payload = {
+      ten_hoat_dong: ten,
+      loai_hd: g('ev2-loai').value,
+      trang_thai: g('ev2-status').value,
+      thoi_gian_bat_dau: localToISO(batDau),
+      thoi_gian_ket_thuc: localToISO(ketThuc),
+      dia_diem: diaDiem,
+      mo_ta: g('ev2-desc').value.trim(),
+    };
+    if (viDo !== null) payload.vi_do = viDo;
+    if (kinhDo !== null) payload.kinh_do = kinhDo;
+    if (banKinh !== null) payload.ban_kinh_m = banKinh;
+    if (slots !== null) payload.so_luong_toi_da = slots;
+    if (phi !== null) payload.tong_kinh_phi_du_tru = phi;
+
+    const undo = eventBtnLoading(g('ev2-submit'), 'Đang lưu...');
+    try {
+      const updated = await ApiClient.patch('/events/' + ev.id + '/', payload);
+      state.currentEvent = { ...ev, ...(updated || {}) };
+      closeModal('modal-event-edit');
+      Toast.success('Đã lưu thay đổi sự kiện.');
+      loadEvents(state.eventsPage || 1);
+      // Làm mới workspace bằng dữ liệu sau lưu (nếu modal detail còn mở)
+      if (!document.getElementById('modal-event-detail').classList.contains('hidden')) {
+        openEventWorkspace(ev.id);
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Không lưu được sự kiện.');
+    } finally {
+      undo();
     }
   };
 

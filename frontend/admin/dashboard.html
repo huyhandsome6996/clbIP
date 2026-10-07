@@ -820,7 +820,7 @@
                   <th class="py-3 px-3">Đến ngày</th>
                   <th class="py-3 px-4">Người thực hiện khóa</th>
                   <th class="py-3 px-3">Thời điểm khóa sổ</th>
-                  <th class="py-3 px-3 text-right">Số dư bàn giao</th>
+                  <th class="py-3 px-3 text-right">Ghi chú</th>
                 </tr>
               </thead>
               <tbody id="locks-tbody" class="divide-y divide-slate-100 font-sans">
@@ -935,6 +935,7 @@
             <div class="flex items-center gap-2">
               <h4 id="p360-name" class="font-heading font-extrabold text-lg text-navy-900">...</h4>
               <span id="p360-role" class="px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 font-bold text-[10px]">Thành viên</span>
+              <span id="p360-status" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] hidden"></span>
             </div>
             <div class="text-slate-500 font-mono mt-0.5">
               MSSV: <span id="p360-mssv" class="font-bold text-slate-700">—</span> • Lớp: <span id="p360-class">—</span>
@@ -954,17 +955,20 @@
           </div>
           <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <span class="text-[10px] uppercase font-bold text-slate-400 block">Sự kiện</span>
-            <span id="p360-events" class="font-mono font-extrabold text-base text-purple-600 block mt-1">0 Đã tham gia</span>
+            <span id="p360-events" class="font-mono font-extrabold text-base text-purple-600 block mt-1">0 Đã đăng ký</span>
           </div>
           <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block">Quỹ CLB</span>
-            <span id="p360-fund" class="font-mono font-bold text-xs text-emerald-700 block mt-1">—</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Cấp độ</span>
+            <span id="p360-level" class="font-mono font-bold text-xs text-emerald-700 block mt-1">—</span>
           </div>
           <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block">Cấp bậc</span>
-            <span id="p360-rank" class="font-mono font-bold text-xs text-navy-900 block mt-1">—</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Streak</span>
+            <span id="p360-streak" class="font-mono font-bold text-xs text-navy-900 block mt-1">—</span>
           </div>
         </div>
+
+        <!-- Badges (dữ liệu thật từ contract: badges[]) -->
+        <div id="p360-badges" class="hidden flex flex-wrap gap-1.5"></div>
 
         <!-- Historical XP Ledger -->
         <div>
@@ -1143,26 +1147,87 @@
       });
     })();
 
+    /* P02 fix: guard chống response cũ (A) ghi đè hồ sơ (B) khi mở liên tiếp. */
+    let p360ReqToken = 0;
+
     window.openProfile360Modal = async function(id) {
       const modal = document.getElementById('modal-p360');
       modal.classList.remove('hidden');
+      const req = ++p360ReqToken; // P02: token phiên — response cũ bị bỏ qua
+      const set = (elId, text) => { const el = document.getElementById(elId); if (el) el.innerText = text; };
+      // P02: reset về trạng thái loading trước khi fetch — không giữ dữ liệu
+      // hồ sơ cũ khi request mới đang chạy hoặc lỗi.
+      set('p360-name', '...');
+      set('p360-mssv', '—'); set('p360-class', '—');
+      set('p360-role', '...'); set('p360-xp', '... XP');
+      set('p360-att', '...'); set('p360-events', '...');
+      set('p360-level', '—'); set('p360-streak', '—');
+      const statusChip = document.getElementById('p360-status');
+      if (statusChip) statusChip.classList.add('hidden');
+      const badgesBox = document.getElementById('p360-badges');
+      if (badgesBox) { badgesBox.classList.add('hidden'); badgesBox.innerHTML = ''; }
+      const ledBox0 = document.getElementById('p360-ledger');
+      if (ledBox0) ledBox0.innerHTML = '<div class="p-4 text-center text-slate-400">Đang tải hồ sơ 360°...</div>';
+
       try {
         const d = await ApiClient.get(`/members/${id}/profile360/`);
-        const m = d.member || {};
+        if (req !== p360ReqToken) return; // P02: response cũ — bỏ qua
         const s = d.stats || {};
-        const led = d.xp_ledger || [];
-
-        document.getElementById('p360-name').innerText = m.ho_ten || 'Thành viên';
-        document.getElementById('p360-mssv').innerText = m.mssv || '—';
-        document.getElementById('p360-class').innerText = m.lop || '—';
-        document.getElementById('p360-role').innerText = m.role || 'MEMBER';
-        document.getElementById('p360-avatar').innerText = Utils.initials(m.ho_ten);
-        document.getElementById('p360-xp').innerText = '+' + Utils.fmtNum(s.total_xp || 0) + ' XP';
-        document.getElementById('p360-att').innerText = Math.round((Number(s.attendance_rate) || 0) * 100) + '%';
-        document.getElementById('p360-events').innerText = (s.events_joined || 0) + ' Đã tham gia';
-        document.getElementById('p360-fund').innerText = s.is_fund_paid ? 'Đã đóng đủ' : 'Chưa nộp';
-        document.getElementById('p360-rank').innerText = s.rank_name || 'Đồng';
-
+        // P02 fix: identity nằm ở ROOT (d.ho_ten/mssv/lop) — KHÔNG phải d.member.
+        set('p360-name', d.ho_ten || 'Thành viên');
+        const avEl = document.getElementById('p360-avatar');
+        if (avEl) avEl.innerText = Utils.initials(d.ho_ten);
+        set('p360-mssv', d.mssv || '—');
+        set('p360-class', d.lop || '—');
+        // P02 fix: contract không có d.member.role — dùng board_positions thật
+        // (chức vụ BCN nếu có, ngược lại "Thành viên"). Không bịa vai trò.
+        const pos = Array.isArray(d.board_positions) ? d.board_positions : [];
+        set('p360-role', pos.length ? (pos[0].chuc_vu || 'Ban Chủ Nhiệm') : 'Thành viên');
+        // P02 fix: stats.xp_points (không phải stats.total_xp).
+        set('p360-xp', '+' + Utils.fmtNum(s.xp_points || 0) + ' XP');
+        // P02 fix: stats.attendance_rate_percent đã là phần trăm, và có thể
+        // là null (chưa có buổi điểm danh nào) — phân biệt null với 0%.
+        set('p360-att',
+          (s.attendance_rate_percent === null || s.attendance_rate_percent === undefined)
+            ? 'Chưa có dữ liệu'
+            : Math.round(Number(s.attendance_rate_percent)) + '%');
+        // P02 fix: stats.events_registered (đã ĐĂNG KÝ, không phải đã tham gia).
+        set('p360-events', Utils.fmtNum(s.events_registered || 0) + ' Đã đăng ký');
+        // P02 fix: contract không có is_fund_paid / rank_name — thay bằng
+        // current_level và streak_count có thật trong stats.
+        set('p360-level', s.current_level ? String(s.current_level) : '—');
+        set('p360-streak', (s.streak_count === null || s.streak_count === undefined)
+          ? '—' : Utils.fmtNum(s.streak_count) + ' ngày');
+        // trạng thái hoạt động thật từ root contract
+        if (statusChip) {
+          if (d.trang_thai_hd) {
+            statusChip.innerText = d.trang_thai_hd;
+            statusChip.className = 'px-2 py-0.5 rounded-full font-bold text-[10px] ' +
+              (d.trang_thai_hd === 'ACTIVE'
+                ? 'bg-emerald-50 text-emerald-700'
+                : d.trang_thai_hd === 'LEAVE'
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-slate-100 text-slate-600');
+            statusChip.classList.remove('hidden');
+          } else {
+            statusChip.classList.add('hidden');
+          }
+        }
+        // badges thật (nếu có)
+        if (badgesBox) {
+          const badges = Array.isArray(d.badges) ? d.badges : [];
+          if (badges.length) {
+            badgesBox.innerHTML = badges.map(b => `
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold text-[10px]" title="${Utils.escapeHtml(b.awarded_at ? 'Trao ngày ' + Utils.fmtDate(b.awarded_at) : '')}">
+                <span class="material-symbols-outlined text-[12px]">military_tech</span>
+                ${Utils.escapeHtml(b.ten_badge || 'Huy hiệu')}
+              </span>`).join('');
+            badgesBox.classList.remove('hidden');
+          }
+        }
+        // P02 fix: ledger thật là d.recent_xp[] với {reason, amount, created_at}
+        // (không phải d.xp_ledger[].ly_do/so_diem).
+        const led = Array.isArray(d.recent_xp) ? d.recent_xp : [];
         const ledBox = document.getElementById('p360-ledger');
         if (!led.length) {
           ledBox.innerHTML = '<div class="p-4 text-center text-slate-400">Chưa có giao dịch XP nào.</div>';
@@ -1170,21 +1235,193 @@
           ledBox.innerHTML = led.map(x => `
             <div class="p-2.5 flex items-center justify-between">
               <div>
-                <span class="font-bold text-navy-900 block">${Utils.escapeHtml(x.ly_do || 'Tích lũy XP')}</span>
+                <span class="font-bold text-navy-900 block">${Utils.escapeHtml(x.reason || 'Tích lũy XP')}</span>
                 <span class="text-[10px] text-slate-400">${Utils.fmtDateTime(x.created_at)}</span>
               </div>
-              <span class="font-mono font-bold ${x.so_diem >= 0 ? 'text-emerald-600' : 'text-red-600'} text-xs">
-                ${x.so_diem >= 0 ? '+' : ''}${Utils.fmtNum(x.so_diem)} XP
+              <span class="font-mono font-bold ${Number(x.amount) >= 0 ? 'text-emerald-600' : 'text-red-600'} text-xs">
+                ${Number(x.amount) >= 0 ? '+' : ''}${Utils.fmtNum(x.amount)} XP
               </span>
             </div>
           `).join('');
         }
       } catch (err) {
+        if (req !== p360ReqToken) return; // response cũ — bỏ qua
+        const ledBox = document.getElementById('p360-ledger');
+        if (ledBox) ledBox.innerHTML = `<div class="p-4 text-center text-red-500">${Utils.escapeHtml(err.message || 'Không tải được hồ sơ thành viên')}</div>`;
         Toast.error(err.message || 'Không tải được hồ sơ thành viên');
       }
     };
     window.closeProfile360Modal = function() {
       document.getElementById('modal-p360').classList.add('hidden');
+    };
+
+    /* ================= P01: HELPERS FORM CHUNG ================= */
+    function memberBtnLoading(btn, text) {
+      if (!btn) return () => {};
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin inline-block align-middle">progress_activity</span> ${Utils.escapeHtml(text)}`;
+      return () => { btn.disabled = false; btn.innerHTML = original; };
+    }
+    function clearMemberFieldErrors(root) {
+      Utils.qsa('[data-field]', root).forEach((p) => { p.classList.add('hidden'); p.textContent = ''; });
+    }
+    function showMemberFieldErrors(root, errors) {
+      if (!errors) return;
+      Object.entries(errors).forEach(([field, msgs]) => {
+        const p = root.querySelector(`[data-field="${field}"]`);
+        if (p) { p.textContent = Array.isArray(msgs) ? msgs.join(' ') : String(msgs); p.classList.remove('hidden'); }
+      });
+    }
+    const MEMBER_GIOI_TINH = { NAM: 'Nam', NU: 'Nữ', KHAC: 'Khác' };
+    const MEMBER_TRANG_THAI = { ACTIVE: 'Đang hoạt động', INACTIVE: 'Bảo lưu', LEAVE: 'Ngừng hoạt động' };
+
+    /* ================= P01: SỬA THÔNG TIN + ĐỔI TRẠNG THÁI =================
+     * Phục hồi luồng bị mất từ lần đại tu UI (so với ac51233): backend PATCH
+     * /members/{id}/ vẫn nguyên (MemberUpdateSerializer: ho_ten/email/mssv/
+     * sdt/lop/gioi_tinh/trang_thai_hd/role; BCN-only cho các field nhạy cảm).
+     * Lưu ý an toàn quyền: GET /members/{id}/ trả MemberProfileListSerializer
+     * KHÔNG chứa `role` → không prefill/không gửi role (PATCH là partial) để
+     * tránh vô tình hạ quyền BCN/ADMIN khi lưu. */
+
+    /** Sau khi lưu: làm mới danh sách (giữ page/filter hợp lý) + KPI/nav badge
+     * để thành viên rời ACTIVE biến khỏi filter ACTIVE và KPI cập nhật. */
+    function refreshMembersAfterMutation() {
+      loadMembers();
+      if (typeof loadKpis === "function") loadKpis();
+    }
+
+    window.openEditMemberModal = async function(id) {
+      let m;
+      try {
+        m = await ApiClient.get(`/members/${id}/`);
+      } catch (err) {
+        Toast.error(err.message || 'Không tải được thông tin thành viên');
+        return;
+      }
+      openModal({
+        title: "Sửa thông tin thành viên",
+        bodyHTML: `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="med-hoten">Họ và tên <span class="text-red-500">*</span></label>
+              <input id="med-hoten" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500" value="${Utils.escapeHtml(m.ho_ten || '')}">
+              <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="ho_ten"></p>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="med-email">Email</label>
+              <input id="med-email" type="email" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500" value="${Utils.escapeHtml(m.email || '')}">
+              <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="email"></p>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="med-mssv">MSSV</label>
+              <input id="med-mssv" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500" value="${Utils.escapeHtml(m.mssv || '')}">
+              <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="mssv"></p>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="med-sdt">Số điện thoại</label>
+              <input id="med-sdt" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500" value="${Utils.escapeHtml(m.sdt || '')}">
+              <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="sdt"></p>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="med-lop">Lớp</label>
+              <input id="med-lop" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500" value="${Utils.escapeHtml(m.lop || '')}">
+              <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="lop"></p>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="med-gt">Giới tính</label>
+              <select id="med-gt" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500">
+                <option value="">Chưa rõ</option>
+                ${Object.entries(MEMBER_GIOI_TINH).map(([k, v]) => `<option value="${k}"${m.gioi_tinh === k ? ' selected' : ''}>${v}</option>`).join('')}
+              </select>
+              <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="gioi_tinh"></p>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="med-tt">Trạng thái hoạt động</label>
+              <select id="med-tt" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500">
+                ${Object.entries(MEMBER_TRANG_THAI).map(([k, v]) => `<option value="${k}"${m.trang_thai_hd === k ? ' selected' : ''}>${v}</option>`).join('')}
+              </select>
+              <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="trang_thai_hd"></p>
+            </div>
+          </div>`,
+        footerHTML: `
+          <button data-close class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs">Đóng</button>
+          <button id="med-submit" class="px-4 py-2 rounded-xl bg-navy-900 hover:bg-navy-850 text-white font-bold text-xs flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">check</span> Lưu thay đổi
+          </button>`,
+        onMount(backdrop, close) {
+          backdrop.querySelector('[data-close]').addEventListener('click', close);
+          backdrop.querySelector('#med-submit').addEventListener('click', async (e) => {
+            clearMemberFieldErrors(backdrop);
+            const hoTen = backdrop.querySelector('#med-hoten').value.trim();
+            if (!hoTen) {
+              Toast.warning('Vui lòng nhập họ và tên.');
+              backdrop.querySelector('#med-hoten').focus();
+              return;
+            }
+            const undo = memberBtnLoading(backdrop.querySelector('#med-submit'), 'Đang lưu...');
+            try {
+              await ApiClient.patch(`/members/${id}/`, {
+                ho_ten: hoTen,
+                email: backdrop.querySelector('#med-email').value.trim(),
+                mssv: backdrop.querySelector('#med-mssv').value.trim(),
+                sdt: backdrop.querySelector('#med-sdt').value.trim(),
+                lop: backdrop.querySelector('#med-lop').value.trim(),
+                gioi_tinh: backdrop.querySelector('#med-gt').value,
+                trang_thai_hd: backdrop.querySelector('#med-tt').value,
+              });
+              Toast.success('Đã cập nhật thông tin thành viên.');
+              close();
+              refreshMembersAfterMutation();
+            } catch (err) {
+              showMemberFieldErrors(backdrop, err.errors);
+              Toast.error(err.message || 'Không lưu được thông tin thành viên.');
+            } finally {
+              undo();
+            }
+          });
+        },
+      });
+    };
+
+    window.openStatusMemberModal = function(id, current) {
+      openModal({
+        title: "Đổi trạng thái hoạt động",
+        bodyHTML: `
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 mb-1" for="mst-select">Trạng thái mới</label>
+            <select id="mst-select" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-cyan-500">
+              ${Object.entries(MEMBER_TRANG_THAI).map(([k, v]) => `<option value="${k}"${current === k ? ' selected' : ''}>${v}</option>`).join('')}
+            </select>
+            <p class="text-[10px] text-slate-400 mt-2">"Bảo lưu" phù hợp thành viên tạm ngừng tham gia, "Ngừng hoạt động" cho thành viên rời CLB. Thành viên rời ACTIVE sẽ biến khỏi bộ lọc ACTIVE.</p>
+            <p class="form-err hidden text-[10px] text-red-600 mt-1" data-field="trang_thai_hd"></p>
+          </div>`,
+        footerHTML: `
+          <button data-close class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs">Đóng</button>
+          <button id="mst-submit" class="px-4 py-2 rounded-xl bg-navy-900 hover:bg-navy-850 text-white font-bold text-xs flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">check</span> Xác nhận
+          </button>`,
+        onMount(backdrop, close) {
+          backdrop.querySelector('[data-close]').addEventListener('click', close);
+          backdrop.querySelector('#mst-submit').addEventListener('click', async () => {
+            clearMemberFieldErrors(backdrop);
+            const undo = memberBtnLoading(backdrop.querySelector('#mst-submit'), 'Đang lưu...');
+            try {
+              await ApiClient.patch(`/members/${id}/`, {
+                trang_thai_hd: backdrop.querySelector('#mst-select').value,
+              });
+              Toast.success('Đã đổi trạng thái thành viên.');
+              close();
+              refreshMembersAfterMutation();
+            } catch (err) {
+              showMemberFieldErrors(backdrop, err.errors);
+              Toast.error(err.message || 'Không đổi được trạng thái thành viên.');
+            } finally {
+              undo();
+            }
+          });
+        },
+      });
     };
 
     // Generic Dynamic Modal Helper
@@ -1729,7 +1966,7 @@
                     <a href="javascript:void(0)" onclick="openProfile360Modal('${m.id}')" class="font-heading font-bold text-xs text-navy-900 hover:text-cyan-600 block">
                       ${Utils.escapeHtml(m.ho_ten)}
                     </a>
-                    <div class="text-[10px] text-slate-400">${Utils.escapeHtml(m.role || 'Thành viên')}</div>
+                    <div class="text-[10px] text-slate-400">${Utils.escapeHtml(m.current_level || 'Thành viên')}</div>
                   </div>
                 </div>
               </td>
@@ -1751,6 +1988,15 @@
                 <div class="inline-flex items-center gap-1">
                   <button onclick="openProfile360Modal('${m.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-cyan-600 hover:bg-slate-100" title="Xem hồ sơ 360°">
                     <span class="material-symbols-outlined text-[18px]">visibility</span>
+                  </button>
+                  <!-- P01 fix: phục hồi Sửa thông tin + Đổi trạng thái (mất từ
+                       lần đại tu UI so với ac51233). Backend PATCH /members/{id}/
+                       vẫn còn; RBAC BCN/ADMIN do server enforce + gác hiển thị. -->
+                  <button onclick="openEditMemberModal(${m.id})" class="p-1.5 rounded-lg text-slate-500 hover:text-navy-900 hover:bg-slate-100" title="Sửa thông tin">
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                  <button onclick="openStatusMemberModal(${m.id}, '${Utils.escapeHtml(m.trang_thai_hd || 'ACTIVE')}')" class="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50" title="Đổi trạng thái">
+                    <span class="material-symbols-outlined text-[18px]">shield_person</span>
                   </button>
                 </div>
               </td>
@@ -2219,10 +2465,16 @@
             <td class="py-3 px-3 font-mono text-slate-600">${Utils.fmtDate(k.tu_ngay)}</td>
             <td class="py-3 px-3 font-mono text-slate-600">${Utils.fmtDate(k.den_ngay)}</td>
             <td class="py-3 px-4">
-              <span class="font-bold text-navy-900">${Utils.escapeHtml(k.nguoi_khoa || 'Thủ quỹ')}</span>
+              <!-- P04 fix: serializer trả locked_by (email người khóa thật) —
+                   không phải nguoi_khoa; không hiển thị “Thủ quỹ” bịa. -->
+              <span class="font-bold text-navy-900">${Utils.escapeHtml(k.locked_by || '—')}</span>
             </td>
-            <td class="py-3 px-3 font-mono text-slate-500">${Utils.fmtDateTime(k.ngay_khoa)}</td>
-            <td class="py-3 px-3 text-right font-mono font-bold text-emerald-600">${Utils.fmtNum(k.so_du_cuoi_ky)} ₫</td>
+            <!-- P04 fix: locked_at (ISO) — không phải ngay_khoa. -->
+            <td class="py-3 px-3 font-mono text-slate-500">${Utils.fmtDateTime(k.locked_at)}</td>
+            <!-- P04 fix: contract KHÔNG có so_du_cuoi_ky — không lấy balance
+                 hiện tại làm số dư cuối kỳ lịch sử. Hiển thị ghi_chu thật,
+                 thiếu thì thể hiện “—” rõ ràng. -->
+            <td class="py-3 px-3 text-right text-slate-600 max-w-[220px] truncate" title="${Utils.escapeHtml(k.ghi_chu || '')}">${Utils.escapeHtml(k.ghi_chu || '—')}</td>
           </tr>
         `).join('');
       } catch (err) {
