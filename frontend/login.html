@@ -268,7 +268,10 @@
           <!-- Notification / System Alert Box -->
           <div class="hidden items-start gap-3 p-3.5 rounded-xl text-sm font-medium mb-5 shadow-sm" id="login-alert" role="alert">
             <span class="material-symbols-outlined text-lg shrink-0" id="login-alert-icon">info</span>
-            <span id="login-alert-text">Thông báo hệ thống</span>
+            <span class="flex-1" id="login-alert-text">Thông báo hệ thống</span>
+            <button type="button" id="login-alert-close" aria-label="Đóng thông báo" class="text-current opacity-60 hover:opacity-100 p-0.5 rounded cursor-pointer transition-opacity shrink-0">
+              <span class="material-symbols-outlined text-base">close</span>
+            </button>
           </div>
 
           <!-- Login Form Element -->
@@ -482,6 +485,11 @@
       const alertBox = document.getElementById("login-alert");
       const alertText = document.getElementById("login-alert-text");
       const alertIcon = document.getElementById("login-alert-icon");
+      const alertClose = document.getElementById("login-alert-close");
+
+      if (alertClose) {
+        alertClose.addEventListener("click", hideAlert);
+      }
 
       function showAlert(msg, type = "error") {
         if (!alertBox || !alertText) return;
