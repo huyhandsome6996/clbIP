@@ -68,7 +68,8 @@ async function main() {
   // IDENTITY chính xác (email khớp, đúng 1 kết quả), không chỉ count/status
   const m121 = await api("/members/?search=e2e-member121", { token: bcn.access });
   const m121Items = m121.env.data.items || [];
-  const m121exact = m121Items.filter((m) => m.user_email === "e2e-member121@clbip.test");
+  // serializer trả trường `email` (không có user_email)
+  const m121exact = m121Items.filter((m) => m.email === "e2e-member121@clbip.test");
   assert(
     m121.status === 200 && m121exact.length === 1 && !!m121exact[0].id,
     "E2E-§6: thành viên #121 chọn được — identity khớp (email + id)",
@@ -119,12 +120,15 @@ async function main() {
     tickets.status === 200 && t2Items.length > 0,
     "E2E-§6b: vé phân trang — trang 2 có dữ liệu",
   );
-  // vé #25 → thành viên e2e-member025: tìm identity qua search trang sau
-  const reg25 = await api(`/events/${mainEvId}/registrations/?page_size=100&page=2`, { token: bcn.access });
-  const reg25Items = reg25.env.data.items || [];
+  // vé #25 → thành viên e2e-member025: tìm identity qua TRANG SAU (page_size
+  // 50 khớp với §6b — page_size tối đa của StandardPagination là 100, dùng
+  // đúng tham số đã kiểm chứng)
+  await new Promise((r) => setTimeout(r, 1200));
+  const reg25 = await api(`/events/${mainEvId}/registrations/?page_size=50&page=2`, { token: bcn.access });
+  const reg25Items = (reg25.env.data && reg25.env.data.items) || [];
   assert(
     reg25.status === 200 && reg25Items.some((r) => (r.member_ten || "").includes("025")),
-    "E2E-§6c: vé của member025 đọc được ở trang sau (không mất vé trang 2+)",
+    `E2E-§6c: vé của member025 đọc được ở trang sau (không mất vé trang 2+) [status=${reg25.status}, page2=${reg25Items.length}]`,
   );
 
   // 7) F12 — has_voted per user
@@ -143,9 +147,14 @@ async function main() {
     } else {
       assert(true, "E2E-F12: poll đã vote từ lần chạy trước (has_voted=true)");
     }
+    await new Promise((r) => setTimeout(r, 1200)); // né burst throttle giữa các GET dồn dập
     const other = await api("/polls/", { token: bcn.access });
-    const pOther = (other.env.data.items || []).find((p) => p.id === e2ePoll.id);
-    assert(pOther && pOther.has_voted === false, "E2E-F12c: user khác has_voted=false (user-scoped)");
+    const otherItems = (other.env.data && other.env.data.items) || [];
+    const pOther = otherItems.find((p) => p.id === e2ePoll.id);
+    assert(
+      other.status === 200 && pOther && pOther.has_voted === false,
+      `E2E-F12c: user khác has_voted=false (user-scoped) [status=${other.status}]`,
+    );
   } else {
     assert(false, "E2E-F12: không tìm thấy poll E2E");
   }
@@ -153,6 +162,7 @@ async function main() {
   // 8) Idempotency replay qua HTTP: POST quỹ 2 lần cùng key → 201 rồi 200 cùng id
   const idemKey = `e2e-idem-${Date.now()}`; // key duy nhất mỗi lần chạy E2E
   const txBody = { loai_gd: "THU", so_tien: 77_000, nguoi_thuc_hien: "E2E Idempotency", ngay_gd: new Date().toISOString() };
+  await new Promise((r) => setTimeout(r, 1600)); // POST vote trước đó chiếm cửa sổ throttle 1s của POST — chờ trước lần ghi đầu
   const t1 = await api("/funds/", { method: "POST", token: bcn.access, body: txBody, headers: { "Idempotency-Key": idemKey } });
   await new Promise((r) => setTimeout(r, 1500)); // qua cửa sổ throttle 1s — replay là kịch bản mạng chậm, không phải flood
   const t2 = await api("/funds/", { method: "POST", token: bcn.access, body: txBody, headers: { "Idempotency-Key": idemKey } });
@@ -162,7 +172,10 @@ async function main() {
       t2.env.data.ma_phieu === t1.env.data.ma_phieu,
     "E2E-IDEMb: retry cùng key → replay cùng phiếu (id + ma_phieu GIỐNG NHAU)",
   );
-  assert(!!t1.env.data.ma_phieu && t1.env.data.ma_phieu.startsWith("PT"), "E2E-IDEMc: mã phiếu đúng định danh (PT-...)");
+  assert(
+    t1.status === 201 && !!t1.env.data && t1.env.data.ma_phieu && t1.env.data.ma_phieu.startsWith("PT"),
+    `E2E-IDEMc: mã phiếu đúng định danh (PT-...) [status=${t1.status}]`,
+  );
 
   // 9) F13 — Chart.js vendor cùng origin (CSP-friendly)
   const chart = await fetch(`${BASE}/frontend/assets/chart.umd.min.js`);
