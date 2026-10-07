@@ -162,6 +162,10 @@
     nonceFetchingFor: null,
   };
   let nonceTimer = null;
+  // R03 (QA review 69db15d): retry có kiểm soát — KHÔNG tự fetch mỗi giây
+  // khi API chết (spam toast), KHÔNG giữ mã cũ hiển thị như mã còn hạn.
+  let nonceRetryTimer = null; // setTimeout backoff cho lần tự thử lại
+  let nonceAutoRetries = 0; // số lần auto-retry đã dùng cho đợt lỗi hiện tại
 
   /* ================= Helper chung ================= */
   function openModal({ title, bodyHTML, onMount, footerHTML = "", onClose = null }) {
@@ -254,7 +258,7 @@
   /* ================= Khối phiên đang mở + nonce ================= */
   async function loadOpenSession() {
     const wrap = document.getElementById("open-session-wrap");
-    stopNonceTimer();
+    stopNonceLoops(); // R03: dọn cả backoff retry khi tải lại khối phiên
     wrap.innerHTML = `<div class="card card-pad open-card"><div class="skeleton" style="width:30%;height:18px"></div><div class="skeleton mt-2" style="width:70%"></div></div>`;
     try {
       // Audit F10: tải TOÀN BỘ phiên OPEN (đủ trang) — trước đây chỉ lấy
@@ -295,7 +299,7 @@
     if (state.openSession?.id === id) return;
     const target = state.openSessions.find((s) => s.id === id);
     if (!target) return;
-    stopNonceTimer();
+    stopNonceLoops(); // R03: dọn cả backoff retry khi đổi phiên
     state.openSession = target;
     state.nonce = null;
     state.nonceRemain = 0;
@@ -373,6 +377,31 @@
     if (nonceTimer) { clearInterval(nonceTimer); nonceTimer = null; }
   }
 
+  function stopNonceRetryTimer() {
+    if (nonceRetryTimer) { clearTimeout(nonceRetryTimer); nonceRetryTimer = null; }
+  }
+
+  /** Dọn TOÀN BỘ vòng đời nonce (đếm ngược + backoff) — dùng khi đổi phiên,
+   *  đóng phiên, tải lại danh sách hoặc rời trang (R03: không timer tự hồi sinh). */
+  function stopNonceLoops() {
+    stopNonceTimer();
+    stopNonceRetryTimer();
+  }
+
+  /** R03: vô hiệu hóa mã trên UI NGAY khi hết hạn/lỗi fetch — hiển thị placeholder
+   *  `······` (giống trạng thái chưa có mã), remaining = 0 (không bao giờ âm).
+   *  Mã chết không được phép trông như mã còn hạn. */
+  function invalidateNonceUI() {
+    state.nonce = "";
+    state.nonceRemain = 0;
+    const val = document.getElementById("nonce-value");
+    const remainEl = document.getElementById("nonce-remain");
+    const barEl = document.getElementById("nonce-bar");
+    if (val) val.textContent = "······";
+    if (remainEl) remainEl.textContent = "0";
+    if (barEl) barEl.style.width = "0%";
+  }
+
   async function fetchNonce() {
     const s = state.openSession;
     // review 13-c P2-2: KHÔNG dùng cờ toàn cục chặn fetch của phiên MỚI —
@@ -395,17 +424,41 @@
       if (!val) return; // card đã bị render lại
       val.textContent = state.nonce.padStart(6, "0").slice(-6);
       updateNonceUI();
+      // R03: fetch thành công → reset bộ đếm backoff + hủy retry đang treo
+      stopNonceRetryTimer();
+      nonceAutoRetries = 0;
       stopNonceTimer();
       nonceTimer = setInterval(() => {
         if (state.openSession?.id !== sessionId) { stopNonceTimer(); return; }
         state.nonceRemain -= 1;
-        if (state.nonceRemain <= 0) { fetchNonce(); return; }
+        if (state.nonceRemain <= 0) {
+          // R03: hết hạn → dừng đếm ngược cũ + vô hiệu hóa mã TRƯỚC khi xin mới
+          // (không còn khe hở tick âm, không hiển thị mã chết như mã sống)
+          stopNonceTimer();
+          invalidateNonceUI();
+          fetchNonce();
+          return;
+        }
         updateNonceUI();
       }, 1000);
     } catch (err) {
       console.error(err);
       if (state.openSession?.id === sessionId) {
+        // R03: trạng thái "chưa lấy được mã" rõ ràng — invalidate + toast MỘT
+        // lần, tự thử lại TỐI ĐA 1 lần sau 5s (backoff), sau đó chỉ retry
+        // thủ công bằng nút "Lấy mã mới". Không còn fetch mỗi giây vô hạn.
+        invalidateNonceUI();
+        const remainEl = document.getElementById("nonce-remain");
+        if (remainEl) remainEl.textContent = "—";
         Toast.error(err.message || "Không lấy được mã nonce.");
+        if (nonceAutoRetries < 1) {
+          nonceAutoRetries += 1;
+          stopNonceRetryTimer();
+          nonceRetryTimer = setTimeout(() => {
+            nonceRetryTimer = null;
+            if (state.openSession?.id === sessionId) fetchNonce();
+          }, 5000);
+        }
       }
     } finally {
       if (state.nonceFetchingFor === sessionId) state.nonceFetchingFor = null;
@@ -435,7 +488,7 @@
     try {
       await ApiClient.post(`/attendance/sessions/${s.id}/close/`);
       Toast.success(`Đã đóng phiên "${s.ten_phien}".`, "Thành công");
-      stopNonceTimer();
+      stopNonceLoops(); // R03: phiên đã đóng — không timer nào sống sót
       await Promise.all([loadOpenSession(), loadSessions()]);
     } catch (err) {
       Toast.error(err.message || "Không đóng được phiên.");
