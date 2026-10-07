@@ -2300,7 +2300,7 @@
               return;
             }
             try {
-              await ApiClient.post("/funds/locks/", { ten_ky, tu_ngay, den_ngay });
+              await ApiClient.post("/funds/lock-period/", { ten_ky, tu_ngay, den_ngay }); // N01 E2E: main POST nhầm /locks/ (GET-only) → 405; route POST thật là /lock-period/
               Toast.success("Đã khóa sổ kỳ thành công!");
               close();
               // Audit F14: khóa kỳ đổi is_locked của nhiều giao dịch hiện hành →

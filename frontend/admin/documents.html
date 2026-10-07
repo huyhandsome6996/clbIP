@@ -3179,7 +3179,8 @@
     let tasks = [];
     try {
       const res = await ApiClient.get('/events/' + evId + '/tasks/');
-      tasks = res.items || res.results || res || [];
+      // Endpoint DAG trả data={tasks, is_valid_dag, topological_order, ...}
+      tasks = res.tasks || res.items || res.results || (Array.isArray(res) ? res : []);
     } catch (e) {
       pane.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Lỗi tải danh sách nhiệm vụ DAG.</p>';
       return;
@@ -3267,9 +3268,13 @@
           Toast.success(`Đã thêm công việc "${ten}".`, 'Thành công');
           await renderTasksPane(evId);
         } catch (err) {
-          // Audit F08: DAG chặn → hiển thị danh sách task chặn (blocking_tasks)
-          const blockers = (err.errors && (err.errors.blocking_tasks || err.errors.non_field_errors)) || [];
-          const names = Array.isArray(blockers) ? blockers.join('; ') : String(blockers || '');
+          // Audit F08: DAG chặn → hiển thị danh sách task chặn (blocking_tasks:
+          // [{id, ten_task}] hoặc string[]) — map object thành tên dễ đọc.
+          const raw = (err.errors && (err.errors.blocking_tasks || err.errors.non_field_errors)) || [];
+          const names = (Array.isArray(raw) ? raw : [raw])
+            .map((b) => (b && typeof b === 'object' ? b.ten_task : String(b)))
+            .filter(Boolean)
+            .join('; ');
           if (names) {
             await renderTasksPane(evId, names);
           } else {
@@ -3510,10 +3515,12 @@
       Toast.success(checked ? 'Đã đánh dấu hoàn thành nhiệm vụ.' : 'Đã mở lại nhiệm vụ.');
       await renderTasksPane(evId || state.currentEvent.id);
     } catch (err) {
-      // Audit F08/R01: chặn DAG — hoàn thành khi tiền nhiệm chưa xong hoặc
-      // mở lại khi task HẬU NHIỆM đã hoàn thành → 400 + blocking_tasks.
-      const blockers = (err.errors && (err.errors.blocking_tasks || err.errors.non_field_errors)) || [];
-      const names = Array.isArray(blockers) ? blockers.join('; ') : String(blockers || '');
+      // Audit F08/R01: chặn DAG — map blocking_tasks [{id, ten_task}] thành tên
+      const raw = (err.errors && (err.errors.blocking_tasks || err.errors.non_field_errors)) || [];
+      const names = (Array.isArray(raw) ? raw : [raw])
+        .map((b) => (b && typeof b === 'object' ? b.ten_task : String(b)))
+        .filter(Boolean)
+        .join('; ');
       Toast.error(names ? 'Bị chặn bởi: ' + names : (err.message || 'Không thể cập nhật nhiệm vụ.'));
       await renderTasksPane(evId || state.currentEvent.id); // revert checkbox theo trạng thái server
     }
