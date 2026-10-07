@@ -111,10 +111,25 @@ class AttendanceService:
 
     @classmethod
     def close_session(cls, session: AttendanceSession, closed_by: Optional[object] = None) -> AttendanceSession:
-        """Đóng phiên — chốt danh sách điểm danh."""
-        session.trang_thai = AttendanceSession.TrangThai.CLOSED
-        session.dong_phien_at = timezone.now()
-        session.save(update_fields=["trang_thai", "dong_phien_at", "updated_at"])
+        """
+        Đóng phiên — chốt danh sách điểm danh.
+
+        Review R04: bọc atomic + khóa hàng PHIÊN — close và check-in /
+        bulk_override tuần tự hóa trên cùng chốt; double-close gọi hai lần
+        vẫn an toàn (lần sau thấy CLOSED → giữ nguyên mốc dong_phien_at).
+        """
+        with transaction.atomic():
+            try:
+                session = cls._repo().get_session_for_update(session.id)
+            except AttendanceSession.DoesNotExist:
+                raise NotFoundException("Không tìm thấy phiên điểm danh.")
+            if session.trang_thai == AttendanceSession.TrangThai.CLOSED:
+                return session  # đã đóng rồi — idempotent, không đè mốc thời gian
+
+            session.trang_thai = AttendanceSession.TrangThai.CLOSED
+            session.dong_phien_at = timezone.now()
+            session.save(update_fields=["trang_thai", "dong_phien_at", "updated_at"])
+
         logger.info(
             "Đóng phiên %s bởi %s", session.id, getattr(closed_by, "email", None)
         )
@@ -168,6 +183,17 @@ class AttendanceService:
         #      ghi được, request còn lại bắt duplicate 409. XP không đúp vì
         #      ledger idempotent; invariant "một lần check-in" giờ chặt hơn.
         with transaction.atomic():
+            # R04: khóa PHIÊN trước (thứ tự khóa thống nhất: session → record).
+            # check-in / bulk_override / close_session tuần tự hóa trên cùng
+            # chốt phiên; re-check OPEN dưới khóa để không ghi record sau khi
+            # phiên đã bị đóng giữa chừng.
+            try:
+                session = cls._repo().get_session_for_update(session_id)
+            except AttendanceSession.DoesNotExist:
+                raise NotFoundException("Không tìm thấy phiên điểm danh.")
+            if session.trang_thai != AttendanceSession.TrangThai.OPEN:
+                raise SessionClosedException("Phiên điểm danh đã đóng hoặc chưa mở.")
+
             try:
                 record = cls._repo().get_record_for_member_locked(session, member)
             except AttendanceRecord.DoesNotExist:
@@ -390,6 +416,16 @@ class AttendanceService:
         # ---- BƯỚC 2: GHI ATOMIC — all-or-nothing ----
         updated = 0
         with db_transaction.atomic():
+            # R04: khóa PHIÊN trước (thứ tự: session → record) — override,
+            # check-in và close_session cùng serialization point; re-check
+            # OPEN dưới khóa để không override vào phiên đã đóng giữa chừng.
+            try:
+                session = cls._repo().get_session_for_update(session.id)
+            except AttendanceSession.DoesNotExist:
+                raise NotFoundException("Không tìm thấy phiên điểm danh.")
+            if session.trang_thai != AttendanceSession.TrangThai.OPEN:
+                raise SessionClosedException("Phiên điểm danh đã đóng — không override được nữa.")
+
             for member_id, trang_thai in parsed:
                 record, created = cls._repo().get_or_create_record(
                     session=session,

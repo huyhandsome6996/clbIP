@@ -124,3 +124,31 @@ class FundPeriodLock(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"Kỳ {self.ten_ky} ({self.tu_ngay} → {self.den_ngay})"
+
+
+class FundLedgerAnchor(TimeStampedModel):
+    """
+    Hàng NEO khóa bi sổ (review R04 — 07/10/2026).
+
+    Vấn đề: trước đây mọi writer chỉ khóa "bản ghi MỚI NHẤT" của sổ
+    (`get_last_transaction_for_update`). Sổ RỖNG thì không có hàng nào để
+    khóa → 2 giao dịch song song cùng đọc số dư 0 và cùng ghi → mất cập nhật
+    chuỗi số dư (Σthu − Σchi ≠ so_du của dòng cuối).
+
+    Giải pháp: MỌI writer của sổ quỹ `select_for_update()` đúng hàng neo
+    singleton này TRƯỚC KHI đọc/ghi — sổ rỗng hay có dữ liệu đều được tuần
+    tự hóa như nhau. Hàng được tạo bằng data migration (pk=1) và KHÔNG BAO
+    GIỜ bị xóa/ghi đổi nội dung (chỉ là chốt khóa, không mang nghiệp vụ).
+    """
+
+    ghi_chu: models.CharField = models.CharField(
+        "Ghi chú kỹ thuật", max_length=200, blank=True, default="Hàng neo khóa bi sổ"
+    )
+
+    class Meta:
+        db_table = "fund_ledger_anchor"
+        verbose_name = "Hàng neo khóa bi sổ quỹ"
+        verbose_name_plural = "Hàng neo khóa bi sổ quỹ"
+
+    def __str__(self) -> str:
+        return f"FundLedgerAnchor(pk={self.pk})"

@@ -439,7 +439,15 @@ class FundService:
         strategy = TransactionFactory.create(loai_gd, so_tien=so_tien, ngay_gd=ngay_dia_phuong)
 
         with transaction.atomic():
-            # Bước 1 — PESSIMISTIC LOCK: mọi writer cùng chờ nhau ở đây
+            # Bước 0 — KHÓA HÀNG NEO (review R04): serialization point ổn định
+            # của TOÀN BỘ sổ quỹ. Trước đây chỉ khóa dòng cuối → sổ RỖNG không
+            # có hàng để khóa, 2 giao dịch song song cùng đọc số dư 0 rồi cùng
+            # ghi → mất cập nhật chuỗi số dư. Hàng neo (pk=1, data migration
+            # 0004) tồn tại vĩnh viễn → sổ rỗng hay có dữ liệu đều tuần tự như
+            # nhau. Sau chốt này mới đọc dòng cuối lấy số dư hiện hành.
+            repo.get_ledger_anchor_for_update()
+
+            # Bước 1 — PESSIMISTIC LOCK dòng cuối: đọc số dư hiện hành
             last = repo.get_last_transaction_for_update()
             current_balance: int = last.so_du_sau if last else 0
 

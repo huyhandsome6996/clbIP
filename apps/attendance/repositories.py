@@ -44,6 +44,11 @@ class IAttendanceRepository(ABC):
     def get_session(self, session_id: int) -> AttendanceSession:
         """Lấy phiên theo pk — raise `AttendanceSession.DoesNotExist` nếu thiếu."""
 
+    @abstractmethod
+    def get_session_for_update(self, session_id: int) -> AttendanceSession:
+        """Lấy phiên VỚI KHÓA BI (select_for_update) — chốt serialization
+        chung cho check-in / bulk_override / close_session (review R04)."""
+
     # ------------------------------------------------------------------
     # AttendanceRecord
     # ------------------------------------------------------------------
@@ -138,6 +143,18 @@ class DjangoAttendanceRepository(IAttendanceRepository):
     def get_session(self, session_id: int) -> AttendanceSession:
         """Lấy phiên theo pk — caller tự xử lý DoesNotExist → NotFoundException."""
         return AttendanceSession.objects.get(pk=session_id)
+
+    def get_session_for_update(self, session_id: int) -> AttendanceSession:
+        """
+        Lấy phiên VỚI KHÓA BI (select_for_update) — review R04.
+
+        ⚠️ Bắt buộc gọi bên trong `transaction.atomic()`. Thứ tự khóa thống
+        nhất: SESSION trước → RECORD sau. check-in / bulk_override /
+        close_session cùng chờ nhau ở chốt phiên này → tuần tự hóa toàn bộ
+        mutation của một phiên, không còn check-in chèn record sau khi close
+        đã chốt danh sách (hoặc override đè metadata trong lúc check-in ghi).
+        """
+        return AttendanceSession.objects.select_for_update().get(pk=session_id)
 
     # ------------------------------------------------------------------
     # AttendanceRecord
