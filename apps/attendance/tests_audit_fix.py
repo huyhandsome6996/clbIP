@@ -296,3 +296,65 @@ class SessionRecordsSearchTests(AttendanceTestBase):
         self.client.force_authenticate(self.bcn)
         res = self.client.get(f"{ATT_URL}sessions/{session.id}/records/?search=" + "x" * 500)
         self.assertEqual(res.status_code, 200)
+
+
+@override_settings(AXES_ENABLED=False)
+class ClosedSessionOverridePolicyTests(AttendanceTestBase):
+    """N02 (review ac51233) — phục hồi policy gốc: BCN override được trên CẢ
+    phiên OPEN và CLOSED (chốt số liệu sau đóng là nghiệp vụ hợp lệ, audit
+    ghi overridden_by). Check-in sau đóng VẦN bị chặn (policy riêng luồng SV,
+    đã test tại tests.py::test_check_in_closed_session)."""
+
+    def _override(self, session, items, user=None):
+        self.client.force_authenticate(user or self.bcn)
+        return self.client.put(
+            f"{ATT_URL}sessions/{session.id}/bulk-override/", {"items": items}, format="json"
+        )
+
+    def test_n02_override_closed_session_allowed_200(self):
+        """Mở → đóng → BCN override CO_PHEP trên phiên CLOSED → 200 + audit đúng."""
+        session = self.make_session()
+        AttendanceService.close_session(session, closed_by=self.bcn)
+        session.refresh_from_db()
+        self.assertEqual(session.trang_thai, AttendanceSession.TrangThai.CLOSED)
+
+        res = self._override(
+            session, [{"member_id": self.profile_a.pk, "trang_thai": "CO_PHEP"}]
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        record = AttendanceRecord.objects.get(session=session, member=self.profile_a)
+        self.assertEqual(record.trang_thai, "CO_PHEP")
+        self.assertEqual(record.overridden_by, self.bcn)  # audit trail giữ nguyên
+        self.assertFalse(record.is_suspicious)
+
+    def test_n02_closed_override_creates_record_for_absent_member(self):
+        """Phiên CLOSED + member chưa có record (tham gia muộn) → override tạo mới."""
+        session = self.make_session()
+        AttendanceService.close_session(session, closed_by=self.bcn)
+        AttendanceRecord.objects.filter(session=session, member=self.profile_b).delete()
+
+        res = self._override(
+            session, [{"member_id": self.profile_b.pk, "trang_thai": "CO_MAT"}]
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        record = AttendanceRecord.objects.get(session=session, member=self.profile_b)
+        self.assertEqual(record.trang_thai, "CO_MAT")
+        self.assertEqual(record.overridden_by, self.bcn)
+
+    def test_n02_member_forbidden_403_on_closed_override(self):
+        """MEMBER gọi bulk-override trên phiên CLOSED → 403 (RBAC tầng view)."""
+        session = self.make_session()
+        AttendanceService.close_session(session, closed_by=self.bcn)
+        res = self._override(
+            session,
+            [{"member_id": self.profile_a.pk, "trang_thai": "CO_PHEP"}],
+            user=self.member_a,
+        )
+        self.assertEqual(res.status_code, 403)
+
+    def test_n02_checkin_after_close_still_blocked(self):
+        """Luồng SV: check-in sau khi phiên đóng vẫn 409 — N02 KHÔNG nới luồng này."""
+        session = self.make_session()
+        AttendanceService.close_session(session, closed_by=self.bcn)
+        res = self.checkin(self.member_a, session)
+        self.assertEqual(res.status_code, 409)

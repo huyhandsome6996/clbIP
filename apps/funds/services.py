@@ -556,15 +556,34 @@ class FundService:
         - Cập nhật `is_locked=True` cho toàn bộ giao dịch trong khoảng
           (MỘT câu UPDATE duy nhất — tránh N+1).
 
+        N03 (review ac51233): lock_period và luồng ghi sổ (_execute_locked)
+        dùng CHUNG một chốt khóa — hàng neo `FundLedgerAnchor` (pk=1) với
+        lock-order thống nhất `anchor → period-lock → transaction`. Không có
+        chốt chung thì writer đang giữ anchor (đã qua bước 2 "kiểm tra kỳ",
+        chưa INSERT xong) có thể commit SAU khi mark chạy → giao dịch rơi vào
+        kỳ đã khóa nhưng is_locked=False; hai lock_period song song cùng tên
+        cũng có thể cùng qua exists-check rồi đụng UNIQUE (500).
+
         Raises:
             ValidationException: tu_ngay > den_ngay (400).
-            DuplicateDataException: ten_ky đã tồn tại (409).
+            DuplicateDataException: ten_ky đã tồn tại (409) — kể cả khi hai
+                lock_period song song đua nhau (kẻ thua thấy bản ghi của kẻ
+                thắng sau khi giành được anchor).
         """
         if tu_ngay > den_ngay:
             raise ValidationException("'Từ ngày' phải nhỏ hơn hoặc bằng 'Đến ngày'.")
 
         repo = cls._repo()
         with transaction.atomic():
+            # N03: GIÀNH ANCHOR TRƯỚC KHI kiểm tra/tạo khóa kỳ — cùng serialization
+            # point với _execute_locked (bước 0). Từ đây tới cuối transaction,
+            # không writer nào có thể chèn giao dịch "lọt" qua kỳ đang khóa:
+            # - Writer commit trước khi lock giành được anchor → mark (bên dưới)
+            #   chạy sau anchor nên bắt kịp dòng mới → is_locked=True.
+            # - Lock giành anchor trước → writer thấy kỳ khóa ở bước 2 của
+            #   _execute_locked → PeriodLockedException (423), không INSERT.
+            repo.get_ledger_anchor_for_update()
+
             if repo.exists_period_lock_by_name(ten_ky):
                 raise DuplicateDataException(f"Kỳ khóa sổ '{ten_ky}' đã tồn tại.")
 

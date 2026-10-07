@@ -418,13 +418,26 @@ class AttendanceService:
         with db_transaction.atomic():
             # R04: khóa PHIÊN trước (thứ tự: session → record) — override,
             # check-in và close_session cùng serialization point; re-check
-            # OPEN dưới khóa để không override vào phiên đã đóng giữa chừng.
+            # trạng thái dưới khóa để không ghi vào phiên đang chuyển trạng
+            # thái giữa chừng.
             try:
                 session = cls._repo().get_session_for_update(session.id)
             except AttendanceSession.DoesNotExist:
                 raise NotFoundException("Không tìm thấy phiên điểm danh.")
-            if session.trang_thai != AttendanceSession.TrangThai.OPEN:
-                raise SessionClosedException("Phiên điểm danh đã đóng — không override được nữa.")
+            # N02 (review ac51233): phục hồi policy gốc theo docstring — override
+            # quản trị hợp lệ trên CẢ phiên OPEN và CLOSED (BCN chốt lại số liệu
+            # sau khi đóng phiên là nghiệp vụ đã cam kết; audit vẫn ghi
+            # `overridden_by`). Khóa phiên giữ nguyên serialization với
+            # close/check-in — serialization không phải lý do cấm sửa điểm
+            # danh sau đóng. Luồng SV tự check-in (check_in) VẪN chặn nghiêm
+            # sau khi đóng — hai luồng có chính sách riêng, không đụng nhau.
+            if session.trang_thai not in (
+                AttendanceSession.TrangThai.OPEN,
+                AttendanceSession.TrangThai.CLOSED,
+            ):
+                raise SessionClosedException(
+                    "Phiên điểm danh ở trạng thái không hợp lệ — không override được."
+                )
 
             for member_id, trang_thai in parsed:
                 record, created = cls._repo().get_or_create_record(
