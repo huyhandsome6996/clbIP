@@ -38,7 +38,7 @@ from apps.common.exceptions import (
     PeriodLockedException,
 )
 from apps.funds.models import FundLedgerAnchor, FundPeriodLock, FundTransaction
-from apps.funds.repositories import FundTransactionRepository
+from apps.funds.repositories import DjangoFundRepository
 from apps.funds.services import FundService
 from apps.members.models import MemberProfile
 
@@ -291,7 +291,7 @@ class FundLedgerConcurrencyTests(TransactionTestCase):
         lock_finished = Event()
         results: list = []
         today = timezone.localdate()
-        original_create = FundTransactionRepository.create_transaction
+        original_create = DjangoFundRepository.create_transaction
 
         def hooked_create(repo_self, **fields):
             writer_at_insert.set()
@@ -302,7 +302,7 @@ class FundLedgerConcurrencyTests(TransactionTestCase):
         def post_tx():
             try:
                 with patch.object(
-                    FundTransactionRepository, "create_transaction", hooked_create
+                    DjangoFundRepository, "create_transaction", hooked_create
                 ):
                     tx, replay = FundService.execute_transaction_idempotent(
                         loai_gd="THU",
