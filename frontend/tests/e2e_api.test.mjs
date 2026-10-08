@@ -181,6 +181,63 @@ async function main() {
   const chart = await fetch(`${BASE}/frontend/assets/chart.umd.min.js`);
   assert(chart.status === 200 && (await chart.text()).length > 100_000, "E2E-F13: chart.umd.min.js cùng origin → 200");
 
+  // 10) M02 — my-tickets mang metadata sự kiện đầy đủ (audit 1114efd)
+  await new Promise((r) => setTimeout(r, 1200));
+  const myTickets = await api("/events/my-tickets/", { token: member.access });
+  const myTicketItems = Array.isArray(myTickets.env.data) ? myTickets.env.data : (myTickets.env.data?.items || []);
+  assert(
+    myTickets.status === 200 && myTicketItems.length > 0,
+    `E2E-M02a: my-tickets trả ${myTicketItems.length} vé (mảng)`,
+  );
+  const anyTicket = myTicketItems[0] || {};
+  assert(
+    anyTicket.event_ten && anyTicket.event_thoi_gian_bat_dau != null &&
+      anyTicket.event_trang_thai != null && anyTicket.ma_ve,
+    "E2E-M02b: vé có đủ metadata (event_ten/thoi_gian_bat_dau/trang_thai/ma_ve) — tab vé độc lập",
+  );
+
+  // 11) M05 — check-in thiếu accuracy → 400 (policy §5.1)
+  await new Promise((r) => setTimeout(r, 1200));
+  const noAcc = await api("/attendance/check-in/", {
+    method: "POST", token: member.access,
+    body: {
+      session_id: openSession.id, latitude: 16.0, longitude: 107.0,
+      client_time: new Date().toISOString(), device_id: "E2E-ACC-TEST",
+      nonce: "000000",
+      // không gửi accuracy
+    },
+  });
+  assert(noAcc.status === 400, `E2E-M05a: check-in thiếu accuracy → 400 [status=${noAcc.status}]`);
+  const nullAcc = await api("/attendance/check-in/", {
+    method: "POST", token: member.access,
+    body: {
+      session_id: openSession.id, latitude: 16.0, longitude: 107.0,
+      client_time: new Date().toISOString(), device_id: "E2E-ACC-TEST",
+      nonce: "000000", accuracy: null,
+    },
+  });
+  assert(nullAcc.status === 400, `E2E-M05b: accuracy=null → 400 [status=${nullAcc.status}]`);
+
+  // 12) M10 — /gamification/me/ có level_progress khớp bảng backend
+  await new Promise((r) => setTimeout(r, 1200));
+  const gme = await api("/gamification/me/", { token: member.access });
+  const lp = gme.env.data?.level_progress;
+  assert(
+    gme.status === 200 && lp && typeof lp.progress_percent === "number" &&
+      lp.progress_percent >= 0 && lp.progress_percent <= 100,
+    "E2E-M10a: /gamification/me/ trả level_progress (progress_percent 0..100)",
+  );
+  const xpVal = Number(gme.env.data?.xp ?? 0);
+  const THRESH = [0, 100, 250, 500, 900, 1400, 2000, 2800, 3800, 5000];
+  let expLevel = 1;
+  THRESH.forEach((t, i) => { if (xpVal >= t) expLevel = i + 1; });
+  const expMax = expLevel >= THRESH.length;
+  assert(
+    lp.current_level === expLevel && lp.max_level === expMax &&
+      (expMax ? lp.next_level_xp === null : lp.next_level_xp === THRESH[expLevel]),
+    `E2E-M10b: level_progress khớp bảng backend (xp=${xpVal} → Lv${expLevel})`,
+  );
+
   console.log(`\n=== E2E: ${pass} PASS / ${fail} FAIL ===`);
   process.exit(fail > 0 ? 1 : 0);
 }

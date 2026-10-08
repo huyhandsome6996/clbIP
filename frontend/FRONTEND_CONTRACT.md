@@ -89,7 +89,7 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | POST `/events/{id}/tasks/` | `{ten_task, nguoi_phu_trach?, depends_on?: [taskIds], deadline?}` | task |
 | PATCH `/events/{id}/tasks/{taskId}/` | `{is_completed: bool}` (đã thêm endpoint mới) | task — `is_completed:true` tự cộng XP người phụ trách. KHÓA checkbox khi `executable_now` không chứa task (DAG). **Audit F08**: `is_completed:false` khi còn hậu nhiệm (trực tiếp/gián tiếp) đã hoàn thành → **400** + `errors.blocking_tasks: [{id, ten_task}]` |
 | GET `/events/{id}/tasks/topological-order/` | — | **DAG**: mảng id theo thứ tự topo hợp lệ (Kahn) hoặc báo deadlock (cycle) |
-| GET `/events/my-tickets/` | — | **MẢNG** vé của chính tôi (member): EventRegistrationSerializer — render QR theo `ma_ve` |
+| GET `/events/my-tickets/` | — | **MẢNG** vé của chính tôi (member): EventRegistrationSerializer — render QR theo `ma_ve`. **M02 (audit 1114efd)**: mỗi vé giờ mang metadata sự kiện `event_ten, event_thoi_gian_bat_dau, event_thoi_gian_ket_thuc, event_dia_diem, event_trang_thai, event_loai_hd` → tab "Vé của tôi" dựng card/QR modal ĐỘC LẬP pagination trang events (vé của sự kiện trang 2 vẫn hiện đủ) |
 | POST `/events/{id}/register/` | — (user hiện tại) | `{id, ma_ve, trang_thai, member, member_ten, event, event_ten, created_at}` — `ma_ve` dùng render QR |
 | POST `/events/{id}/cancel-registration/` | — | hủy vé |
 | GET `/events/{id}/registrations/` | — | items: EventRegistrationSerializer |
@@ -109,7 +109,7 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | GET `/attendance/sessions/{id}/nonce/` | — (BCN) | `{nonce: "123456"}` mã xoay 60s — hiển thị máy chiếu. **Vòng đời UI (R03)**: hết hạn → vô hiệu hóa mã NGAY (placeholder `······`, remaining = 0, không âm); fetch lỗi → toast 1 lần + tự thử lại TỐI ĐA 1 lần sau 5s rồi chỉ retry thủ công (nút Lấy mã mới); đổi/đóng phiên dọn sạch interval + backoff |
 | PUT `/attendance/sessions/{id}/bulk-override/` | `{items: [{member_id, trang_thai: CO_MAT|VANG|CO_PHEP|DI_MUON}]}` (BCN) — **dùng HTTP PUT (không phải POST!)** | `{updated: n}`. **Audit F01**: atomic — validate TOÀN BỘ trước, có 1 item sai → 400 và KHÔNG ghi gì cả (all-or-nothing) | — **N02 (ac51233)**: policy gốc được PHỤC HỒI — override hợp lệ trên cả phiên OPEN và CLOSED (BCN chốt số liệu sau đóng; check-in sau đóng vẫn chặn 409) |
 | GET `/attendance/sessions/{id}/records/` | `?trang_thai=CO_MAT|CO_PHEP|DI_MUON|VANG&search=&page=` (BCN) — **audit F10**: bảng bản ghi theo phiên | items: `{id, member, member_ten, member_mssv, member_lop, trang_thai, khoang_cach_m, checked_in_at, device_id, is_suspicious, xp_awarded, overridden_by, overridden_by_email, created_at, updated_at}` (không có GPS thô) + pagination |
-| POST `/attendance/check-in/` | `{session_id, latitude, longitude, client_time (ISO), device_id, nonce, is_mock?, accuracy?}` | record: `{id, session, session_ten, member, member_ten, trang_thai CO_MAT|DI_MUON, khoang_cach_m, ...}` + `xp_gained` + `streak_count` |
+| POST `/attendance/check-in/` | `{session_id, latitude, longitude, client_time (ISO), device_id, nonce, accuracy}` — **M05 (audit 1114efd, §5.1): `accuracy` BẮT BUỘC** số hữu hạn >0 ≤100m (thiếu/null/âm/NaN/inf/vượt ngưỡng → 400); `is_mock` không cần gửi (server mặc định false và engine vẫn từ chối khi true — client flag không phải bằng chứng chống giả mạo); DEMO nhập tọa độ tay đã GỎ khỏi production — GPS lỗi → hướng dẫn bật quyền/quét lại, trường hợp thật sự không dùng được → BCN bulk-override (có audit) | record: `{id, session, session_ten, member, member_ten, trang_thai CO_MAT|DI_MUON, khoang_cach_m, ...}` + `xp_gained` + `streak_count` |
 | GET `/attendance/me/` | — | items AttendanceRecordSerializer: `{id, session, session_ten, member, member_ten, trang_thai, khoang_cach_m, vi_do, kinh_do, checked_in_at, device_id, is_suspicious, xp_awarded, overridden_by, created_at}` — **`member` = profile pk, dùng lấy profile id** |
 
 ⚠️ Lỗi check-in hay gặp: `409 SessionClosedException`, `400` anti-cheat (mock/nonce sai/xa quá bán kính/teleport), `409` đã check-in — **audit F07**: trùng chặn CẢ CO_MAT lẫn DI_MUON (check-in muộn gửi lại cũng 409, không sửa metadata/XP).
@@ -119,7 +119,7 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 |---|---|
 | GET `/gamification/leaderboard/` | `{top_10:[{rank, id, xp, name, avatar, extra}], my_position:{in_top_k, rank, xp_gap_to_top_k}|null, total_members}` |
 | GET `/gamification/badges/` | `{items:[{id, ma_badge, ten_badge, mo_ta, icon (EMOJI như 🔥🎯 — render trực tiếp, KHÔNG qua Icons.render), unlocked}], unlocked:[ma_badge]}` |
-| GET `/gamification/me/` | `{xp, level, streak_count, badges:[{badge:{...}, awarded_at}], weekly_quests: {week_start, xp_this_week, attendance_count, document_shared, task_completed} (OBJECT counter — KHÔNG phải mảng)}` |
+| GET `/gamification/me/` | `{xp, level, streak_count, level_progress:{current_level, current_level_xp, next_level_xp, xp_into_level, xp_to_next, progress_percent, max_level}, badges:[{badge:{...}, awarded_at}], weekly_quests: {week_start, xp_this_week, attendance_count, document_shared, task_completed} (OBJECT counter — KHÔNG phải mảng)}` — **M10 (audit 1114efd): `level_progress` là NGUỒN CHUẨN vẽ ring/bar tiến độ** (frontend không tự tính); `max_level=true` khi Level 10 (không gợi Level 11) |
 
 **Mẹo lấy profile id của member** (cần cho profile360): `top_10[i].id` chính là profile pk; nếu tôi trong top 10 thì dùng được ngay. Fallback: `GET /attendance/me/` → `items[0].member`.
 
@@ -127,7 +127,7 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 | Method + Path | Body/Query | Response |
 |---|---|---|
 | GET `/documents/` | `?nhom=&search=&sort=&page=` | items: `{id, tieu_de, nhom, tags, mo_ta, file, file_type, file_size, luot_tai, uploaded_by, uploaded_by_ho_ten, created_at}` |
-| POST `/documents/` | FormData: `{file, tieu_de, nhom, tags?, mo_ta?}` (BCN; file ≤15MB: pdf/docx/pptx/xlsx/png/jpg) | doc |
+| POST `/documents/` | FormData: `{file, tieu_de, nhom, tags?, mo_ta?}` (BCN + **MEMBER chia sẻ được** — backend tự ép `pham_vi=PUBLIC_MEMBER` cho member; file ≤15MB: pdf/docx/pptx/xlsx/png/jpg) | doc — upload thành công cộng XP theo quy định (daily cap/idempotency server quyết) |
 | GET `/documents/search/?q=` | `q` | `{items:[...], count}` — Trie autocomplete (chú ý: có bọc items) |
 | GET `/documents/{id}/` | — | doc |
 | GET `/documents/{id}/download/` | — | file (dùng `ApiClient.download`/`getBlob` — audit F04: blob tự refresh single-flight đúng 1 lần khi 401) — tăng luot_tai |
@@ -156,21 +156,24 @@ Auth.isBoard()        // true nếu ADMIN|BCN
 ### Import (đặt theo thứ tự này)
 ```html
 <link rel="stylesheet" href="/frontend/css/variables.css">
-<link rel="stylesheet" href="/frontend/css/base.css">
+<link rel="stylesheet" href="/frontend/css/base.css">              <!-- admin -->
 <link rel="stylesheet" href="/frontend/css/components.css">
-<link rel="stylesheet" href="/frontend/css/glassmorphism.css">  <!-- member -->
+<link rel="stylesheet" href="/frontend/css/glassmorphism.css">     <!-- member -->
+<link rel="stylesheet" href="/frontend/css/member.css">            <!-- member: utilities legacy (M08) -->
 <link rel="stylesheet" href="/frontend/css/responsive.css">
 ```
 - `<html lang="vi" data-theme="admin">` cho trang admin, `data-theme="member"` cho trang member.
+- **Member là THEME SÁNG** (M01 — audit 1114efd): body `#FAF8FF` + chữ `#131B2E`, glass TRẮNG, accent indigo/violet, logo navy/cyan — khớp shell M3 + Stitch Member Prompt 0. Token `[data-theme="member"]` đã chuyển light; holo-card/ticket giữ nền tối CHỦ ĐÍCH (accent theo design "Deep indigo, Apple Wallet"). Trang admin không nạp glassmorphism.css/member.css nên không bị ảnh hưởng.
 - Font: Inter (Google Fonts link có sẵn trong login.html — copy vào head).
-- JS load CUỐI body, thứ tự: `api.js → icons.js → toast.js → utils.js → auth.js → celebration.js (member) → trang`.
+- JS load CUỐI body, thứ tự: `api.js → icons.js → toast.js → utils.js → auth.js → celebration.js (member) → member-shell.js (member) → trang`.
+- **member-shell.js (CHỈ member, M07/M06 — audit 1114efd)**: `MemberModal.open({title, bodyHTML, footerHTML, onMount, onClose})` — modal chuẩn a11y (Escape đóng, Tab/Shift+Tab focus-trap, trả focus nút mở, khóa scroll nền, revoke blob qua `onClose`). `MemberShell.refreshGamification()` — refetch `/gamification/me/` và vẽ XP/level/streak lên MỌI vị trí shell (`sb-*`, `pill-*`, `me-level`, hero/card home); GỌI SAU MỖI mutation cộng XP (check-in, upload tài liệu); lỗi fetch giữ số cũ, không ghi 0. `MemberShell.paint(me)` dùng khi đã có data.
 
 ### Class sẵn có (KHÔNG tự viết lại)
 - Layout admin: `.admin-shell > .admin-sidebar + .admin-main` → `.admin-topbar` + `.admin-content`. Sidebar: `.side-brand`, `.side-nav > .nav-label + .nav-item(.active)`, `.side-foot`. Burger: `.btn.btn-ghost.burger` toggle `.nav-open` trên `.admin-shell` + `.scrim`.
 - Layout member: `.member-shell` (max 560px) → `.member-header` + content; nav: `.bottom-nav > a(.active, .nav-cta)`.
 - Component: `.btn .btn-primary|btn-violet|btn-outline|btn-ghost|btn-danger .btn-sm|btn-lg|btn-block|btn-icon`; `.card .card-pad|card-header|card-body|card-footer`; `.table-wrap > table.table` (`.num`, `.actions`); `.badge .badge-success|danger|warning|info|accent|neutral`; `.modal-backdrop > .modal` (`.modal-head|modal-body|modal-foot`, `.modal-close`); `.form-group > .form-label + .form-input|.form-select|.form-textarea + .form-hint|.form-error`; `.form-row` (2 cột); `.input-wrap + .input-trailing`; `.tabs > .tab(.active)`; `.pagination` (`.page-info`, `.page-btns`); `.kpi-grid > .kpi` (`.kpi-icon`, `.kpi-value`, `.kpi-label`); `.avatar(.avatar-lg|.avatar-sm|.violet)`; `.progress > span` (width %); `.searchbar`; `.autocomplete > .ac-list > .ac-item`; `.menu-wrap > .menu > .menu-item`; `.skeleton` + `.skeleton-row/.skeleton-avatar/.skeleton-lines`; `.empty` + `.empty-icon`.
 - Member glass: `.glass`, `.glass-strong`, `.glass-accent`, `.page-title`, `.radar` (+ `.radar-ring`, `.radar-sweep`, `.radar-dot.ok|.far`), `.podium > .podium-slot.first|second|third` + `.pillar-1|2|3` + `.crown`, `.holo-card`, `.holo-id`, `.ticket` (`.ticket-top`, `.ticket-notch > .dash`, `.ticket-qr`, `.ticket-code`), `.streak-chip`, `.level-ring` (CSS var `--pct`).
-- Utilities: `.hidden .muted .secondary .small .xs .bold .mono .w-100 .mt-2 .mt-4 .mt-6 .mb-2 .mb-4 .mb-6 .flex .flex-1 .items-center .justify-between .gap-2 .gap-3 .gap-4 .wrap .text-center`.
+- Utilities: admin dùng từ `base.css`; **member dùng `member.css`** (M08 — không nạp base.css để tránh đảo theme): `.hidden .muted .secondary .small .xs .bold .mono .w-100 .mt-2 .mt-4 .mt-6 .mb-2 .mb-4 .mb-6 .flex .flex-1 .items-center .justify-between .gap-2 .gap-3 .gap-4 .wrap .text-center .text-right` + `:focus-visible` chuẩn.
 
 ### JS helpers (chỉ DÙNG, không định nghĩa lại)
 ```js
@@ -352,7 +355,7 @@ function renderMemberNav(active) {
 ```
 (Điều chỉnh nhỏ nếu id khác — giữ đúng hành vi: burger mở/đóng drawer + scrim, logout, active state.)
 
-## 7. Modal helper (không có sẵn — dùng pattern này ở mọi trang cần modal)
+## 7. Modal helper (M07 — member: `MemberModal.open` từ member-shell.js; admin: dùng pattern này)
 ```js
 function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
   const backdrop = document.createElement("div");
