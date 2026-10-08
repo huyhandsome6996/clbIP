@@ -85,9 +85,14 @@ class AttendanceTestBase(TestCase):
         client_time: str = None,
         nonce: str = None,
         is_mock: bool = False,
-        accuracy: float = None,
+        accuracy: float = 10.0,
     ):
-        """POST /check-in/ với nonce + client_time tự sinh hợp lệ (trừ khi override)."""
+        """POST /check-in/ với nonce + client_time tự sinh hợp lệ (trừ khi override).
+
+        M05 (audit 1114efd): accuracy mặc định 10.0m (tín hiệu tốt) vì backend
+        đã BẮT BUỘC accuracy theo Security §5.1 — test mô phỏng client thật
+        luôn gửi kèm dữ liệu cảm biến.
+        """
         self.client.force_authenticate(user)
         payload = {
             "session_id": session.id,
@@ -97,9 +102,8 @@ class AttendanceTestBase(TestCase):
             "device_id": device_id or f"DEVICE-{user.pk}",
             "nonce": nonce or AttendanceNonceService.generate(session)["nonce"],
             "is_mock": is_mock,
+            "accuracy": accuracy,
         }
-        if accuracy is not None:
-            payload["accuracy"] = accuracy
         return self.client.post(f"{ATT_URL}check-in/", payload, format="json")
 
 
@@ -254,11 +258,11 @@ class AntiCheatTests(AttendanceTestBase):
         self.assertIn("giả lập", response.data["message"])
 
     def test_checkin_poor_accuracy_rejected(self) -> None:
-        """accuracy=150m (>100m) → 403 'tín hiệu GPS quá kém'."""
+        """accuracy=150m (>100m) → 400 bị chặn ở serializer (M05 — §5.1)."""
         session = self.make_session()
         response = self.checkin(self.member_a, session, accuracy=150)
-        self.assertEqual(response.status_code, 403)
-        self.assertIn("quá kém", response.data["message"])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("quá kém", str(response.data))
 
     def test_checkin_timestamp_skew_rejected(self) -> None:
         """client_time lệch 120 giây (>60s) → 403 chống Replay Attack."""

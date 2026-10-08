@@ -7,6 +7,7 @@ nonce_secret của phiên không bao giờ xuất hiện ở output.
 """
 from typing import Optional
 
+from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -55,6 +56,13 @@ class CheckInSerializer(serializers.Serializer):
     - device_id: fingerprint thiết bị (UA + screen + hardware hash).
     - nonce: mã 6 chữ số hiển thị trên máy chiếu (xoay 60s).
     - is_mock/accuracy: thuộc tính cảm biến từ OS.
+
+    M05 (audit luồng thành viên 1114efd — Security Hardening §5.1):
+    `accuracy` là BẮT BUỘC, số hữu hạn, > 0 và ≤ MAX_GPS_ACCURACY_METERS (100).
+    Bản cũ `allow_null=True` + engine bỏ qua khi None → payload không có dữ
+    liệu cảm biến vẫn được cộng XP. Backend phải enforce policy — không tin
+    validation frontend; browser không cung cấp tín hiệu mock-detection của OS
+    nên `is_mock` chỉ là cờ client, engine vẫn từ chối khi true.
     """
 
     session_id = serializers.IntegerField()
@@ -64,7 +72,27 @@ class CheckInSerializer(serializers.Serializer):
     device_id = serializers.CharField(max_length=128)
     nonce = serializers.CharField(max_length=10)
     is_mock = serializers.BooleanField(default=False, required=False)
-    accuracy = serializers.FloatField(required=False, allow_null=True)
+    accuracy = serializers.FloatField(required=True, allow_null=False)
+
+    def validate_accuracy(self, value: float) -> float:
+        """accuracy phải hữu hạn, dương và ≤ ngưỡng policy (§5.1)."""
+        import math  # noqa: PLC0415 — chuẩn cục bộ, tránh import top-level thừa
+
+        max_accuracy = settings.CLB_SETTINGS["MAX_GPS_ACCURACY_METERS"]
+        if not math.isfinite(value):
+            raise serializers.ValidationError(
+                "accuracy phải là số hữu hạn (không nhận NaN/Infinity)."
+            )
+        if value <= 0:
+            raise serializers.ValidationError(
+                "accuracy phải là số dương (mét) — thiết bị chưa chốt tọa độ?"
+            )
+        if value > max_accuracy:
+            raise serializers.ValidationError(
+                f"Tín hiệu GPS quá kém (accuracy > {max_accuracy}m) — ra chỗ thoáng "
+                "hoặc bật lại GPS rồi thử lại."
+            )
+        return value
 
 
 class BulkOverrideSerializer(serializers.Serializer):

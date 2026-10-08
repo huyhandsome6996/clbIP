@@ -27,6 +27,7 @@ from apps.gamification.services import (
     BadgeService,
     GamificationService,
     LeaderboardService,
+    level_progress_for_xp,
 )
 from core.response import ok
 
@@ -98,8 +99,10 @@ class MyGamificationView(APIView):
         tags=["Gamification"],
         summary="Tổng quan gamification của tôi",
         description=(
-            "{xp, level, streak_count, badges (đã mở), weekly_quests} — dùng cho "
-            "thanh tiến độ Level và widget Nhiệm vụ tuần kiếm XP."
+            "{xp, level, level_progress{current_level,next_level_xp,xp_to_next,"
+            "progress_percent,max_level}, streak_count, badges (đã mở), "
+            "weekly_quests} — level_progress là NGUỒN CHUẨN vẽ thanh/ring "
+            "tiến độ Level (M10)."
         ),
         responses={
             200: OpenApiResponse(description="Envelope tổng quan"),
@@ -117,6 +120,9 @@ class MyGamificationView(APIView):
             "xp": profile.xp_points,
             "level": profile.current_level,
             "streak_count": profile.streak_count,
+            # M10 (audit 1114efd): tiến độ level do backend tính theo
+            # LEVEL_THRESHOLDS — frontend KHÔNG tự chế modulo nữa.
+            "level_progress": level_progress_for_xp(profile.xp_points),
             "badges": [MemberBadgeSerializer(mb).data for mb in unlocked_badges],
             "weekly_quests": GamificationService.get_weekly_quests(profile),
         }

@@ -15,6 +15,7 @@ Toàn bộ PASS → trả (True, distance_m) cho Service ghi vào AttendanceReco
 """
 import datetime as _dt
 import logging
+import math
 from typing import ClassVar, Optional, Tuple, Union
 
 from django.conf import settings
@@ -104,9 +105,20 @@ class GPSAntiCheatEngine:
         if is_mock:
             raise AntiCheatException("Phát hiện vị trí giả lập (Mock Location)!")
 
-        # 2. Accuracy quá kém → nghi ngờ Fake/tín hiệu rác
+        # 2. Accuracy — policy §5.1 (M05): BẮT BUỘC, hữu hạn, dương, ≤ ngưỡng.
+        # Bản cũ bỏ qua lớp này khi accuracy None → payload thiếu cảm biến vẫn
+        # cộng XP. Serializer đã chặn 400; đây là lớp 2 (defense in depth) cho
+        # mọi đường gọi service trực tiếp (không qua HTTP).
         max_accuracy = clb["MAX_GPS_ACCURACY_METERS"]
-        if accuracy is not None and accuracy > max_accuracy:
+        if accuracy is None:
+            raise AntiCheatException(
+                "Thiếu dữ liệu độ chính xác GPS (accuracy) — bật định vị rồi thử lại."
+            )
+        if not math.isfinite(accuracy):
+            raise AntiCheatException("Tín hiệu GPS không hợp lệ (accuracy vô hạn/NaN).")
+        if accuracy <= 0:
+            raise AntiCheatException("Tín hiệu GPS không hợp lệ (accuracy ≤ 0m).")
+        if accuracy > max_accuracy:
             raise AntiCheatException(f"Tín hiệu GPS quá kém (accuracy > {max_accuracy}m)")
 
         # 3. Timestamp skew — chống Replay Attack (quay lại dùng dữ liệu cũ)

@@ -253,8 +253,11 @@ class AttendanceService:
                 ]
             )
 
-        # 6a. Streak chuyên cần 🔥
-        cls._update_streak(member, now)
+            # 6a. Streak chuyên cần 🔥 — M09 (audit 1114efd): chuyển VÀO TRONG
+            # atomic block (trước đây nằm ngoài → cửa sổ race khi cùng member
+            # check-in 2 phiên khác ngày song song; giờ tuần tự hóa trên khóa
+            # phiên theo thứ tự khóa thống nhất session → record → member).
+            cls._update_streak(member, now)
 
         # 6b. XP qua GamificationService (lazy import — an toàn tích hợp song song)
         cls._award_xp_safe(member=member, amount=xp_total, session=session, record=record)

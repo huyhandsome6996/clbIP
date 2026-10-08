@@ -63,6 +63,51 @@ def level_from_xp(xp: int) -> int:
     return level
 
 
+def level_progress_for_xp(xp: int) -> dict:
+    """
+    Tiến độ Level CHUẨN theo backend (M10 — audit luồng thành viên 1114efd).
+
+    Nguồn sự thật DUY NHẤT cho frontend khi vẽ ring/bar "còn X XP nữa lên
+    Level N" — profile.html cũ tự chế `xp % 200` nên tính sai mọi mốc không đều.
+
+    Returns:
+        {"current_level": int, "current_level_xp": int, "next_level_xp": int|None,
+         "xp_into_level": int, "xp_to_next": int|None, "progress_percent": int 0..100,
+         "max_level": bool}
+
+        - max_level=True (Level 10, xp ≥ 5000): next_level_xp/xp_to_next = None,
+          progress_percent = 100 — UI KHÔNG được gợi "Level 11".
+        - progress_percent luôn clamp [0, 100] chống XP âm/đầu vào lạ.
+    """
+    xp = max(0, int(xp))
+    level = level_from_xp(xp)
+    current_level_xp = LEVEL_THRESHOLDS[level - 1]
+    is_max = level >= len(LEVEL_THRESHOLDS)
+    if is_max:
+        return {
+            "current_level": level,
+            "current_level_xp": current_level_xp,
+            "next_level_xp": None,
+            "xp_into_level": xp - current_level_xp,
+            "xp_to_next": None,
+            "progress_percent": 100,
+            "max_level": True,
+        }
+    next_level_xp = LEVEL_THRESHOLDS[level]
+    span = next_level_xp - current_level_xp
+    into = xp - current_level_xp
+    percent = int(round((into / span) * 100)) if span > 0 else 100
+    return {
+        "current_level": level,
+        "current_level_xp": current_level_xp,
+        "next_level_xp": next_level_xp,
+        "xp_into_level": into,
+        "xp_to_next": max(0, next_level_xp - xp),
+        "progress_percent": max(0, min(100, percent)),
+        "max_level": False,
+    }
+
+
 # ----------------------------------------------------------------------
 # STRATEGY PATTERN — các chiến lược tính XP thưởng
 # ----------------------------------------------------------------------
@@ -392,9 +437,14 @@ class GamificationService:
                 source=ledger_source,
                 idempotency_key=idempotency_key,
             )
-            member.xp_points += actual_amount
-            member.current_level = level_from_xp(member.xp_points)
-            member.save(update_fields=["xp_points", "current_level", "updated_at"])
+            # M09 (audit 1114efd): service KHÔNG gọi member.save() trực tiếp —
+            # mọi ghi CSDL đi qua repository (`persist_member_gamification`),
+            # giữ nguyên update_fields hẹp + khóa bi đã lấy ở Bước 0.
+            cls._repo().persist_member_gamification(
+                member,
+                xp_points=member.xp_points + actual_amount,
+                current_level=level_from_xp(member.xp_points + actual_amount),
+            )
 
             new_badges = BadgeService.evaluate_and_unlock(member)
 

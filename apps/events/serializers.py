@@ -226,12 +226,34 @@ class EventTaskSerializer(serializers.ModelSerializer):
 # EventRegistration (Vé điện tử)
 # ----------------------------------------------------------------------
 class EventRegistrationSerializer(serializers.ModelSerializer):
-    """Vé đăng ký sự kiện — mã vé dùng render QR ở frontend."""
+    """Vé đăng ký sự kiện — mã vé dùng render QR ở frontend.
+
+    M02 (audit luồng thành viên 1114efd): bổ sung metadata sự kiện
+    (thời gian/địa điểm/trạng thái sự kiện) để tab "Vé của tôi" dựng được card
+    + QR modal ĐỨNG ĐỘC LẬP với trang /events/ hiện tại — vé của sự kiện nằm
+    ngoài trang 1 không còn mất tên/thời gian/địa điểm.
+    """
 
     member = serializers.PrimaryKeyRelatedField(read_only=True)
     member_ten = serializers.CharField(source="member.ho_ten", read_only=True)
     event = serializers.PrimaryKeyRelatedField(read_only=True)
     event_ten = serializers.CharField(source="event.ten_hoat_dong", read_only=True)
+    # --- metadata sự kiện phục vụ tab vé độc lập (M02) ---
+    event_thoi_gian_bat_dau = serializers.DateTimeField(
+        source="event.thoi_gian_bat_dau", read_only=True, default=None
+    )
+    event_thoi_gian_ket_thuc = serializers.DateTimeField(
+        source="event.thoi_gian_ket_thuc", read_only=True, default=None
+    )
+    event_dia_diem = serializers.CharField(
+        source="event.dia_diem", read_only=True, default=None
+    )
+    event_trang_thai = serializers.CharField(
+        source="event.trang_thai", read_only=True, default=None
+    )
+    event_loai_hd = serializers.CharField(
+        source="event.loai_hd", read_only=True, default=None
+    )
 
     class Meta:
         model = EventRegistration
@@ -243,6 +265,11 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
             "member_ten",
             "event",
             "event_ten",
+            "event_thoi_gian_bat_dau",
+            "event_thoi_gian_ket_thuc",
+            "event_dia_diem",
+            "event_trang_thai",
+            "event_loai_hd",
             "created_at",
         ]
 
