@@ -22,6 +22,7 @@
   <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
   <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 
+  <link rel="stylesheet" href="/frontend/css/member.css">
   <style>
 
     /* ===== Shell Layout & Animation Styles (Đồng bộ home.html) ===== */
@@ -73,26 +74,7 @@
     .dd-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
       color: #767586; padding: 6px 12px 4px; }
 
-    /* Modal góp ý */
-    .lp-backdrop {
-      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px;
-      background: rgba(19,27,46,.5); backdrop-filter: blur(6px);
-    }
-    .lp-modal {
-      width: 100%; max-width: 520px; max-height: 86dvh; overflow: auto;
-      background: linear-gradient(160deg, #ffffff, #f2f3ff);
-      border: 1px solid rgba(199,196,215,.6); border-radius: 24px;
-      box-shadow: 0 24px 80px rgba(40,48,68,.35); padding: 24px;
-    }
-    .lp-input {
-      width: 100%; border: 1px solid #c7c4d7; border-radius: 14px; background: #ffffff;
-      padding: 12px 14px; font-size: 14px; color: #131b2e; outline: none;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .lp-input:focus { border-color: #4648d4; box-shadow: 0 0 0 3px rgba(70,72,212,.15); }
-    .lp-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #464554; margin-bottom: 6px; }
-    .lp-error { color: #93000a; font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
-    .lp-error.show { display: block; }
+    /* Modal góp ý dùng MemberModal dùng chung (M07) */
 
 
     /* ===== Page-scoped styles (documents.html) ===== */
@@ -345,6 +327,7 @@
   <script src="/frontend/js/utils.js"></script>
   <script src="/frontend/js/auth.js"></script>
   <script src="/frontend/js/celebration.js"></script>
+  <script src="/frontend/js/member-shell.js"></script>
 <script>
 
     /* ================= Shell Controller (Đồng bộ với home.html) ================= */
@@ -489,56 +472,43 @@
     }
 
     function openFeedbackModal() {
-      const backdrop = document.createElement("div");
-      backdrop.className = "lp-backdrop";
-      backdrop.innerHTML = `
-        <div class="lp-modal" role="dialog" aria-modal="true" aria-label="Góp ý ẩn danh">
-          <div class="flex items-center justify-between gap-4 mb-4">
-            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">Góp ý ẩn danh 💌</h3>
-            <button type="button" aria-label="Đóng" class="lp-close w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
+      MemberModal.open({
+        title: "Góp ý ẩn danh 💌",
+        bodyHTML: `
           <div class="space-y-3">
-            <label class="lp-label" for="fb-content">Nội dung góp ý</label>
-            <textarea id="fb-content" class="lp-input" rows="4" maxlength="1000"
+            <label class="form-hint" for="fb-content" style="display:block;margin-bottom:6px">NỘI DUNG GÓP Ý</label>
+            <textarea id="fb-content" class="form-textarea" rows="4" maxlength="1000" data-autofocus
               placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
-            <p class="font-body-sm text-body-sm text-on-surface-variant">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
-            <p class="lp-error" id="fb-error"></p>
-            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary-container transition-all" id="fb-submit">
-              <span class="material-symbols-outlined text-[18px]">send</span><span>Gửi góp ý</span>
-            </button>
-          </div>
-        </div>`;
-      const close = () => backdrop.remove();
-      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-      backdrop.querySelector(".lp-close").addEventListener("click", close);
-      document.body.appendChild(backdrop);
-
-      const ta = backdrop.querySelector("#fb-content");
-      const errEl = backdrop.querySelector("#fb-error");
-      const btn = backdrop.querySelector("#fb-submit");
-      ta.focus();
-      btn.addEventListener("click", async () => {
-        const noi_dung = ta.value.trim();
-        errEl.classList.remove("show");
-        if (!noi_dung) {
-          errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
-          errEl.classList.add("show");
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = "Đang gửi…";
-        try {
-          await ApiClient.post("/feedback/", { noi_dung });
-          close();
-          Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
-        } catch (err) {
-          errEl.textContent = err.message || "Không gửi được góp ý.";
-          errEl.classList.add("show");
-          btn.disabled = false;
-          btn.textContent = "Gửi góp ý";
-        }
+            <p class="small" style="color:var(--tx-secondary)">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
+            <p class="small bold" id="fb-error" style="color:#B42318;display:none" role="alert"></p>
+          </div>`,
+        footerHTML: `<button type="button" class="btn btn-primary" id="fb-submit" style="width:100%">Gửi góp ý</button>`,
+        onMount(backdrop, close) {
+          const ta = backdrop.querySelector("#fb-content");
+          const errEl = backdrop.querySelector("#fb-error");
+          const btn = backdrop.querySelector("#fb-submit");
+          btn.addEventListener("click", async () => {
+            const noi_dung = ta.value.trim();
+            errEl.style.display = "none";
+            if (!noi_dung) {
+              errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+              errEl.style.display = "block";
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = "Đang gửi…";
+            try {
+              await ApiClient.post("/feedback/", { noi_dung });
+              close();
+              Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
+            } catch (err) {
+              errEl.textContent = err.message || "Không gửi được góp ý.";
+              errEl.style.display = "block";
+              btn.disabled = false;
+              btn.textContent = "Gửi góp ý";
+            }
+          });
+        },
       });
     }
 
@@ -553,24 +523,9 @@
     /* ---------- Nav member (CONTRACT §6) ---------- */
     /* renderMemberNav handled by shell controller */
 
-    /* ---------- Modal helper (CONTRACT §7) ---------- */
-    function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
-      const backdrop = document.createElement("div");
-      backdrop.className = "modal-backdrop";
-      backdrop.innerHTML = `
-        <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
-          <div class="modal-head"><h3>${esc(title)}</h3>
-            <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
-          <div class="modal-body">${bodyHTML}</div>
-          ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
-        </div>`;
-      const close = () => backdrop.remove();
-      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-      backdrop.querySelector(".modal-close").addEventListener("click", close);
-      backdrop.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
-      document.body.appendChild(backdrop);
-      if (onMount) onMount(backdrop, close);
-      return { el: backdrop, close };
+    /* ---------- Modal helper (CONTRACT §7) — ủy quyền MemberModal (M07) ---------- */
+    function openModal(opts) {
+      return MemberModal.open(opts);
     }
 
     /* ---------- Mapping ---------- */
@@ -725,25 +680,20 @@
     /* ---------- Xem trước PDF / Tải xuống ---------- */
     async function onPreview(doc) {
       const ft = normFileType(doc);
-      if (ft !== "pdf" || !doc.file) {
+      if (ft !== "pdf") {
         Toast.info("Chỉ hỗ trợ xem trước PDF — tải xuống để xem nhé! 📄");
         return;
       }
-      // Backend đặt X-Frame-Options: DENY → iframe trỏ thẳng /media/ bị chặn.
-      // Phải fetch blob kèm Bearer rồi nhúng blob URL (blob không chịu XFO).
+      /* M03 (audit 1114efd): HẾT fetch doc.file kèm Bearer — frontend contract
+         §1 cấm gửi JWT cho media/storage trực tiếp; production không phục vụ
+         /media/ nên fetch đó luôn 404. Dùng endpoint CÓ AUTH:
+         GET /documents/{id}/preview/ (FileResponse inline, KHÔNG tăng luot_tai,
+         KHÔNG cộng XP, cùng phân quyền download). ApiClient.getBlob tự refresh
+         token single-flight khi 401 và forceLogout khi 401 cuối (R02). */
       let blobUrl = null;
       try {
-        // Chuẩn hóa URL file (relative /media/... → tuyệt đối cùng origin)
-        const raw = String(doc.file || "");
-        const fileUrlAbs = /^https?:\/\//i.test(raw)
-          ? raw
-          : location.origin + (raw.startsWith("/") ? "" : "/") + raw;
-        const res = await fetch(fileUrlAbs, {
-          headers: { Authorization: `Bearer ${ApiClient.getAccessToken()}` },
-        });
-        if (!res.ok) throw new Error(`Không xem trước được tài liệu (HTTP ${res.status}).`);
-        const blob = await res.blob();
-        if (blob.size === 0) throw new Error("Tệp rỗng hoặc không truy cập được.");
+        const blob = await ApiClient.getBlob(`/documents/${doc.id}/preview/`);
+        if (!blob || blob.size === 0) throw new Error("Tệp rỗng hoặc không truy cập được.");
         blobUrl = URL.createObjectURL(blob);
         openModal({
           title: doc.tieu_de,
@@ -754,15 +704,15 @@
           onMount(backdrop, close) {
             const b = backdrop.querySelector("[data-download-id]");
             b.addEventListener("click", () => onDownload(doc, b));
-            // Dọn blob URL khi modal đóng — tránh rò rỉ bộ nhớ
-            const obs = new MutationObserver(() => {
-              if (!document.body.contains(backdrop)) {
-                if (blobUrl) URL.revokeObjectURL(blobUrl);
-                obs.disconnect();
-              }
-            });
-            obs.observe(document.body, { childList: true, subtree: true });
             void close;
+          },
+          // Vòng đời blob đúng: revoke NGAY khi modal đóng (đóng bằng mọi đường:
+          // Escape/nút X/backdrop/data-close) — không cần MutationObserver đoán mò
+          onClose() {
+            if (blobUrl) {
+              try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+              blobUrl = null;
+            }
           },
         });
       } catch (err) {
@@ -938,9 +888,13 @@
             try {
               await ApiClient.post("/documents/", fd); // FormData → ApiClient tự bỏ Content-Type
               closeAndReset();
-              Toast.success("+ 100 XP cho việc chia sẻ tài liệu! 🎉");
+              // M06: KHÔNG tuyên bố số XP cứng — XP do server quyết (daily cap/
+              // idempotency). Toast trung tính + refetch /gamification/me/ để
+              // shell hiển thị số thật ngay, không cần reload.
+              Toast.success("Tài liệu đã được chia sẻ! XP sẽ cộng theo quy định 🎉");
               state.page = 1;
               loadDocuments(1); // reload danh sách theo pattern hiện có của trang
+              MemberShell.refreshGamification(); // M06
             } catch (err) {
               Toast.error(err.message || "Không tải lên được tài liệu.");
               // 400 chi tiết theo field → hiện inline dưới từng field

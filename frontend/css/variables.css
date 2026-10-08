@@ -107,39 +107,46 @@
 }
 
 /* ============================================================
-   THEME: MEMBER — Cyber-Glass tối (Gen Z)
+   THEME: MEMBER — Light Neo-Glass (M01 — audit luồng thành viên 1114efd)
+   ----------------------------------------------------------------
+   Shell member 6 trang + Stitch Member Prompt 0 là NỀN SÁNG:
+   body #FAF8FF / chữ #131B2E, frosted glass TRẮNG viền nhạt, accent
+   indigo/violet, logo navy/cyan GIỮ NGUYÊN. Bản cũ dùng token dark
+   (#0B1020/#F2F4FF) trên nền sáng → contrast 1,04–1,89:1 (FAIL WCAG).
+   Mọi màu chữ mới đo ≥ 4,5:1 (chữ thường) / ≥ 3:1 (chữ lớn) trên
+   #FAF8FF, #FFFFFF và #F1EFFB — xem scripts/contrast_check.py.
    ============================================================ */
 [data-theme="member"] {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --bg-page: #0B1020;
-  --bg-page-2: #101736;
-  --bg-surface: #151C38;
-  --bg-subtle: #1B2447;
-  --bg-sidebar: rgba(13, 18, 40, 0.86);
+  --bg-page: #FAF8FF;
+  --bg-page-2: #F3F0FF;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #F1EFFB;
+  --bg-sidebar: rgba(255, 255, 255, 0.92);
 
-  --tx-primary: #F2F4FF;
-  --tx-secondary: #B9C0E4;
-  --tx-muted: #8189B5;
-  --tx-inverse: #0B1020;
-  --tx-sidebar: #C9CEEF;
+  --tx-primary: #131B2E;   /* 16,29:1 trên #FAF8FF — khớp shell */
+  --tx-secondary: #454C7E; /* 7,70:1 */
+  --tx-muted: #5A608F;     /* 5,69:1 */
+  --tx-inverse: #FFFFFF;
+  --tx-sidebar: #3D4470;   /* 8,82:1 */
 
-  --border-color: rgba(139, 146, 217, 0.22);
-  --border-strong: rgba(139, 146, 217, 0.40);
+  --border-color: rgba(99, 102, 241, 0.16);
+  --border-strong: rgba(99, 102, 241, 0.34);
 
-  --c-accent: var(--c-indigo);
-  --c-accent-strong: var(--c-indigo-strong);
-  --c-accent-soft: rgba(99, 102, 241, 0.16);
+  --c-accent: var(--c-indigo-strong);      /* #4F46E5 — 5,97:1 */
+  --c-accent-strong: #4338CA;              /* 7,50:1 — chữ accent */
+  --c-accent-soft: rgba(99, 102, 241, 0.10);
   --c-accent-contrast: #FFFFFF;
 
-  --c-violet-soft: rgba(139, 92, 246, 0.16);
+  --c-violet-soft: rgba(139, 92, 246, 0.10);
 
-  /* Shadows tinted theo nền tối (glow nhẹ) */
-  --shadow-sm: 0 1px 2px rgba(3, 6, 20, 0.5);
-  --shadow-md: 0 6px 20px rgba(3, 6, 20, 0.45);
-  --shadow-lg: 0 16px 44px rgba(3, 6, 20, 0.55);
-  --shadow-glow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 8px 30px rgba(99, 102, 241, 0.28);
-  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.6);
+  /* Shadows dịu cho nền sáng (floating card theo Stitch Prompt 0) */
+  --shadow-sm: 0 1px 2px rgba(28, 25, 82, 0.08);
+  --shadow-md: 0 6px 20px rgba(28, 25, 82, 0.10);
+  --shadow-lg: 0 16px 44px rgba(28, 25, 82, 0.14);
+  --shadow-glow: 0 0 0 1px rgba(99, 102, 241, 0.25), 0 8px 30px rgba(99, 102, 241, 0.16);
+  --shadow-modal: 0 24px 64px rgba(28, 25, 82, 0.22);
 
   --topbar-h: 60px;
   --bottomnav-h: 64px;

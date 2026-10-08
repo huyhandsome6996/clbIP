@@ -22,6 +22,7 @@
   <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
   <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 
+  <link rel="stylesheet" href="/frontend/css/member.css">
   <style>
 
     /* ===== Shell Layout & Animation Styles (Đồng bộ home.html) ===== */
@@ -73,26 +74,7 @@
     .dd-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
       color: #767586; padding: 6px 12px 4px; }
 
-    /* Modal góp ý */
-    .lp-backdrop {
-      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px;
-      background: rgba(19,27,46,.5); backdrop-filter: blur(6px);
-    }
-    .lp-modal {
-      width: 100%; max-width: 520px; max-height: 86dvh; overflow: auto;
-      background: linear-gradient(160deg, #ffffff, #f2f3ff);
-      border: 1px solid rgba(199,196,215,.6); border-radius: 24px;
-      box-shadow: 0 24px 80px rgba(40,48,68,.35); padding: 24px;
-    }
-    .lp-input {
-      width: 100%; border: 1px solid #c7c4d7; border-radius: 14px; background: #ffffff;
-      padding: 12px 14px; font-size: 14px; color: #131b2e; outline: none;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .lp-input:focus { border-color: #4648d4; box-shadow: 0 0 0 3px rgba(70,72,212,.15); }
-    .lp-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #464554; margin-bottom: 6px; }
-    .lp-error { color: #93000a; font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
-    .lp-error.show { display: block; }
+    /* Modal góp ý dùng MemberModal dùng chung (M07) */
 
 
     /* ===== Page-scoped styles (profile.html) ===== */
@@ -119,7 +101,7 @@
       -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
     }
     .bd-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%;
-      background: var(--c-accent-soft); color: #B4B8FF; font-size: 24px; line-height: 1; }
+      background: var(--c-accent-soft); color: #4338CA; font-size: 24px; line-height: 1; }
     .bd-icon svg { width: 24px; height: 24px; }
     .bd-name { font-size: var(--text-sm); font-weight: 700; }
     .bd-desc { font-size: var(--text-xs); color: var(--tx-muted); line-height: 1.4; }
@@ -128,7 +110,7 @@
     .xp-row:last-child { border-bottom: 0; }
     .ct-row { display: flex; align-items: center; gap: var(--s-3); padding: 10px 0; }
     .ct-row .ct-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
-      background: var(--c-accent-soft); color: #B4B8FF; flex: none; }
+      background: var(--c-accent-soft); color: #4338CA; flex: none; }
     .ct-row .ct-icon svg { width: 17px; height: 17px; }
   </style>
 </head>
@@ -364,6 +346,7 @@
   <script src="/frontend/js/utils.js"></script>
   <script src="/frontend/js/auth.js"></script>
   <script src="/frontend/js/celebration.js"></script>
+  <script src="/frontend/js/member-shell.js"></script>
 <script>
 
     /* ================= Shell Controller (Đồng bộ với home.html) ================= */
@@ -465,21 +448,8 @@
 
       (async () => {
         try {
-          const me = await ApiClient.get("/gamification/me/");
-          const xp = Number(me?.xp ?? me?.xp_points ?? 0);
-          const level = Number(me?.level ?? me?.current_level ?? 1);
-          const streak = Number(me?.streak_count ?? 0);
-          if ($("sb-level")) $("sb-level").textContent = `Lv.${level}`;
-          if ($("sb-xp")) $("sb-xp").textContent = `${Utils.fmtNum(xp)} XP`;
-          if ($("me-level")) $("me-level").textContent = `Level ${level} · ${Utils.fmtNum(xp)} XP`;
-          if (streak > 0 && $("pill-streak") && $("pill-streak-text")) {
-            $("pill-streak").hidden = false;
-            $("pill-streak-text").textContent = `${streak} ngày chuyên cần`;
-          }
-          if ($("pill-xp") && $("pill-xp-text")) {
-            $("pill-xp").hidden = false;
-            $("pill-xp-text").textContent = `${Utils.fmtNum(xp)} XP`;
-          }
+          // M06: XP/streak vẽ qua shell dùng chung (đủ sb-*/pill-*/me-level)
+          await MemberShell.refreshGamification();
         } catch (_) {}
 
         try {
@@ -508,56 +478,43 @@
     }
 
     function openFeedbackModal() {
-      const backdrop = document.createElement("div");
-      backdrop.className = "lp-backdrop";
-      backdrop.innerHTML = `
-        <div class="lp-modal" role="dialog" aria-modal="true" aria-label="Góp ý ẩn danh">
-          <div class="flex items-center justify-between gap-4 mb-4">
-            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">Góp ý ẩn danh 💌</h3>
-            <button type="button" aria-label="Đóng" class="lp-close w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
+      MemberModal.open({
+        title: "Góp ý ẩn danh 💌",
+        bodyHTML: `
           <div class="space-y-3">
-            <label class="lp-label" for="fb-content">Nội dung góp ý</label>
-            <textarea id="fb-content" class="lp-input" rows="4" maxlength="1000"
+            <label class="form-hint" for="fb-content" style="display:block;margin-bottom:6px">NỘI DUNG GÓP Ý</label>
+            <textarea id="fb-content" class="form-textarea" rows="4" maxlength="1000" data-autofocus
               placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
-            <p class="font-body-sm text-body-sm text-on-surface-variant">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
-            <p class="lp-error" id="fb-error"></p>
-            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary-container transition-all" id="fb-submit">
-              <span class="material-symbols-outlined text-[18px]">send</span><span>Gửi góp ý</span>
-            </button>
-          </div>
-        </div>`;
-      const close = () => backdrop.remove();
-      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-      backdrop.querySelector(".lp-close").addEventListener("click", close);
-      document.body.appendChild(backdrop);
-
-      const ta = backdrop.querySelector("#fb-content");
-      const errEl = backdrop.querySelector("#fb-error");
-      const btn = backdrop.querySelector("#fb-submit");
-      ta.focus();
-      btn.addEventListener("click", async () => {
-        const noi_dung = ta.value.trim();
-        errEl.classList.remove("show");
-        if (!noi_dung) {
-          errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
-          errEl.classList.add("show");
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = "Đang gửi…";
-        try {
-          await ApiClient.post("/feedback/", { noi_dung });
-          close();
-          Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
-        } catch (err) {
-          errEl.textContent = err.message || "Không gửi được góp ý.";
-          errEl.classList.add("show");
-          btn.disabled = false;
-          btn.textContent = "Gửi góp ý";
-        }
+            <p class="small" style="color:var(--tx-secondary)">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
+            <p class="small bold" id="fb-error" style="color:#B42318;display:none" role="alert"></p>
+          </div>`,
+        footerHTML: `<button type="button" class="btn btn-primary" id="fb-submit" style="width:100%">Gửi góp ý</button>`,
+        onMount(backdrop, close) {
+          const ta = backdrop.querySelector("#fb-content");
+          const errEl = backdrop.querySelector("#fb-error");
+          const btn = backdrop.querySelector("#fb-submit");
+          btn.addEventListener("click", async () => {
+            const noi_dung = ta.value.trim();
+            errEl.style.display = "none";
+            if (!noi_dung) {
+              errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+              errEl.style.display = "block";
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = "Đang gửi…";
+            try {
+              await ApiClient.post("/feedback/", { noi_dung });
+              close();
+              Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
+            } catch (err) {
+              errEl.textContent = err.message || "Không gửi được góp ý.";
+              errEl.style.display = "block";
+              btn.disabled = false;
+              btn.textContent = "Gửi góp ý";
+            }
+          });
+        },
       });
     }
 
@@ -568,7 +525,31 @@
 
     "use strict";
     const esc = Utils.escapeHtml;
-    const XP_PER_LEVEL = 200;
+    /* M10 (audit 1114efd): HẾT modulo 200 — bảng ngưỡng backend là nguồn chuẩn
+       [0,100,250,500,900,1400,2000,2800,3800,5000] (GamificationService).
+       Ưu tiên dùng `level_progress` trả từ /gamification/me/; hàm dưới chỉ là
+       FALLBACK khi API thiếu trường (mô phỏng 1:1 logic backend). */
+    const LEVEL_THRESHOLDS_FALLBACK = [0, 100, 250, 500, 900, 1400, 2000, 2800, 3800, 5000];
+
+    function computeLevelProgress(xp) {
+      const v = Math.max(0, Math.floor(Number(xp) || 0));
+      let level = 1;
+      for (let i = 0; i < LEVEL_THRESHOLDS_FALLBACK.length; i++) {
+        if (v >= LEVEL_THRESHOLDS_FALLBACK[i]) level = i + 1;
+      }
+      const cur = LEVEL_THRESHOLDS_FALLBACK[level - 1];
+      const isMax = level >= LEVEL_THRESHOLDS_FALLBACK.length;
+      if (isMax) {
+        return { current_level: level, current_level_xp: cur, next_level_xp: null,
+                 xp_into_level: v - cur, xp_to_next: null, progress_percent: 100, max_level: true };
+      }
+      const next = LEVEL_THRESHOLDS_FALLBACK[level];
+      const span = next - cur;
+      const pct = span > 0 ? Math.round(((v - cur) / span) * 100) : 100;
+      return { current_level: level, current_level_xp: cur, next_level_xp: next,
+               xp_into_level: v - cur, xp_to_next: Math.max(0, next - v),
+               progress_percent: Math.max(0, Math.min(100, pct)), max_level: false };
+    }
 
     /* ---------- Nav member (CONTRACT §6) ---------- */
     /* renderMemberNav handled by shell controller */
@@ -638,9 +619,9 @@
       document.getElementById("st-streak").textContent = `${u.streak_count ?? 0} ngày`;
       document.getElementById("st-ev").textContent = "…";
       document.getElementById("ct-email").textContent = u.email || "—";
-      paintLevel(u.xp_points ?? 0, u.current_level ?? 1, u.streak_count ?? 0);
+      paintLevel(u.xp_points ?? 0, u.current_level ?? 1, u.streak_count ?? 0, null);
       paintStatus(u.trang_thai_hd);
-      paintRing(u.xp_points ?? 0);
+      paintRing(u.xp_points ?? 0, null);
     }
 
     function paintStatus(trangThai) {
@@ -650,26 +631,29 @@
       el.innerHTML = `<span class="badge badge-accent" id="holo-level-badge">Level ${currentLevelView}</span>${Utils.badge(label, tone)}`;
     }
 
-    function paintRing(xp) {
-      const pct = Math.round(((xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100);
+    function paintRing(xp, lp) {
+      const progress = lp || computeLevelProgress(xp);
+      const pct = Math.max(0, Math.min(100, Number(progress.progress_percent) || 0));
       document.getElementById("ring").style.setProperty("--pct", String(pct));
     }
 
-    function paintLevel(xp, level, streak) {
-      currentLevelView = level ?? 1;
-      const into = ((xp % XP_PER_LEVEL) + XP_PER_LEVEL) % XP_PER_LEVEL;
-      const remaining = into === 0 && xp > 0 ? 0 : XP_PER_LEVEL - into;
-      const pct = Math.round((into / XP_PER_LEVEL) * 100);
+    function paintLevel(xp, level, streak, lp) {
+      const progress = lp || computeLevelProgress(xp);
+      const lv = progress.current_level ?? level ?? 1;
+      currentLevelView = lv;
+      const pct = Math.max(0, Math.min(100, Number(progress.progress_percent) || 0));
+      const remaining = progress.max_level ? null : Math.max(0, Number(progress.xp_to_next) || 0);
       document.getElementById("lvl-bar").style.width = `${pct}%`;
-      document.getElementById("lvl-badge").textContent = `Level ${level ?? 1}`;
+      document.getElementById("lvl-badge").textContent = `Level ${lv}`;
       const lb = document.getElementById("holo-level-badge");
-      if (lb) lb.textContent = `Level ${level ?? 1}`;
-      document.getElementById("lvl-note").textContent =
-        remaining === 0
+      if (lb) lb.textContent = `Level ${lv}`;
+      document.getElementById("lvl-note").textContent = progress.max_level
+        ? "Bạn đã đạt CẤP TỐI ĐA của CLB — rực rỡ thật sự! 👑"
+        : remaining === 0
           ? "Bạn đã chạm ngưỡng — Level mới đang chờ đó! 🚀"
-          : `Còn ${Utils.fmtNum(remaining)} XP nữa lên Level ${(level ?? 1) + 1} — cố lên chứ! 💪`;
+          : `Còn ${Utils.fmtNum(remaining)} XP nữa lên Level ${progress.current_level + 1} — cố lên chứ! 💪`;
       document.getElementById("holo-streak").textContent = `🔥 ${streak ?? 0} ngày streak`;
-      document.getElementById("me-level").textContent = `Level ${level ?? 1} · ${Utils.fmtNum(xp)} XP`;
+      document.getElementById("me-level").textContent = `Level ${lv} · ${Utils.fmtNum(xp)} XP`;
     }
 
     function paintBadges(items, awardedMap) {
@@ -819,8 +803,10 @@
       const badges = badgeRes.status === "fulfilled" ? badgeRes.value : null;
 
       if (gme) {
-        paintLevel(gme.xp ?? user?.xp_points ?? 0, gme.level ?? user?.current_level ?? 1, gme.streak_count ?? user?.streak_count ?? 0);
-        paintRing(gme.xp ?? 0);
+        // M10: level_progress từ backend = nguồn chuẩn (không còn modulo 200)
+        paintLevel(gme.xp ?? user?.xp_points ?? 0, gme.level ?? user?.current_level ?? 1,
+                   gme.streak_count ?? user?.streak_count ?? 0, gme.level_progress ?? null);
+        paintRing(gme.xp ?? 0, gme.level_progress ?? null);
         document.getElementById("st-xp").textContent = Utils.fmtNum(gme.xp ?? 0);
         document.getElementById("st-streak").textContent = `${gme.streak_count ?? 0} ngày`;
       }
@@ -835,7 +821,8 @@
         document.getElementById("st-att").textContent = `${stats.attendance_rate_percent ?? 0}%`;
         document.getElementById("st-ev").textContent = Utils.fmtNum(stats.events_registered ?? 0);
         if (!gme) {
-          paintLevel(stats.xp_points ?? 0, stats.current_level ?? 1, stats.streak_count ?? 0);
+          paintLevel(stats.xp_points ?? 0, stats.current_level ?? 1, stats.streak_count ?? 0, null);
+          paintRing(stats.xp_points ?? 0, null);
           document.getElementById("st-xp").textContent = Utils.fmtNum(stats.xp_points ?? 0);
           document.getElementById("st-streak").textContent = `${stats.streak_count ?? 0} ngày`;
         }

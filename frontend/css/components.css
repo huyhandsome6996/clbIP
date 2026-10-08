@@ -104,8 +104,10 @@
 [data-theme="member"] .form-input,
 [data-theme="member"] .form-select,
 [data-theme="member"] .form-textarea {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--border-color);
+  /* M01: light — trắng đặc viền indigo nhạt (bản cũ trắng alpha .05 vô hình trên nền sáng) */
+  background: #FFFFFF;
+  border-color: var(--border-strong);
+  color: var(--tx-primary);
 }
 .form-input::placeholder,
 .form-textarea::placeholder { color: var(--tx-muted); opacity: 1; }
@@ -227,12 +229,14 @@
 .badge-info    { background: var(--c-info-soft);    color: #075985; }
 .badge-accent  { background: var(--c-accent-soft);  color: var(--c-accent); }
 .badge-neutral { background: var(--bg-subtle);      color: var(--tx-secondary); }
-[data-theme="member"] .badge-success { background: rgba(22,163,74,.18); color: #7EE2A0; }
-[data-theme="member"] .badge-danger  { background: rgba(220,38,38,.20);  color: #FCA5A5; }
-[data-theme="member"] .badge-warning { background: rgba(217,119,6,.20);  color: #FCD34D; }
-[data-theme="member"] .badge-info    { background: rgba(2,132,199,.20);  color: #7DD3FC; }
-[data-theme="member"] .badge-accent  { background: var(--c-accent-soft); color: #B4B8FF; }
-[data-theme="member"] .badge-neutral { background: rgba(255,255,255,.08); color: var(--tx-secondary); }
+/* M01: badge member trên NỀN SÁNG — chữ đậm ≥4,5:1 (bản cũ chữ pastel
+   #7EE2A0/#FCA5A5/#FCD34D trên nền sáng chỉ 1,5–1,9:1) */
+[data-theme="member"] .badge-success { background: rgba(22,163,74,.14); color: #065F46; }
+[data-theme="member"] .badge-danger  { background: rgba(220,38,38,.12);  color: #991B1B; }
+[data-theme="member"] .badge-warning { background: rgba(217,119,6,.14);  color: #92400E; }
+[data-theme="member"] .badge-info    { background: rgba(2,132,199,.12);  color: #075985; }
+[data-theme="member"] .badge-accent  { background: var(--c-accent-soft); color: #4338CA; }
+[data-theme="member"] .badge-neutral { background: var(--bg-subtle); color: var(--tx-secondary); }
 
 /* ================= MODAL ================= */
 .modal-backdrop {

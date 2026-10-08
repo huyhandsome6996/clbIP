@@ -22,6 +22,7 @@
   <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
   <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 
+  <link rel="stylesheet" href="/frontend/css/member.css">
   <style>
 
     /* ===== Shell Layout & Animation Styles (Đồng bộ home.html) ===== */
@@ -73,26 +74,8 @@
     .dd-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
       color: #767586; padding: 6px 12px 4px; }
 
-    /* Modal góp ý */
-    .lp-backdrop {
-      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px;
-      background: rgba(19,27,46,.5); backdrop-filter: blur(6px);
-    }
-    .lp-modal {
-      width: 100%; max-width: 520px; max-height: 86dvh; overflow: auto;
-      background: linear-gradient(160deg, #ffffff, #f2f3ff);
-      border: 1px solid rgba(199,196,215,.6); border-radius: 24px;
-      box-shadow: 0 24px 80px rgba(40,48,68,.35); padding: 24px;
-    }
-    .lp-input {
-      width: 100%; border: 1px solid #c7c4d7; border-radius: 14px; background: #ffffff;
-      padding: 12px 14px; font-size: 14px; color: #131b2e; outline: none;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .lp-input:focus { border-color: #4648d4; box-shadow: 0 0 0 3px rgba(70,72,212,.15); }
-    .lp-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #464554; margin-bottom: 6px; }
-    .lp-error { color: #93000a; font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
-    .lp-error.show { display: block; }
+    /* Modal góp ý — dùng modal chuẩn chung (MemberModal, CONTRACT §7)
+       → bỏ họ .lp-* riêng của trang (2 skin modal không nhất quán, không a11y) */
 
 
     /* ===== Page-scoped styles (events.html) ===== */
@@ -106,7 +89,8 @@
     .ev-quota { display: flex; flex-direction: column; gap: 6px; }
     .ev-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
     .ev-wait { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); color: var(--tx-muted); width: 100%;
-      padding: 9px 12px; border-radius: var(--r-control); background: rgba(255,255,255,.04); border: 1px dashed var(--border-color); }
+      padding: 9px 12px; border-radius: var(--r-control); background: rgba(99,102,241,.06); border: 1px dashed var(--border-strong); }
+    .ticket-code-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: .05em; color: var(--tx-muted); }
     .ev-wait svg { width: 15px; height: 15px; flex: none; }
   </style>
 </head>
@@ -291,6 +275,7 @@
   <script src="/frontend/js/utils.js"></script>
   <script src="/frontend/js/auth.js"></script>
   <script src="/frontend/js/celebration.js"></script>
+  <script src="/frontend/js/member-shell.js"></script>
   <script src="/frontend/assets/qrcode.min.js"></script>
 <script>
 
@@ -393,21 +378,8 @@
 
       (async () => {
         try {
-          const me = await ApiClient.get("/gamification/me/");
-          const xp = Number(me?.xp ?? me?.xp_points ?? 0);
-          const level = Number(me?.level ?? me?.current_level ?? 1);
-          const streak = Number(me?.streak_count ?? 0);
-          if ($("sb-level")) $("sb-level").textContent = `Lv.${level}`;
-          if ($("sb-xp")) $("sb-xp").textContent = `${Utils.fmtNum(xp)} XP`;
-          if ($("me-level")) $("me-level").textContent = `Level ${level} · ${Utils.fmtNum(xp)} XP`;
-          if (streak > 0 && $("pill-streak") && $("pill-streak-text")) {
-            $("pill-streak").hidden = false;
-            $("pill-streak-text").textContent = `${streak} ngày chuyên cần`;
-          }
-          if ($("pill-xp") && $("pill-xp-text")) {
-            $("pill-xp").hidden = false;
-            $("pill-xp-text").textContent = `${Utils.fmtNum(xp)} XP`;
-          }
+          // M06: vẽ XP/streak qua shell dùng chung (đủ sb-*/pill-*/me-level; lỗi giữ số cũ, không ghi 0)
+          await MemberShell.refreshGamification();
         } catch (_) {}
 
         try {
@@ -436,56 +408,43 @@
     }
 
     function openFeedbackModal() {
-      const backdrop = document.createElement("div");
-      backdrop.className = "lp-backdrop";
-      backdrop.innerHTML = `
-        <div class="lp-modal" role="dialog" aria-modal="true" aria-label="Góp ý ẩn danh">
-          <div class="flex items-center justify-between gap-4 mb-4">
-            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">Góp ý ẩn danh 💌</h3>
-            <button type="button" aria-label="Đóng" class="lp-close w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
+      MemberModal.open({
+        title: "Góp ý ẩn danh 💌",
+        bodyHTML: `
           <div class="space-y-3">
-            <label class="lp-label" for="fb-content">Nội dung góp ý</label>
-            <textarea id="fb-content" class="lp-input" rows="4" maxlength="1000"
+            <label class="form-hint" for="fb-content" style="display:block;margin-bottom:6px">NỘI DUNG GÓP Ý</label>
+            <textarea id="fb-content" class="form-textarea" rows="4" maxlength="1000" data-autofocus
               placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
-            <p class="font-body-sm text-body-sm text-on-surface-variant">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
-            <p class="lp-error" id="fb-error"></p>
-            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary-container transition-all" id="fb-submit">
-              <span class="material-symbols-outlined text-[18px]">send</span><span>Gửi góp ý</span>
-            </button>
-          </div>
-        </div>`;
-      const close = () => backdrop.remove();
-      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-      backdrop.querySelector(".lp-close").addEventListener("click", close);
-      document.body.appendChild(backdrop);
-
-      const ta = backdrop.querySelector("#fb-content");
-      const errEl = backdrop.querySelector("#fb-error");
-      const btn = backdrop.querySelector("#fb-submit");
-      ta.focus();
-      btn.addEventListener("click", async () => {
-        const noi_dung = ta.value.trim();
-        errEl.classList.remove("show");
-        if (!noi_dung) {
-          errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
-          errEl.classList.add("show");
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = "Đang gửi…";
-        try {
-          await ApiClient.post("/feedback/", { noi_dung });
-          close();
-          Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
-        } catch (err) {
-          errEl.textContent = err.message || "Không gửi được góp ý.";
-          errEl.classList.add("show");
-          btn.disabled = false;
-          btn.textContent = "Gửi góp ý";
-        }
+            <p class="small" style="color:var(--tx-secondary)">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
+            <p class="small bold" id="fb-error" style="color:#B42318;display:none" role="alert"></p>
+          </div>`,
+        footerHTML: `<button type="button" class="btn btn-primary" id="fb-submit" style="width:100%">Gửi góp ý</button>`,
+        onMount(backdrop, close) {
+          const ta = backdrop.querySelector("#fb-content");
+          const errEl = backdrop.querySelector("#fb-error");
+          const btn = backdrop.querySelector("#fb-submit");
+          btn.addEventListener("click", async () => {
+            const noi_dung = ta.value.trim();
+            errEl.style.display = "none";
+            if (!noi_dung) {
+              errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+              errEl.style.display = "block";
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = "Đang gửi…";
+            try {
+              await ApiClient.post("/feedback/", { noi_dung });
+              close();
+              Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
+            } catch (err) {
+              errEl.textContent = err.message || "Không gửi được góp ý.";
+              errEl.style.display = "block";
+              btn.disabled = false;
+              btn.textContent = "Gửi góp ý";
+            }
+          });
+        },
       });
     }
 
@@ -500,24 +459,11 @@
     /* ---------- Nav member (CONTRACT §6) ---------- */
     /* renderMemberNav handled by shell controller */
 
-    /* ---------- Modal helper (CONTRACT §7) ---------- */
-    function openModal({ title, bodyHTML, onMount, footerHTML = "" }) {
-      const backdrop = document.createElement("div");
-      backdrop.className = "modal-backdrop";
-      backdrop.innerHTML = `
-        <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
-          <div class="modal-head"><h3>${esc(title)}</h3>
-            <button class="modal-close" aria-label="Đóng">${Icons.render("x", 20)}</button></div>
-          <div class="modal-body">${bodyHTML}</div>
-          ${footerHTML ? `<div class="modal-foot">${footerHTML}</div>` : ""}
-        </div>`;
-      const close = () => backdrop.remove();
-      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-      backdrop.querySelector(".modal-close").addEventListener("click", close);
-      backdrop.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
-      document.body.appendChild(backdrop);
-      if (onMount) onMount(backdrop, close);
-      return { el: backdrop, close };
+    /* ---------- Modal helper (CONTRACT §7) — ủy quyền MemberModal (M07) ----------
+       MemberModal: Escape đóng, Tab/Shift+Tab focus-trap, trả focus về nút mở,
+       khóa scroll nền, dọn listener. Skin .modal components.css dùng chung. */
+    function openModal(opts) {
+      return MemberModal.open(opts);
     }
 
     /* ---------- Mapping nhãn ---------- */
@@ -538,7 +484,20 @@
     const state = {
       events: [], pagination: null, page: 1, tab: "all",
       tickets: [], ticketMap: new Map(), eventsMap: new Map(),
+      ticketPage: 1,
     };
+    const TICKET_PAGE_SIZE = 20;
+
+    /* M02 — nhãn trạng thái VÉ (độc lập với trạng thái sự kiện) */
+    const TICKET_STATUS = {
+      REGISTERED: { label: "Đã đăng ký — vé có hiệu lực", tone: "success" },
+      CHECKED_IN: { label: "Đã check-in", tone: "info" },
+      CANCELLED:  { label: "Đã hủy", tone: "danger" },
+    };
+    function isEventEnded(t) {
+      const end = t?.event_thoi_gian_ket_thuc ? new Date(t.event_thoi_gian_ket_thuc) : null;
+      return end ? end.getTime() < Date.now() : false;
+    }
 
     /* ---------- Data ---------- */
     async function loadEvents(page = 1) {
@@ -563,11 +522,20 @@
       render();
     }
 
-    /* ---------- Render ---------- */
+    /* ---------- Render ----------
+       M02: tab "mine" KHÔNG lọc theo trang events hiện tại nữa — dựng từ
+       state.tickets (my-tickets có đủ metadata sự kiện) + pagination riêng.
+       Bản cũ intersect với state.events của trang 1 → vé nằm ngoài trang 1
+       biến mất ("có vé mà báo chưa có"). */
     function visibleEvents() {
-      return state.tab === "mine"
-        ? state.events.filter((e) => state.ticketMap.has(e.id))
-        : state.events;
+      return state.events;
+    }
+    function visibleTickets() {
+      const start = (state.ticketPage - 1) * TICKET_PAGE_SIZE;
+      return state.tickets.slice(start, start + TICKET_PAGE_SIZE);
+    }
+    function ticketTotalPages() {
+      return Math.max(1, Math.ceil(state.tickets.length / TICKET_PAGE_SIZE));
     }
 
     function eventCard(ev) {
@@ -621,13 +589,83 @@
       </article>`;
     }
 
+    function ticketCard(t) {
+      const st = TICKET_STATUS[t.trang_thai] || { label: t.trang_thai, tone: "neutral" };
+      const ended = isEventEnded(t);
+      const loai = LOAI_LABEL[t.event_loai_hd] || t.event_loai_hd || "";
+      const time = t.event_thoi_gian_bat_dau ? Utils.fmtDateTime(t.event_thoi_gian_bat_dau) : "Sắp cập nhật";
+      const place = t.event_dia_diem || "Sắp cập nhật địa điểm";
+      const evSt = STATUS_BADGE[t.event_trang_thai] || { label: t.event_trang_thai || "", tone: "neutral" };
+
+      let actionHTML = "";
+      if (t.trang_thai === "REGISTERED" && !ended) {
+        actionHTML = `
+          <button class="btn btn-primary" data-act="view" style="flex:1">${Icons.render("qr", 17)} Xem vé QR 🎟️</button>
+          <button class="btn btn-ghost btn-sm" data-act="cancel" data-event-id="${t.event}">${Icons.render("x", 15)} Hủy vé</button>`;
+      } else if (t.trang_thai === "REGISTERED" && ended) {
+        actionHTML = `<div class="ev-wait">${Icons.render("flag", 15)} <span>Sự kiện đã kết thúc — vé lưu làm kỷ niệm nhé!</span></div>`;
+      } else if (t.trang_thai === "CHECKED_IN") {
+        actionHTML = `<div class="ev-wait">${Icons.render("check-circle", 15)} <span>Bạn đã check-in sự kiện này ✅</span></div>`;
+      } else if (t.trang_thai === "CANCELLED" && t.event_trang_thai === "OPEN_REGISTRATION" && !ended) {
+        actionHTML = `<button class="btn btn-outline" data-act="reregister" data-event-id="${t.event}" style="flex:1">${Icons.render("user-plus", 17)} Đăng ký lại</button>`;
+      } else {
+        actionHTML = `<div class="ev-wait">${Icons.render("x", 15)} <span>Vé đã hủy${t.event_trang_thai ? ` · sự kiện: ${esc(evSt.label)}` : ""}</span></div>`;
+      }
+
+      return `
+      <article class="glass ev-card" data-ticket-id="${t.id}">
+        <div class="ev-head">
+          <div style="min-width:0">
+            <h3 class="ev-title">${esc(t.event_ten || "Sự kiện CLB IP")}</h3>
+            <div class="flex items-center gap-2 mt-2 wrap">
+              ${loai ? `<span class="badge badge-accent">${esc(loai)}</span>` : ""}
+              <span class="badge badge-neutral">Mã vé: <strong>${esc(t.ma_ve)}</strong></span>
+            </div>
+          </div>
+          ${Utils.badge(st.label, st.tone)}
+        </div>
+        <div class="ev-meta">${Icons.render("calendar", 15)}<span>${esc(time)}</span></div>
+        <div class="ev-meta">${Icons.render("map-pin", 15)}<span>${esc(place)}</span></div>
+        ${ended ? `<div class="ev-meta">${Icons.render("flag", 15)}<span>Sự kiện đã kết thúc</span></div>` : ""}
+        <div class="ev-actions">${actionHTML}</div>
+      </article>`;
+    }
+
+    function renderMineTickets() {
+      const list = document.getElementById("event-list");
+      const pageTickets = visibleTickets();
+      list.innerHTML = pageTickets.map(ticketCard).join("");
+
+      if (state.tickets.length === 0) {
+        Utils.empty(list, {
+          icon: "qr",
+          title: "Bạn chưa có vé nào",
+          desc: "Đăng ký sự kiện ở tab “Tất cả sự kiện” để rinh vé QR siêu xịn về túi nha!",
+          actionLabel: "Xem tất cả sự kiện",
+          onAction: () => switchTab("all"),
+        });
+      }
+
+      // Pagination RIÊNG của tab vé (M02)
+      const pager = document.getElementById("pager");
+      const tp = ticketTotalPages();
+      if (tp > 1) {
+        pager.classList.remove("hidden");
+        document.getElementById("page-info").textContent = `Vé ${state.ticketPage}/${tp} · ${state.tickets.length} vé`;
+      } else {
+        pager.classList.add("hidden");
+      }
+    }
+
     function render() {
       const list = document.getElementById("event-list");
+      if (state.tab === "mine") { renderMineTickets(); return; }
+
       const listEvents = visibleEvents();
       list.innerHTML = listEvents.map(eventCard).join("");
 
-      // Trạng thái rỗng cho từng tab
-      if (state.tab === "mine" && listEvents.length === 0) {
+      // Trạng thái rỗng cho tab tất cả
+      if (state.tab === "all" && listEvents.length === 0) {
         Utils.empty(list, {
           icon: "qr",
           title: "Bạn chưa có vé nào",
@@ -643,10 +681,10 @@
         });
       }
 
-      // Phân trang (ẩn khi chỉ có 1 trang)
+      // Phân trang tab "all" (tab mine có pagination riêng ở renderMineTickets)
       const pager = document.getElementById("pager");
       const tp = state.pagination?.total_pages || 1;
-      if (state.tab === "all" && tp > 1) {
+      if (tp > 1) {
         pager.classList.remove("hidden");
         document.getElementById("page-info").textContent = `Trang ${state.page}/${tp}`;
       } else {
@@ -656,19 +694,32 @@
 
     function switchTab(tab) {
       state.tab = tab;
+      if (tab === "mine") state.ticketPage = 1;
       Utils.qsa("#ev-tabs .tab").forEach((b) => {
         const on = b.dataset.tab === tab;
         b.classList.toggle("active", on);
         b.setAttribute("aria-selected", String(on));
       });
+      updateMineCount();
       render();
+    }
+
+    function updateMineCount() {
+      // Đếm vé CÓ HIỆU lực (REGISTERED/CHECKED_IN) — CANCELLED không tính "có vé"
+      const n = state.tickets.filter((t) => t.trang_thai !== "CANCELLED").length;
+      const btn = document.querySelector('#ev-tabs .tab[data-tab="mine"]');
+      if (btn) btn.textContent = n > 0 ? `🎟️ Vé của tôi (${n})` : "🎟️ Vé của tôi";
     }
 
     /* ---------- Vé QR (Apple Wallet style) ---------- */
     function openTicketModal(ticket, ev) {
-      const name = ev?.ten_hoat_dong || ticket.event_ten || "Sự kiện CLB IP";
-      const time = ev?.thoi_gian_bat_dau ? Utils.fmtDateTime(ev.thoi_gian_bat_dau) : "";
-      const place = ev?.dia_diem || "";
+      // M02: metadata lấy TỪ VÉ (my-tickets đã trả event_ten/thời gian/địa điểm)
+      // — không phụ thuộc state.eventsMap của trang events hiện tại.
+      const name = ticket.event_ten || ev?.ten_hoat_dong || "Sự kiện CLB IP";
+      const time = ticket.event_thoi_gian_bat_dau
+        ? Utils.fmtDateTime(ticket.event_thoi_gian_bat_dau)
+        : (ev?.thoi_gian_bat_dau ? Utils.fmtDateTime(ev.thoi_gian_bat_dau) : "");
+      const place = ticket.event_dia_diem || ev?.dia_diem || "";
       const me = Auth.cachedUser();
       openModal({
         title: "Vé điện tử của bạn",
@@ -712,7 +763,11 @@
         const reg = await ApiClient.post(`/events/${eventId}/register/`);
         Toast.success("Đăng ký thành công! 🎉 Vé của bạn đây!");
         try { await loadTickets(); } catch (_) { /* giữ reg vừa nhận */ }
-        if (reg) { state.tickets.unshift(reg); if (reg.trang_thai === "REGISTERED") state.ticketMap.set(reg.event, reg); }
+        if (reg && !state.tickets.some((t) => t.id === reg?.id)) {
+          state.tickets.unshift(reg);
+          if (reg.trang_thai === "REGISTERED") state.ticketMap.set(reg.event, reg);
+        }
+        updateMineCount();
         render();
         openTicketModal(reg || { ma_ve: "", member_ten: Auth.cachedUser()?.ho_ten }, state.eventsMap.get(eventId));
         loadEvents(state.page).then(render).catch(() => {}); // cập nhật registered_count
@@ -749,22 +804,36 @@
         return;
       }
       render();
+      updateMineCount();
 
       document.getElementById("ev-tabs").addEventListener("click", (e) => {
         const tab = e.target.closest(".tab");
         if (tab) switchTab(tab.dataset.tab);
       });
 
-      // Delegation: register / view / cancel
+      // Delegation: register / view / cancel / reregister — resolve theo tab
       list.addEventListener("click", (e) => {
         const act = e.target.closest("[data-act]");
         if (!act) return;
+
+        // Tab "mine": card vé mang data-ticket-id
+        const ticketCardEl = act.closest("[data-ticket-id]");
+        if (state.tab === "mine" && ticketCardEl) {
+          const ticket = state.tickets.find((t) => t.id === Number(ticketCardEl.dataset.ticketId));
+          if (!ticket) return;
+          if (act.dataset.act === "view") openTicketModal(ticket, null);
+          else if (act.dataset.act === "cancel") onCancel(ticket.event, act);
+          else if (act.dataset.act === "reregister") onRegister(ticket.event, act);
+          return;
+        }
+
+        // Tab "all": card sự kiện mang data-event-id
         const card = act.closest("[data-event-id]");
         if (!card) return;
         const id = Number(card.dataset.eventId);
         if (act.dataset.act === "register") onRegister(id, act);
         else if (act.dataset.act === "view") {
-          const ticket = state.ticketMap.get(id);
+          const ticket = state.ticketMap.get(id) || state.tickets.find((t) => t.event === id && t.trang_thai !== "CANCELLED");
           if (ticket) openTicketModal(ticket, state.eventsMap.get(id));
         }
         else if (act.dataset.act === "cancel") onCancel(id, act);
@@ -773,9 +842,17 @@
       document.getElementById("btn-prev").innerHTML = `${Icons.render("chevron-left", 15)} Trước`;
       document.getElementById("btn-next").innerHTML = `Sau ${Icons.render("chevron-right", 15)}`;
       document.getElementById("btn-prev").addEventListener("click", () => {
+        if (state.tab === "mine") {
+          if (state.ticketPage > 1) { state.ticketPage -= 1; render(); }
+          return;
+        }
         if (state.page > 1) { Utils.skeleton(list, 3); loadEvents(state.page - 1).then(render).catch((err) => Toast.error(err.message)); }
       });
       document.getElementById("btn-next").addEventListener("click", () => {
+        if (state.tab === "mine") {
+          if (state.ticketPage < ticketTotalPages()) { state.ticketPage += 1; render(); }
+          return;
+        }
         const tp = state.pagination?.total_pages || 1;
         if (state.page < tp) { Utils.skeleton(list, 3); loadEvents(state.page + 1).then(render).catch((err) => Toast.error(err.message)); }
       });
