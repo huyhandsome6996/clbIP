@@ -8,7 +8,7 @@ qua backend thật. Không cần cài dependency nào — chỉ Node 18+.
 
 ```bash
 node frontend/tests/api.test.js     # R02 — getBlob 401/auth policy (30 asserts)
-node frontend/tests/nonce.test.js   # R03 — nonce expiry/backoff (26 asserts)
+node frontend/tests/nonce.test.js   # R03 — nonce expiry/backoff (45 asserts)
 ```
 
 - `api.test.js` nạp **frontend/js/api.js thật** vào VM sandbox với fetch mô

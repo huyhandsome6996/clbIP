@@ -1,19 +1,22 @@
 /** tailwind.config.js — theme clone 1:1 từ bản thiết kế CLB IP (Material 3)
  *
  * NẰM TRONG REPO để ai clone về cũng build lại được css/landing.css.
- * Content gồm: trang member home + landing công khai + file thiết kế gốc.
+ * Content gồm: TOÀN BỘ 6 trang member + landing/login công khai + file thiết kế gốc.
  *
  * Build (chạy trong thư mục frontend/tailwind/):
  *   npx tailwindcss@3.4.17 -c tailwind.config.js -i input.css -o ../css/landing.css --minify
  *
  * ⚠️ Thêm trang HTML mới dùng landing.css phải đưa vào `content` rồi build lại,
  *    nếu không class của trang mới sẽ không sinh ra CSS.
+ * M08 (audit luồng thành viên 1114efd): `content` cũ chỉ liệt kê home/landing —
+ * 5 trang member còn lại dùng landing.css nhưng bị thiếu coverage build.
  */
 module.exports = {
   darkMode: "class",
   content: [
-    "./../member/home.html",
+    "./../member/*.html",
     "./../landing.html",
+    "./../login.html",
     "./design_reference.html",
   ],
   theme: {

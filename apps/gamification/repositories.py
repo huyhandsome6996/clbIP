@@ -129,6 +129,19 @@ class IGamificationRepository(ABC):
     def create_ledger_entry(self, **fields) -> XpLedger:
         """Ghi một dòng biến động XP vào sổ cái."""
 
+    @abstractmethod
+    def persist_member_gamification(
+        self, member: MemberProfile, *, xp_points: int, current_level: int
+    ) -> None:
+        """
+        Lưu xp_points/current_level vào hồ sơ (update_fields hẹp).
+
+        M09 (audit luồng thành viên 1114efd): mọi thao tác ghi CSDL của module
+        phải đi qua repository — service chỉ mutate object rồi ủy quyền lưu.
+        Bắt buộc gọi bên trong `transaction.atomic()` (caller đang giữ khóa bi
+        hồ sơ qua `lock_member_profile`).
+        """
+
 
 class DjangoGamificationRepository(IGamificationRepository):
     """Triển khai cụ thể bằng Django ORM cho `IGamificationRepository`."""
@@ -142,6 +155,17 @@ class DjangoGamificationRepository(IGamificationRepository):
 
     def get_active_profiles_ordered(self) -> QuerySet[MemberProfile]:
         """ACTIVE + select_related user + thứ tự XP giảm dần, họ tên tăng dần."""
+        # M09: bản trước đây chỉ có docstring (trả None) — phần thân bị dán
+        # nhầm thành code chết sau `return` của count_active_profiles_with_xp_
+        # greater_than. Đã ghép về đúng chỗ; hiện chưa có caller nhưng hàm
+        # phải trả QuerySet đúng hợp đồng interface.
+        return (
+            MemberProfile.objects.filter(
+                trang_thai_hd=MemberProfile.TrangThai.ACTIVE,
+            )
+            .select_related("user")
+            .order_by("-xp_points", "ho_ten")
+        )
 
     def iter_leaderboard_rows(self):
         return (
@@ -162,13 +186,14 @@ class DjangoGamificationRepository(IGamificationRepository):
             trang_thai_hd=MemberProfile.TrangThai.ACTIVE,
             xp_points__gt=xp,
         ).count()
-        return (
-            MemberProfile.objects.filter(
-                trang_thai_hd=MemberProfile.TrangThai.ACTIVE,
-            )
-            .select_related("user")
-            .order_by("-xp_points", "ho_ten")
-        )
+
+    def persist_member_gamification(
+        self, member: MemberProfile, *, xp_points: int, current_level: int
+    ) -> None:
+        """Lưu 2 trường gamification của hồ sơ — update_fields hẹp, không đụng cột khác."""
+        member.xp_points = xp_points
+        member.current_level = current_level
+        member.save(update_fields=["xp_points", "current_level", "updated_at"])
 
     def lock_member_profile(self, pk: int) -> MemberProfile:
         """
@@ -178,6 +203,8 @@ class DjangoGamificationRepository(IGamificationRepository):
         song song sẽ tuần tự hóa tại đây (Security Hardening §5.3).
         """
         return MemberProfile.objects.select_for_update().get(pk=pk)
+
+    # persist_member_gamification được định nghĩa ở khối MemberProfile phía trên.
 
     # ---------------- Badge / MemberBadge ----------------
     def list_all_badges(self) -> QuerySet[Badge]:

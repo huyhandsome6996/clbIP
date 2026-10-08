@@ -22,6 +22,7 @@
   <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
   <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 
+  <link rel="stylesheet" href="/frontend/css/member.css">
   <style>
 
     /* ===== Shell Layout & Animation Styles (Đồng bộ home.html) ===== */
@@ -73,26 +74,7 @@
     .dd-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
       color: #767586; padding: 6px 12px 4px; }
 
-    /* Modal góp ý */
-    .lp-backdrop {
-      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px;
-      background: rgba(19,27,46,.5); backdrop-filter: blur(6px);
-    }
-    .lp-modal {
-      width: 100%; max-width: 520px; max-height: 86dvh; overflow: auto;
-      background: linear-gradient(160deg, #ffffff, #f2f3ff);
-      border: 1px solid rgba(199,196,215,.6); border-radius: 24px;
-      box-shadow: 0 24px 80px rgba(40,48,68,.35); padding: 24px;
-    }
-    .lp-input {
-      width: 100%; border: 1px solid #c7c4d7; border-radius: 14px; background: #ffffff;
-      padding: 12px 14px; font-size: 14px; color: #131b2e; outline: none;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .lp-input:focus { border-color: #4648d4; box-shadow: 0 0 0 3px rgba(70,72,212,.15); }
-    .lp-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #464554; margin-bottom: 6px; }
-    .lp-error { color: #93000a; font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
-    .lp-error.show { display: block; }
+    /* Modal góp ý dùng MemberModal dùng chung (M07) */
 
 
     /* ===== Page-scoped styles (leaderboard.html) ===== */
@@ -125,7 +107,7 @@
       color: var(--tx-muted); font-variant-numeric: tabular-nums;
     }
     .rank-name { flex: 1; min-width: 0; font-weight: 600; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rank-xp { flex: none; font-weight: 800; font-size: var(--text-sm); color: #A5B4FC; font-variant-numeric: tabular-nums; }
+    .rank-xp { flex: none; font-weight: 800; font-size: var(--text-sm); color: var(--c-accent-strong); font-variant-numeric: tabular-nums; }
 
     /* thẻ vị trí của tôi */
     .my-rank-row { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); padding: 8px 0; font-size: var(--text-sm); }
@@ -320,6 +302,7 @@
   <script src="/frontend/js/utils.js"></script>
   <script src="/frontend/js/auth.js"></script>
   <script src="/frontend/js/celebration.js"></script>
+  <script src="/frontend/js/member-shell.js"></script>
 <script>
 
     /* ================= Shell Controller (Đồng bộ với home.html) ================= */
@@ -421,21 +404,8 @@
 
       (async () => {
         try {
-          const me = await ApiClient.get("/gamification/me/");
-          const xp = Number(me?.xp ?? me?.xp_points ?? 0);
-          const level = Number(me?.level ?? me?.current_level ?? 1);
-          const streak = Number(me?.streak_count ?? 0);
-          if ($("sb-level")) $("sb-level").textContent = `Lv.${level}`;
-          if ($("sb-xp")) $("sb-xp").textContent = `${Utils.fmtNum(xp)} XP`;
-          if ($("me-level")) $("me-level").textContent = `Level ${level} · ${Utils.fmtNum(xp)} XP`;
-          if (streak > 0 && $("pill-streak") && $("pill-streak-text")) {
-            $("pill-streak").hidden = false;
-            $("pill-streak-text").textContent = `${streak} ngày chuyên cần`;
-          }
-          if ($("pill-xp") && $("pill-xp-text")) {
-            $("pill-xp").hidden = false;
-            $("pill-xp-text").textContent = `${Utils.fmtNum(xp)} XP`;
-          }
+          // M06: XP/streak vẽ qua shell dùng chung (đủ sb-*/pill-*/me-level)
+          await MemberShell.refreshGamification();
         } catch (_) {}
 
         try {
@@ -464,56 +434,43 @@
     }
 
     function openFeedbackModal() {
-      const backdrop = document.createElement("div");
-      backdrop.className = "lp-backdrop";
-      backdrop.innerHTML = `
-        <div class="lp-modal" role="dialog" aria-modal="true" aria-label="Góp ý ẩn danh">
-          <div class="flex items-center justify-between gap-4 mb-4">
-            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">Góp ý ẩn danh 💌</h3>
-            <button type="button" aria-label="Đóng" class="lp-close w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
+      MemberModal.open({
+        title: "Góp ý ẩn danh 💌",
+        bodyHTML: `
           <div class="space-y-3">
-            <label class="lp-label" for="fb-content">Nội dung góp ý</label>
-            <textarea id="fb-content" class="lp-input" rows="4" maxlength="1000"
+            <label class="form-hint" for="fb-content" style="display:block;margin-bottom:6px">NỘI DUNG GÓP Ý</label>
+            <textarea id="fb-content" class="form-textarea" rows="4" maxlength="1000" data-autofocus
               placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
-            <p class="font-body-sm text-body-sm text-on-surface-variant">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
-            <p class="lp-error" id="fb-error"></p>
-            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary-container transition-all" id="fb-submit">
-              <span class="material-symbols-outlined text-[18px]">send</span><span>Gửi góp ý</span>
-            </button>
-          </div>
-        </div>`;
-      const close = () => backdrop.remove();
-      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-      backdrop.querySelector(".lp-close").addEventListener("click", close);
-      document.body.appendChild(backdrop);
-
-      const ta = backdrop.querySelector("#fb-content");
-      const errEl = backdrop.querySelector("#fb-error");
-      const btn = backdrop.querySelector("#fb-submit");
-      ta.focus();
-      btn.addEventListener("click", async () => {
-        const noi_dung = ta.value.trim();
-        errEl.classList.remove("show");
-        if (!noi_dung) {
-          errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
-          errEl.classList.add("show");
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = "Đang gửi…";
-        try {
-          await ApiClient.post("/feedback/", { noi_dung });
-          close();
-          Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
-        } catch (err) {
-          errEl.textContent = err.message || "Không gửi được góp ý.";
-          errEl.classList.add("show");
-          btn.disabled = false;
-          btn.textContent = "Gửi góp ý";
-        }
+            <p class="small" style="color:var(--tx-secondary)">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
+            <p class="small bold" id="fb-error" style="color:#B42318;display:none" role="alert"></p>
+          </div>`,
+        footerHTML: `<button type="button" class="btn btn-primary" id="fb-submit" style="width:100%">Gửi góp ý</button>`,
+        onMount(backdrop, close) {
+          const ta = backdrop.querySelector("#fb-content");
+          const errEl = backdrop.querySelector("#fb-error");
+          const btn = backdrop.querySelector("#fb-submit");
+          btn.addEventListener("click", async () => {
+            const noi_dung = ta.value.trim();
+            errEl.style.display = "none";
+            if (!noi_dung) {
+              errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+              errEl.style.display = "block";
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = "Đang gửi…";
+            try {
+              await ApiClient.post("/feedback/", { noi_dung });
+              close();
+              Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
+            } catch (err) {
+              errEl.textContent = err.message || "Không gửi được góp ý.";
+              errEl.style.display = "block";
+              btn.disabled = false;
+              btn.textContent = "Gửi góp ý";
+            }
+          });
+        },
       });
     }
 
@@ -609,12 +566,12 @@
               ${inTop ? Utils.badge(`Hạng #${Utils.escapeHtml(String(rank))}`, "success") : Utils.badge(`Hạng #${Utils.escapeHtml(String(rank))}`, "accent")}
             </div>
             <div class="my-rank-row"><span class="muted">Tổng thành viên</span><span class="val">${Utils.fmtNum(totalMembers)} người</span></div>
-            ${myXp !== null ? `<div class="my-rank-row"><span class="muted">XP của bạn</span><span class="val" style="color:#A5B4FC">${Utils.fmtNum(myXp)} XP</span></div>` : ""}
+            ${myXp !== null ? `<div class="my-rank-row"><span class="muted">XP của bạn</span><span class="val" style="color:#4338CA">${Utils.fmtNum(myXp)} XP</span></div>` : ""}
             ${inTop
-              ? `<div class="my-rank-row"><span class="muted">Khoảng cách Top 10</span><span class="val" style="color:#7EE2A0">Bạn đã ở trong Top 10 rồi!</span></div>`
+              ? `<div class="my-rank-row"><span class="muted">Khoảng cách Top 10</span><span class="val" style="color:#067647">Bạn đã ở trong Top 10 rồi!</span></div>`
               : `<div class="my-rank-row"><span class="muted">Mốc Top 10</span><span class="val">${Utils.fmtNum(thresholdXp)} XP</span></div>
                  <div class="progress mt-2 mb-2"><span style="width:${Math.min(pct, 100).toFixed(1)}%"></span></div>
-                 <div class="small bold" style="color:#FCD34D">Còn ${Utils.fmtNum(gap)} XP nữa để vào Top 10 💪</div>`}
+                 <div class="small bold" style="color:#B45309">Còn ${Utils.fmtNum(gap)} XP nữa để vào Top 10 💪</div>`}
           </div>`;
       }
 
@@ -637,7 +594,7 @@
             <div class="rank-row${isMe ? " me-row" : ""}">
               <span class="rank-no">#${Utils.escapeHtml(String(e.rank))}</span>
               <span class="avatar avatar-sm">${avatarHtml(e)}</span>
-              <span class="rank-name">${Utils.escapeHtml(e.name)}${isMe ? ' <span class="xs bold" style="color:#B4B8FF">(bạn)</span>' : ""}</span>
+              <span class="rank-name">${Utils.escapeHtml(e.name)}${isMe ? ' <span class="xs bold" style="color:#4F46E5">(bạn)</span>' : ""}</span>
               <span class="rank-xp">${Utils.fmtNum(e.xp)} XP</span>
             </div>`;
         }).join("");

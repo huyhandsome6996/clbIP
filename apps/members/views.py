@@ -287,10 +287,10 @@ class BoardMemberListCreateView(generics.ListCreateAPIView):
         return super().get_permissions()
 
     def get_queryset(self):
+        # M09 (audit 1114efd): query chuyển qua MemberService — view không import
+        # repository trực tiếp nữa (Controller mỏng: View → Service → Repository).
         nhiem_ky = self.request.query_params.get("nhiem_ky")
-        from apps.members.repositories import DjangoMemberRepository
-
-        return DjangoMemberRepository.get_board_positions(nhiem_ky)
+        return MemberService.list_board_positions(nhiem_ky)
 
     @extend_schema(
         tags=["Members"],
@@ -309,5 +309,6 @@ class BoardMemberListCreateView(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs) -> Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        board_member = serializer.save()
+        # M09 (audit 1114efd): persistence qua service — controller mỏng.
+        board_member = MemberService.create_board_position(serializer.validated_data)
         return created(data=BoardMemberSerializer(board_member).data, message="Bổ nhiệm thành công")

@@ -67,7 +67,11 @@ class AttendanceConcurrencyTests(TransactionTestCase):
         )
 
     def _checkin(self, session: AttendanceSession) -> None:
-        """Gọi service check-in với tham số hợp lệ (GPS trong bán kính)."""
+        """Gọi service check-in với tham số hợp lệ (GPS trong bán kính).
+
+        M05 (audit 1114efd): service BẮT BUỘC accuracy (§5.1) — test gửi
+        accuracy=10m như client thật.
+        """
         AttendanceService.check_in(
             member=self.member,
             session_id=session.id,
@@ -76,6 +80,7 @@ class AttendanceConcurrencyTests(TransactionTestCase):
             client_time=timezone.now(),
             device_id=f"DEVICE-{self.member_user.pk}",
             nonce=AttendanceNonceService.generate(session)["nonce"],
+            accuracy=10.0,
         )
 
     # ------------------------------------------------------------------

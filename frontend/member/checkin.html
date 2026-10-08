@@ -22,6 +22,7 @@
   <link rel="apple-touch-icon" href="/frontend/assets/favicon-circle.png">
   <link rel="shortcut icon" href="/frontend/assets/favicon.ico">
 
+  <link rel="stylesheet" href="/frontend/css/member.css">
   <style>
 
     /* ===== Shell Layout & Animation Styles (Đồng bộ home.html) ===== */
@@ -73,26 +74,7 @@
     .dd-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
       color: #767586; padding: 6px 12px 4px; }
 
-    /* Modal góp ý */
-    .lp-backdrop {
-      position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px;
-      background: rgba(19,27,46,.5); backdrop-filter: blur(6px);
-    }
-    .lp-modal {
-      width: 100%; max-width: 520px; max-height: 86dvh; overflow: auto;
-      background: linear-gradient(160deg, #ffffff, #f2f3ff);
-      border: 1px solid rgba(199,196,215,.6); border-radius: 24px;
-      box-shadow: 0 24px 80px rgba(40,48,68,.35); padding: 24px;
-    }
-    .lp-input {
-      width: 100%; border: 1px solid #c7c4d7; border-radius: 14px; background: #ffffff;
-      padding: 12px 14px; font-size: 14px; color: #131b2e; outline: none;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .lp-input:focus { border-color: #4648d4; box-shadow: 0 0 0 3px rgba(70,72,212,.15); }
-    .lp-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #464554; margin-bottom: 6px; }
-    .lp-error { color: #93000a; font-size: 12px; font-weight: 600; margin-top: 6px; display: none; }
-    .lp-error.show { display: block; }
+    /* Modal góp ý dùng MemberModal dùng chung (M07) */
 
 
     /* ===== Page-scoped styles (checkin.html) ===== */
@@ -124,10 +106,28 @@
     .radar-distance {
       text-align: center; margin-top: 4px;
       font-family: var(--font-mono); font-size: var(--text-md);
-      font-weight: 700; color: #A5B4FC; font-variant-numeric: tabular-nums;
+      font-weight: 700; color: var(--c-accent-strong); font-variant-numeric: tabular-nums;
     }
-    .radar-ok   { color: #7EE2A0; }
-    .radar-far  { color: #FCD34D; }
+    .radar-ok   { color: #067647; }
+    .radar-far  { color: #B45309; }
+
+    /* M04: picker chọn phiên khi nhiều phiên OPEN cùng lúc */
+    .session-picker-list { display: flex; flex-direction: column; gap: 8px; }
+    .session-option {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+      width: 100%; text-align: left; padding: 11px 14px;
+      border-radius: var(--r-control); cursor: pointer;
+      background: #FFFFFF; border: 1px solid var(--border-color);
+      color: var(--tx-primary); font-size: var(--text-sm);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .session-option:hover { border-color: var(--border-strong); }
+    .session-option.active {
+      border-color: var(--c-accent);
+      box-shadow: 0 0 0 3px var(--c-accent-soft);
+      background: var(--c-accent-soft);
+    }
+    .session-option:focus-visible { outline: 2px solid var(--c-accent-strong); outline-offset: 2px; }
 
     /* nonce */
     .nonce-input {
@@ -146,9 +146,9 @@
     .result-ico {
       width: 52px; height: 52px; flex: none; border-radius: 50%;
       display: grid; place-items: center;
-      background: rgba(22,163,74,.18); color: #7EE2A0;
+      background: rgba(22,163,74,.14); color: #067647;
     }
-    .result-ico.late { background: rgba(217,119,6,.2); color: #FCD34D; }
+    .result-ico.late { background: rgba(217,119,6,.2); color: #B45309; }
     .result-row {
       display: flex; justify-content: space-between; gap: var(--s-3);
       padding: 9px 0; border-bottom: 1px dashed var(--border-color);
@@ -163,14 +163,9 @@
       padding: 11px 0; border-bottom: 1px dashed var(--border-color);
     }
     .hist-row:last-child { border-bottom: 0; }
-    .hist-xp { font-weight: 800; font-size: var(--text-xs); color: #7EE2A0; font-variant-numeric: tabular-nums; flex: none; }
+    .hist-xp { font-weight: 800; font-size: var(--text-xs); color: #067647; font-variant-numeric: tabular-nums; flex: none; }
 
-    /* demo mode */
-    .demo-box {
-      margin-top: var(--s-4); padding: var(--s-4);
-      border-radius: var(--r-control);
-      border: 1px dashed rgba(245,158,11,.5); background: rgba(245,158,11,.07);
-    }
+    /* demo-box đã gỡ (M05): không còn nhập tọa độ tay trên production */
   </style>
 </head>
 <body class="bg-background font-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
@@ -319,6 +314,9 @@
       <p class="small muted" style="margin:0">Đến đúng chỗ, nhập đúng mã — XP về tay ngay!</p>
     </section>
 
+    <!-- M04: vùng picker chọn phiên khi có nhiều phiên OPEN cùng lúc -->
+    <section id="session-picker" aria-live="polite"></section>
+
     <!-- PHIÊN ĐIỂM DANH + RADAR -->
     <section id="main-zone">
       <div class="glass glass-card">
@@ -354,6 +352,7 @@
   <script src="/frontend/js/utils.js"></script>
   <script src="/frontend/js/auth.js"></script>
   <script src="/frontend/js/celebration.js"></script>
+  <script src="/frontend/js/member-shell.js"></script>
 <script>
 
     /* ================= Shell Controller (Đồng bộ với home.html) ================= */
@@ -455,21 +454,8 @@
 
       (async () => {
         try {
-          const me = await ApiClient.get("/gamification/me/");
-          const xp = Number(me?.xp ?? me?.xp_points ?? 0);
-          const level = Number(me?.level ?? me?.current_level ?? 1);
-          const streak = Number(me?.streak_count ?? 0);
-          if ($("sb-level")) $("sb-level").textContent = `Lv.${level}`;
-          if ($("sb-xp")) $("sb-xp").textContent = `${Utils.fmtNum(xp)} XP`;
-          if ($("me-level")) $("me-level").textContent = `Level ${level} · ${Utils.fmtNum(xp)} XP`;
-          if (streak > 0 && $("pill-streak") && $("pill-streak-text")) {
-            $("pill-streak").hidden = false;
-            $("pill-streak-text").textContent = `${streak} ngày chuyên cần`;
-          }
-          if ($("pill-xp") && $("pill-xp-text")) {
-            $("pill-xp").hidden = false;
-            $("pill-xp-text").textContent = `${Utils.fmtNum(xp)} XP`;
-          }
+          // M06: XP/streak vẽ qua shell dùng chung — nhất quán mọi trang member
+          await MemberShell.refreshGamification();
         } catch (_) {}
 
         try {
@@ -498,56 +484,43 @@
     }
 
     function openFeedbackModal() {
-      const backdrop = document.createElement("div");
-      backdrop.className = "lp-backdrop";
-      backdrop.innerHTML = `
-        <div class="lp-modal" role="dialog" aria-modal="true" aria-label="Góp ý ẩn danh">
-          <div class="flex items-center justify-between gap-4 mb-4">
-            <h3 class="font-headline-md text-headline-md text-on-surface font-bold">Góp ý ẩn danh 💌</h3>
-            <button type="button" aria-label="Đóng" class="lp-close w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors">
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
+      MemberModal.open({
+        title: "Góp ý ẩn danh 💌",
+        bodyHTML: `
           <div class="space-y-3">
-            <label class="lp-label" for="fb-content">Nội dung góp ý</label>
-            <textarea id="fb-content" class="lp-input" rows="4" maxlength="1000"
+            <label class="form-hint" for="fb-content" style="display:block;margin-bottom:6px">NỘI DUNG GÓP Ý</label>
+            <textarea id="fb-content" class="form-textarea" rows="4" maxlength="1000" data-autofocus
               placeholder="CLB cần cải thiện điều gì? Cứ nói thẳng, không ai biết là bạn gửi đâu 🤫"></textarea>
-            <p class="font-body-sm text-body-sm text-on-surface-variant">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
-            <p class="lp-error" id="fb-error"></p>
-            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary-container transition-all" id="fb-submit">
-              <span class="material-symbols-outlined text-[18px]">send</span><span>Gửi góp ý</span>
-            </button>
-          </div>
-        </div>`;
-      const close = () => backdrop.remove();
-      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
-      backdrop.querySelector(".lp-close").addEventListener("click", close);
-      document.body.appendChild(backdrop);
-
-      const ta = backdrop.querySelector("#fb-content");
-      const errEl = backdrop.querySelector("#fb-error");
-      const btn = backdrop.querySelector("#fb-submit");
-      ta.focus();
-      btn.addEventListener("click", async () => {
-        const noi_dung = ta.value.trim();
-        errEl.classList.remove("show");
-        if (!noi_dung) {
-          errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
-          errEl.classList.add("show");
-          return;
-        }
-        btn.disabled = true;
-        btn.textContent = "Đang gửi…";
-        try {
-          await ApiClient.post("/feedback/", { noi_dung });
-          close();
-          Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
-        } catch (err) {
-          errEl.textContent = err.message || "Không gửi được góp ý.";
-          errEl.classList.add("show");
-          btn.disabled = false;
-          btn.textContent = "Gửi góp ý";
-        }
+            <p class="small" style="color:var(--tx-secondary)">Góp ý của bạn được gửi hoàn toàn ẩn danh — không lưu người gửi. Tối đa 5 góp ý mỗi ngày.</p>
+            <p class="small bold" id="fb-error" style="color:#B42318;display:none" role="alert"></p>
+          </div>`,
+        footerHTML: `<button type="button" class="btn btn-primary" id="fb-submit" style="width:100%">Gửi góp ý</button>`,
+        onMount(backdrop, close) {
+          const ta = backdrop.querySelector("#fb-content");
+          const errEl = backdrop.querySelector("#fb-error");
+          const btn = backdrop.querySelector("#fb-submit");
+          btn.addEventListener("click", async () => {
+            const noi_dung = ta.value.trim();
+            errEl.style.display = "none";
+            if (!noi_dung) {
+              errEl.textContent = "Bạn chưa nhập nội dung góp ý.";
+              errEl.style.display = "block";
+              return;
+            }
+            btn.disabled = true;
+            btn.textContent = "Đang gửi…";
+            try {
+              await ApiClient.post("/feedback/", { noi_dung });
+              close();
+              Toast.success("Đã gửi góp ý! Cảm ơn bạn đã đồng hành cùng CLB ❤️");
+            } catch (err) {
+              errEl.textContent = err.message || "Không gửi được góp ý.";
+              errEl.style.display = "block";
+              btn.disabled = false;
+              btn.textContent = "Gửi góp ý";
+            }
+          });
+        },
       });
     }
 
@@ -562,11 +535,13 @@
       /* ================= State ================= */
       const state = {
         session: null,
+        sessions: [],        // M04: TẤT CẢ phiên OPEN (đủ trang pagination)
         position: null,      // {latitude, longitude, accuracy}
         distance: null,      // mét
         nonce: "",
         submitted: false,
         timerId: null,
+        checkinAbort: null,  // M04: hủy request check-in cũ khi đổi phiên
       };
 
       /* ================= Nav member (FRONTEND_CONTRACT §6) ================= */
@@ -667,7 +642,6 @@
         } else {
           setRadarMode(null, "Phiên này không cấu hình tọa độ GPS.", "");
         }
-        hideDemoBox();
         updateSubmitState();
       }
 
@@ -685,22 +659,17 @@
       }
 
       function geoFailed(reason) {
-        Toast.warning("Không lấy được vị trí GPS — bạn có thể nhập tọa độ thủ công ở khung Demo bên dưới 🧪");
-        setRadarMode(null, "Chưa có vị trí — thử GPS lại hoặc nhập tay.", reason ? `Lỗi: ${reason}` : "");
-        showDemoBox();
+        /* M05 (audit 1114efd): GỠ đường nhập tọa độ tay khỏi production.
+           Không còn "demo" tự cộng XP khi thiếu cảm biến — GPS lỗi chỉ có:
+           (1) hướng dẫn bật quyền + quét lại, (2) BCN override thủ công
+           (bulk_override CÓ audit log) — theo Security Hardening §5.1. */
+        Toast.warning("Không lấy được vị trí GPS — bật quyền vị trí rồi bấm “Quét lại GPS” nhé 📍");
+        setRadarMode(
+          null,
+          "Chưa có vị trí GPS — kiểm tra quyền định vị rồi quét lại.",
+          reason ? `Lỗi: ${reason}` : ""
+        );
         updateSubmitState();
-      }
-
-      /* ================= Demo mode: nhập tọa độ tay ================= */
-      function showDemoBox() {
-        const box = document.getElementById("demo-box");
-        if (!box) return;
-        box.classList.remove("hidden");
-      }
-      function hideDemoBox() {
-        const box = document.getElementById("demo-box");
-        if (!box) return;
-        box.classList.add("hidden");
       }
 
       /* ================= Trạng thái nút XÁC NHẬN ================= */
@@ -728,7 +697,20 @@
       /* ================= Check-in ================= */
       async function doCheckIn() {
         const btn = document.getElementById("btn-checkin");
+        /* M05: backend BẮT BUỘC accuracy hữu hạn >0 (§5.1) — chặn phía UI
+           trước để không submission nào thiếu dữ liệu cảm biến bị 400.
+           KHÔNG gửi cờ is_mock "cứng": trình duyệt không cung cấp tín hiệu
+           mock-detection của OS, khai báo false cũng không phải bằng chứng. */
+        const acc = Number(state.position?.accuracy);
+        if (!Number.isFinite(acc) || acc <= 0) {
+          Toast.warning("GPS chưa chốt độ chính xác (accuracy) — bấm “Quét lại GPS” và đứng yên 2–3 giây nhé 📍");
+          return;
+        }
         const undo = Utils.btnLoading(btn, "Đang gửi mã...");
+        // M04: hủy request cũ nếu còn treo khi bấm lại/đổi phiên
+        if (state.checkinAbort) { try { state.checkinAbort.abort(); } catch (_) {} }
+        const controller = new AbortController();
+        state.checkinAbort = controller;
         try {
           const data = await ApiClient.post("/attendance/check-in/", {
             session_id: state.session.id,
@@ -737,9 +719,9 @@
             client_time: new Date().toISOString(),
             device_id: getDeviceId(),
             nonce: state.nonce,
-            is_mock: false,
-            accuracy: state.position.accuracy,
-          });
+            accuracy: acc,
+          }, { signal: controller.signal });
+          if (controller.signal.aborted) return; // response cũ không ghi đè phiên mới
           state.submitted = true;
           if (state.timerId) clearInterval(state.timerId);
           undo();
@@ -752,7 +734,9 @@
           btn.textContent = "Đã điểm danh";
           btn.disabled = true;
           loadHistory(); // refresh lịch sử
+          MemberShell.refreshGamification(); // M06: XP/streak lên shell NGAY
         } catch (err) {
+          if (err?.name === "AbortError" || controller.signal.aborted) return; // đổi phiên — bỏ qua
           undo();
           Toast.error(err?.message || "Check-in thất bại");
         }
@@ -772,7 +756,7 @@
             </div>
             <div class="result-row"><span class="muted">Phiên</span><span class="val">${Utils.escapeHtml(data?.session_ten || state.session.ten_phien)}</span></div>
             <div class="result-row"><span class="muted">Khoảng cách</span><span class="val">${data?.khoang_cach_m != null ? Utils.fmtNum(Math.round(Number(data.khoang_cach_m))) + " m" : "—"}</span></div>
-            <div class="result-row"><span class="muted">XP nhận được</span><span class="val" style="color:#7EE2A0">+${Utils.escapeHtml(String(xp))} XP</span></div>
+            <div class="result-row"><span class="muted">XP nhận được</span><span class="val" style="color:#067647">+${Utils.escapeHtml(String(xp))} XP</span></div>
             <div class="result-row"><span class="muted">Chuỗi điểm danh</span><span class="val">🔥 ${Utils.escapeHtml(String(streak))} ngày</span></div>
           </div>`;
         zone.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -808,21 +792,9 @@
               <button class="btn btn-ghost btn-sm" id="btn-regeo">${Icons.render("refresh", 15)} Quét lại GPS</button>
             </div>
 
-            <!-- Demo mode: nhập tọa độ thủ công khi GPS lỗi -->
-            <div class="demo-box hidden" id="demo-box">
-              <div class="small bold mb-2" style="color:#FCD34D">🧪 Demo — nhập tọa độ thủ công</div>
-              <div class="form-row">
-                <div class="form-group" style="margin-bottom:8px">
-                  <label class="form-label" for="demo-lat">Vĩ độ (latitude)</label>
-                  <input class="form-input" id="demo-lat" type="number" step="any" inputmode="decimal" placeholder="16.4637">
-                </div>
-                <div class="form-group" style="margin-bottom:8px">
-                  <label class="form-label" for="demo-lng">Kinh độ (longitude)</label>
-                  <input class="form-input" id="demo-lng" type="number" step="any" inputmode="decimal" placeholder="107.5909">
-                </div>
-              </div>
-              <button class="btn btn-outline btn-sm w-100" id="btn-demo-apply">Dùng tọa độ này</button>
-            </div>
+            <p class="xs text-center" style="color:var(--tx-muted);margin-top:10px">
+              Điểm danh cần GPS thật của thiết bị. Không bật được GPS? Liên hệ BCN để được ghi nhận thủ công (có ghi audit).
+            </p>
           </div>
 
           <!-- NONCE + XÁC NHẬN -->
@@ -840,16 +812,6 @@
 
         /* gắn sự kiện */
         document.getElementById("btn-regeo").addEventListener("click", requestGeolocation);
-        document.getElementById("btn-demo-apply").addEventListener("click", () => {
-          const lat = parseFloat(document.getElementById("demo-lat").value);
-          const lng = parseFloat(document.getElementById("demo-lng").value);
-          if (isNaN(lat) || isNaN(lng)) {
-            Toast.warning("Nhập đủ vĩ độ và kinh độ (số thập phân) nhé!");
-            return;
-          }
-          applyPosition({ coords: { latitude: lat, longitude: lng, accuracy: null } });
-          Toast.info("Đã dùng tọa độ thủ công (demo mode) 🧪");
-        });
         const nonceInput = document.getElementById("nonce-input");
         nonceInput.addEventListener("input", () => {
           nonceInput.value = nonceInput.value.replace(/\D/g, "").slice(0, 6);
@@ -859,6 +821,53 @@
         document.getElementById("btn-checkin").addEventListener("click", doCheckIn);
 
         startCountdown(s.hieu_luc_den, document.getElementById("countdown-chip"));
+      }
+
+      /* ================= M04: chọn phiên khi có nhiều phiên OPEN ================= */
+      function selectSession(s) {
+        // Dọn sạch trạng thái phiên cũ: timer, request đang treo, nonce, GPS, kết quả
+        if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+        if (state.checkinAbort) { try { state.checkinAbort.abort(); } catch (_) {} state.checkinAbort = null; }
+        state.session = s;
+        state.nonce = "";
+        state.submitted = false;
+        state.position = null;
+        state.distance = null;
+        const nonceInput = document.getElementById("nonce-input");
+        if (nonceInput) nonceInput.value = "";
+        const resultZone = document.getElementById("result-zone");
+        if (resultZone) { resultZone.classList.add("hidden"); resultZone.innerHTML = ""; }
+        renderSession(s);
+        updateSubmitState();
+        requestGeolocation();
+      }
+
+      function renderSessionPicker() {
+        const picker = document.getElementById("session-picker");
+        if (!picker) return;
+        if (state.sessions.length <= 1) { picker.innerHTML = ""; return; }
+        picker.innerHTML = `
+          <div class="glass glass-card" style="margin-bottom:var(--s-4)">
+            <div class="small bold" style="margin-bottom:8px">${Icons.render("list", 15)} Đang mở ${state.sessions.length} phiên — chọn phiên bạn cần điểm danh:</div>
+            <div class="session-picker-list" role="listbox" aria-label="Chọn phiên điểm danh">
+              ${state.sessions.map((s) => {
+                const active = state.session && state.session.id === s.id;
+                const deadline = s.hieu_luc_den ? Utils.fmtDateTime(s.hieu_luc_den) : "Không giới hạn";
+                return `
+                <button type="button" role="option" aria-selected="${active}" data-session-id="${s.id}"
+                  class="session-option${active ? " active" : ""}">
+                  <span class="bold">${Utils.escapeHtml(s.ten_phien)}</span>
+                  <span class="xs" style="color:var(--tx-secondary)">${s.event_ten ? Utils.escapeHtml(s.event_ten) + " · " : ""}${Utils.escapeHtml(s.dia_diem ? String(s.dia_diem) : "")} · hạn ${Utils.escapeHtml(deadline)}</span>
+                </button>`;
+              }).join("")}
+            </div>
+          </div>`;
+        picker.querySelectorAll(".session-option").forEach((b) => {
+          b.addEventListener("click", () => {
+            const s = state.sessions.find((x) => x.id === Number(b.dataset.sessionId));
+            if (s && (!state.session || state.session.id !== s.id)) selectSession(s);
+          });
+        });
       }
 
       function renderNoSession() {
@@ -911,18 +920,42 @@
       }
 
       /* ================= INIT ================= */
+      async function loadAllOpenSessions() {
+        // M04: nạp ĐỦ các trang phiên OPEN (page_size=100 — max backend),
+        // KHÔNG còn lấy mỗi items[0].
+        const out = [];
+        for (let page = 1; page <= 5; page++) {
+          const { items, pagination } = await ApiClient.getList("/attendance/sessions/", {
+            trang_thai: "OPEN", page, page_size: 100,
+          });
+          out.push(...(items || []));
+          const tp = Number(pagination?.total_pages || 1);
+          if (page >= tp) break;
+        }
+        state.sessions = out;
+        return out;
+      }
+
       async function init() {
         document.getElementById("ic-history").innerHTML = Icons.render("clock", 15);
         loadHistory();
         try {
-          const { items } = await ApiClient.getList("/attendance/sessions/", { trang_thai: "OPEN" });
-          const s = items[0] || null;
-          if (!s) {
+          const sessions = await loadAllOpenSessions();
+          if (!sessions.length) {
             renderNoSession();
             return;
           }
-          state.session = s;
-          renderSession(s);
+          // URL ?session=<id> chỉ là GỢI Ý — validate: không thuộc OPEN list thì bỏ qua
+          let target = null;
+          const wanted = Number(new URLSearchParams(location.search).get("session"));
+          if (wanted && sessions.some((s) => s.id === wanted)) {
+            target = sessions.find((s) => s.id === wanted);
+          } else if (wanted) {
+            try { history.replaceState(null, "", location.pathname); } catch (_) {}
+          }
+          state.session = target || sessions[0];
+          renderSessionPicker();
+          renderSession(state.session);
           updateSubmitState();
           requestGeolocation();
         } catch (err) {

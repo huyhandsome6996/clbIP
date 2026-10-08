@@ -164,9 +164,11 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py createcachetable   # bảng cache cho throttle/axes (DatabaseCache)
 python manage.py seed_demo --password=<mật-khẩu>   # dữ liệu demo (bị chặn nếu DJANGO_ENV=production)
-python manage.py test               # 357 tests — 100% PASS trên MySQL/MariaDB (14 race-test skip có lý do trên SQLite)
-                                    #   + 47 regression F01-F14/R01 + 12 concurrency quỹ/điểm danh/DAG (tests_concurrency.py, N03 khóa kỳ 6/6b/6c/6d)
-                                    #   + 7 regression R01 DAG (events/tests_audit_fix.py — ReviewR01*)
+python manage.py test               # 357 tests gốc + 24 regression M-fix (audit luồng thành viên 1114efd) = 381 tests
+                                    #   — 100% PASS trên MySQL/MariaDB (14 race-test skip có lý do trên SQLite)
+                                    #   + regression F01-F14/R01-R04 + concurrency quỹ/điểm danh/DAG (tests_concurrency.py)
+                                    #   + tests_member_fix.py (attendance M05 accuracy §5.1, events M02 metadata vé,
+                                    #     gamification M10 level_progress biên + M09 persist qua repository)
 python manage.py runserver          # http://localhost:8000/ (frontend) · /api/docs/ (Swagger)
 ```
 

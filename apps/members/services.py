@@ -372,6 +372,33 @@ class MemberService:
         )
 
     # ------------------------------------------------------------------
+    # Cơ cấu Ban Chủ nhiệm (M09 — audit luồng thành viên 1114efd)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def list_board_positions(nhiem_ky: Optional[str] = None):
+        """
+        Sơ đồ tổ chức BCN theo nhiệm kỳ — view KHÔNG import repository trực
+        tiếp nữa (Controller mỏng: View → Service → Repository).
+        Giữ nguyên semantics cũ: select_related(member, member__user), filter
+        nhiệm kỳ nếu có — không pagination (sơ đồ tổ chức vốn nhỏ).
+        """
+        from apps.members.repositories import DjangoMemberRepository  # noqa: PLC0415
+
+        return DjangoMemberRepository.get_board_positions(nhiem_ky)
+
+    @staticmethod
+    def create_board_position(validated_data: dict):
+        """
+        Bổ nhiệm BCN — POST BoardMemberListCreateView chuyển qua service theo
+        rule "controller gọi service" của skill kiến trúc. Serializer chỉ
+        parse/validate; thao tác lưu nằm ở đây (ủy quyền ORM cho Model.
+        objects.create theo shape cũ — không đổi hành vi nghiệp vụ).
+        """
+        from apps.members.models import BoardMember  # noqa: PLC0415
+
+        return BoardMember.objects.create(**validated_data)
+
+    # ------------------------------------------------------------------
     # Nội bộ
     # ------------------------------------------------------------------
     @classmethod

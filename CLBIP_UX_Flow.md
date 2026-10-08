@@ -139,12 +139,12 @@
 - **Vai trò:** MEMBER
 - **Luồng chính:**
   1. Mở trang → xin quyền GPS (`navigator.geolocation`, nút `[Lấy vị trí lại]`).
-  2. Tìm phiên đang mở: `GET /api/v1/attendance/sessions/?trang_thai=OPEN`.
+  2. Tìm phiên đang mở: `GET /api/v1/attendance/sessions/?trang_thai=OPEN&page_size=100` — **M04 (audit 1114efd): nạp TẤT CẢ phiên OPEN (đủ trang pagination)**; nhiều phiên → picker chọn phiên (tên/sự kiện/địa điểm/hạn); URL `?session=<id>` chỉ là gợi ý, không thuộc list OPEN thì bỏ qua; đổi phiên reset nonce/GPS/kết quả + hủy request cũ.
   3. Nhập **mã nonce 6 chữ số** hiển thị trên máy chiếu (state.nonce).
   4. Radar quét: hiển thị khoảng cách đến tâm phiên (`radar-distance`) — trong/ ngoài bán kính → đổi màu nút xác nhận.
-  5. Bấm `[XÁC NHẬN ĐIỂM DANH GPS]` → `POST /api/v1/attendance/check-in/` với `{session_id, latitude, longitude, client_time, device_id, nonce, is_mock, accuracy}`.
+  5. Bấm `[XÁC NHẬN ĐIỂM DANH GPS]` → `POST /api/v1/attendance/check-in/` với `{session_id, latitude, longitude, client_time, device_id, nonce, accuracy}` — **M05 (audit 1114efd, Security §5.1): `accuracy` BẮT BUỘC hữu hạn >0 ≤100m; đã GỠ khung demo nhập tọa độ tay** (không còn đường sensorless tự cộng XP); GPS lỗi → hướng dẫn bật quyền/quét lại; không dùng được → BCN bulk-override có audit. `is_mock` không gửi cứng (client flag không phải bằng chứng).
   6. Backend chạy 7 lớp anti-cheat → trả trạng thái (`CÓ MẶT`/`ĐI MUỘN`), XP nhận được, streak.
-  7. UI: card kết quả (XP + 🔥 chuỗi điểm danh) + hiệu ứng confetti `Celebrate.cheer()` (`frontend/js/celebration.js`).
+  7. UI: card kết quả (XP + 🔥 chuỗi điểm danh) + hiệu ứng confetti `Celebrate.cheer()` (`frontend/js/celebration.js`); **M06: `MemberShell.refreshGamification()` cập nhật XP/streak lên sidebar/topbar NGAY — không cần reload**.
   8. Lịch sử cá nhân: `GET /api/v1/attendance/me/`.
 - **Trạng thái rỗng/lỗi:** không có phiên mở → hướng dẫn chờ BCN; sai nonce / ngoài bán kính / fake GPS / teleport → thông báo lỗi tiếng Việt từ anti-cheat; không có quyền GPS → hướng dẫn bật lại.
 
@@ -154,7 +154,7 @@
 - **Luồng chính:**
   1. Danh sách sự kiện: `GET /api/v1/events/?page` (phân trang).
   2. `[Đăng Ký Vé Tham Gia (Miễn phí)]` → `POST /api/v1/events/{id}/register/` → nhận `ma_ve` (`VE-XXXXXXXXXXXX`).
-  3. Tab "🎟️ Vé của tôi": `GET /api/v1/events/my-tickets/` → `[Xem vé QR]` → render QR client-side từ `ma_ve` (`frontend/assets/qrcode.min.js`, khung kiểu ví Apple Wallet).
+  3. Tab "🎟️ Vé của tôi": `GET /api/v1/events/my-tickets/` — **M02 (audit 1114efd): dựng card TỪ VÉ (đã có metadata sự kiện: tên/thời gian/địa điểm/trạng thái) + pagination riêng theo vé** — vé của sự kiện ở trang sau của /events/ vẫn hiện đầy đủ; `[Xem vé QR]` → render QR client-side từ `ma_ve` (`frontend/assets/qrcode.min.js`, khung kiểu ví Apple Wallet); trạng thái REGISTERED/CHECKED_IN/CANCELLED + "sự kiện đã kết thúc" hiển thị rõ; vé CANCELLED của sự kiện còn mở → nút Đăng ký lại.
   4. `[Hủy vé]` → `POST /api/v1/events/{id}/cancel-registration/` → xóa khỏi danh sách vé.
 - **Trạng thái rỗng/lỗi:** chưa có vé → empty state mời đăng ký; đăng ký trùng / sự kiện đóng đăng ký → lỗi 400/409 envelope → Toast.
 - **Chưa có so với spec:** đồng hồ đếm ngược "giờ G" trên thẻ sự kiện; quét QR tại cửa hội trường (không có màn hình check-in vé cho BCN — tham khảo Feature List #32).
@@ -174,7 +174,7 @@
 - **Vai trò:** MEMBER (và mọi role đăng nhập)
 - **Luồng chính:**
   1. Tải song song: `GET /api/v1/members/{profileId}/profile360/` + `GET /api/v1/gamification/me/` + `GET /api/v1/gamification/badges/`.
-  2. Thanh cấp độ XP (Level 1→10) từ `xp`/`level`.
+  2. Thanh cấp độ XP (Level 1→10) từ `level_progress` của `/gamification/me/` — **M10 (audit 1114efd): nguồn chuẩn là bảng ngưỡng backend [0,100,250,500,900,1400,2000,2800,3800,5000]** (bản cũ modulo 200 tính sai mọi mốc); `max_level=true` → hiển thị "Cấp tối đa", không gợi Level 11.
   3. Bộ sưu tập huy hiệu: badge đã mở (kèm thời điểm) + badge chưa mở (khóa).
   4. Rank cá nhân: `GET /api/v1/gamification/leaderboard/` (`my_position`); chuyên cần: `GET /api/v1/attendance/me/` (fallback khi profile360 thiếu).
   5. Sửa SĐT: `PATCH /api/v1/members/{profileId}/` (`{sdt}` — chỉ trường này được member tự sửa).

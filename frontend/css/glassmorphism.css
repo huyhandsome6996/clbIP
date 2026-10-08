@@ -330,3 +330,97 @@
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
 }
+
+/* ============================================================
+   M01 (audit luồng thành viên 1114efd) — OVERRIDE LIGHT CHO MEMBER
+   ----------------------------------------------------------------
+   File này chỉ được nạp bởi các trang member (+ index.html cũ) —
+   admin không nạp, nên overridescoped dưới [data-theme="member"]
+   không thể ảnh hưởng trang quản trị. Bản gốc phía trên giữ cho
+   theme dark nếu sau này cần; shell member hiện hành là SÁNG
+   (#FAF8FF) theo Stitch Member Prompt 0 → glass TRẮNG, chữ ĐẬM.
+   Contrast đã đo: scripts/contrast_check.py (≥4,5:1 / ≥3:1).
+   ============================================================ */
+[data-theme="member"] .glass {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.62));
+  border: 1px solid rgba(99, 102, 241, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    var(--shadow-md);
+}
+[data-theme="member"] .glass-strong {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.80));
+}
+[data-theme="member"] .glass-accent::before {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.55), rgba(139, 92, 246, 0.30), transparent 55%);
+}
+
+/* Tiêu đề gradient: chữ LỚN cần ≥3:1 — dùng dải indigo-900 → indigo-600 →
+   violet-700, đo được 5,97–10,84:1 trên nền sáng (bản cũ 1,16–1,89:1). */
+[data-theme="member"] .page-title {
+  background: linear-gradient(92deg, #312E81 15%, #4F46E5 55%, #6D28D9 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Radar: viền periwinkle nhạt → indigo rõ trên nền sáng */
+[data-theme="member"] .radar {
+  border-color: rgba(99, 102, 241, 0.38);
+}
+[data-theme="member"] .radar::before {
+  border-color: rgba(99, 102, 241, 0.30);
+}
+[data-theme="member"] .radar::after {
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+/* Podium: chữ trắng trên cột vàng/bạc/đồng chỉ đạt ~2,2:1 → đổi chữ ĐẬM
+   (nâu-đen) đạt >8:1 trên cả 3 cột; rank number là thông tin quan trọng. */
+[data-theme="member"] .pillar {
+  color: rgba(69, 26, 3, 0.96);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+[data-theme="member"] .crown { color: #B45309; }
+
+/* Streak chip: chữ cam-300 trên nền sáng 1,9:1 → cam-800 6+:1 */
+[data-theme="member"] .streak-chip {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(194, 65, 12, 0.35);
+  color: #9A3412;
+}
+
+/* Level ring: track trắng alpha vô hình trên nền sáng */
+[data-theme="member"] .level-ring .ring {
+  background: conic-gradient(var(--c-indigo) calc(var(--pct, 0) * 1%), rgba(99, 102, 241, 0.16) 0);
+}
+
+/* Hologram VIP pass + QR ticket giữ NỀN TỐI theo đúng thiết kế Stitch
+   ("Deep indigo gradient, Apple Wallet luxury") — là accent tối chủ đích
+   trên canvas sáng, text trắng/indigo-200 trên nền tối đạt tương phản cao. */
+
+/* ============================================================
+   M08 — REDUCED MOTION (scoped member)
+   base.css (chứa kill-switch gốc) KHÔNG được nạp ở 6 trang member
+   → bổ sung kill-switch tương đương tại đây; radar/skeleton/pulse
+   ngừng chạy khi người dùng bật "giảm chuyển động".
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .radar-ring,
+  .radar-sweep {
+    animation: none !important;
+  }
+  .radar-sweep { display: none; }
+  .holo-card::after { transition: none !important; display: none; }
+  .skel,
+  .skeleton {
+    animation: none !important;
+  }
+  .toast { animation: none !important; transition: none !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

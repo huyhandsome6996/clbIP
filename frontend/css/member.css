@@ -1,0 +1,42 @@
+/* ============================================================
+   CLB IP — member.css (M08 — audit luồng thành viên 1114efd)
+   ------------------------------------------------------------
+   6 trang member dùng utility legacy (.bold/.small/.xs/.muted/...)
+   nhưng KHÔNG nạp base.css (nạp base.css sẽ kéo body background
+   dark token trở lại — sai design). File này cung cấp ĐỦ các
+   utility tương đương, giá trị token theme (light), KHÔNG chứa
+   body/global rules. Nạp SAU landing.css, TRƯỚC <style> trang.
+   Nguồn tham chiếu: frontend/css/base.css §Utilities.
+   ============================================================ */
+
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.muted { color: var(--tx-muted); }
+.secondary { color: var(--tx-secondary); }
+.small { font-size: var(--text-sm); }
+.xs { font-size: var(--text-xs); }
+.bold { font-weight: 700; }
+.mono { font-family: var(--font-mono); }
+.w-100 { width: 100%; }
+.mt-2 { margin-top: var(--s-2); }
+.mt-4 { margin-top: var(--s-4); }
+.mt-6 { margin-top: var(--s-6); }
+.mb-2 { margin-bottom: var(--s-2); }
+.mb-4 { margin-bottom: var(--s-4); }
+.mb-6 { margin-bottom: var(--s-6); }
+.flex { display: flex; }
+.flex-1 { flex: 1; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: var(--s-2); }
+.gap-3 { gap: var(--s-3); }
+.gap-4 { gap: var(--s-4); }
+.wrap { flex-wrap: wrap; }
+
+/* Focus-visible chuẩn cho mọi control trên trang member
+   (base.css có rule này nhưng member không nạp base.css) */
+:focus-visible {
+  outline: 2px solid var(--c-accent-strong);
+  outline-offset: 2px;
+}
